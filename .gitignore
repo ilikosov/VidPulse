@@ -2,550 +2,59 @@
 # Dependencies
 node_modules/
 
-# Build artifacts
-dist/
-build/
-target/
+# Environment
+.env
+.env.local
+*.env.*
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.py.class
-*.py.backup
-*.py~
-*.py.swp
-*.py.swo
-*.py.tmp
-*.py.log
-*.py.cache
-*.py.compiled
-*.py.bak
-*.py.old
-*.py.new
-*.py.orig
-*.py.rej
-*.py.patch
-*.py.diff
-*.py.merge
-*.py.conflict
-*.py.swp
-*.py.swo
-*.py.tmp
-*.py.log
-*.py.cache
-*.py.compiled
-*.py.bak
-*.py.old
-*.py.new
-*.py.orig
-*.py.rej
-*.py.patch
-*.py.diff
-*.py.merge
-*.py.conflict
-*.class
-*.jar
-*.war
-*.ear
-*.zip
-*.tar
-*.gz
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
-
-# Virtual environments
+.Python
+env/
 venv/
 .venv/
-env/
-.env/
-ENV/
+.ENV
+.python-version
 
-# IDE and editor files
+# Logs
+*.log
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*.tmp
-*.log
-*.backup
-*.bak
-*.old
-*.new
-*.orig
-*.rej
-*.patch
-*.diff
-*.merge
-*.conflict
 
-# Environment variables
-.env
-.env.local
-.env.*
-*.env
-*.env.local
-*.env.*
+# Build artifacts
+dist/
+build/
+target/
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+*.out
 
-# OS generated files
-.DS_Store
-Thumbs.db
-desktop.ini
-Icon?
-ehthumbs.db
-*.DS_Store
-._*
-
-# Coverage reports
+# Coverage
 coverage/
 htmlcov/
 .coverage
-*.coverage
 
-# Testing
-.pytest_cache/
-.mypy_cache/
-.hypothesis/
-*.pytest
-*.pytest.xml
-*.pytest.json
-*.pytest.log
-*.pytest.tmp
-*.pytest.swp
-*.pytest.swo
-*.pytest.tmp
-*.pytest.log
-*.pytest.cache
-*.pytest.compiled
-*.pytest.bak
-*.pytest.old
-*.pytest.new
-*.pytest.orig
-*.pytest.rej
-*.pytest.patch
-*.pytest.diff
-*.pytest.merge
-*.pytest.conflict
-*.pytest.swp
-*.pytest.swo
-*.pytest.tmp
-*.pytest.log
-*.pytest.cache
-*.pytest.compiled
-*.pytest.bak
-*.pytest.old
-*.pytest.new
-*.pytest.orig
-*.pytest.rej
-*.pytest.patch
-*.pytest.diff
-*.pytest.merge
-*.pytest.conflict
-
-# Gradle
-.gradle/
-build/
-
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-node_modules/
-jspm_packages/
-.npm
-.npmrc
-.nyc_output
-.nyc
-.coverage
-.coverage.*
-.nyc-output
-.nyc-output/*
-.nyc-output/**
-coverage/
-coverage/*
-coverage/**
-.nyc_output
-.nyc_output/*
-.nyc_output/**
-.nyc
-.nyc/*
-.nyc/**
-
-# Yarn
-.yarn/
-yarn.lock
-package-lock.json
-
-# TypeScript
-*.tsbuildinfo
-*.js.map
-*.jsx.map
-*.ts.map
-*.tsx.map
-*.mjs.map
-*.cjs.map
-*.cts.map
-*.mts.map
-
-# Build outputs
-dist/
-dist/**
-build/
-build/**
-out/
-out/**
-output/
-output/**
-public/
-public/**
-static/
-static/**
-assets/
-assets/**
-
-# Temporary files
+# Temp files
 *.tmp
 *.temp
-*.log
-*.swp
-*.swo
 
-# Configuration files
-.config/
-.config/**
-.cache/
-.cache/**
-
-# Local configuration
-.local/
-.local/**
-
-# Development
-dev/
-dev/**
-debug/
-debug/**
-
-# Temporary
-tmp/
-tmp/**
-temp/
-temp/**
-
-# Logs
-*.log
-logs/
-logs/**
-
-# Database
-*.db
-*.db-journal
-*.sqlite
-*.sqlite3
-
-# System files
+# OS
 .DS_Store
 Thumbs.db
-ehthumbs.db
-Icon?
-._*
-
-# Git
-.git/
-!.gitignore
-
-# Backup files
-*~
-*.bak
-*.backup
-*.old
-*.orig
-*.rej
-*.patch
-*.diff
-*.merge
-*.conflict
-
-# Compression
-*.zip
-*.tar
-*.gz
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
-
-# Images (if accidentally included)
-*.png
-*.jpg
-*.jpeg
-*.bmp
-*.gif
-*.webp
-*.tiff
-*.svg
-*.ico
-
-# Videos
-*.mp4
-*.avi
-*.mov
-*.wmv
-*.flv
-*.webm
-*.mkv
-
-# Audio
-*.mp3
-*.wav
-*.ogg
-*.flac
-*.aac
-*.m4a
-
-# Documents
-*.pdf
-*.doc
-*.docx
-*.xls
-*.xlsx
-*.ppt
-*.pptx
-*.odt
-*.ods
-*.odp
-
-# Fonts
-*.ttf
-*.otf
-*.woff
-*.woff2
-
-# Archives
-*.zip
-*.rar
-*.7z
-*.tar
-*.gz
-*.bz2
-*.xz
-*.tgz
-*.tbz2
-*.txz
-
-# Executables
-*.exe
-*.dll
-*.so
-*.dylib
-*.app
-*.bin
-*.out
-*.o
-*.obj
-*.a
-*.lib
-*.pdb
-*.dll.a
-*.so.*
-*.dylib.*
-*.bundle
-*.node
-
-# Compilation
-*.class
-*.jar
-*.war
-*.ear
-*.iml
-*.ipr
-*.iws
-*.project
-*.classpath
-*.settings/
-
-# Docker
-.dockerignore
-docker-compose*.yml
-docker/
-
-# Kubernetes
-*.k8s.yaml
-*.k8s.yml
-*.kube.yaml
-*.kube.yml
-
-# CI/CD
-.circleci/
-.github/
-.travis.yml
-.jenkinsfile
-.drone.yml
-.gitlab-ci.yml
-.codeclimate.yml
-.semaphore/
-.shippable.yml
-.codeship/
-.wercker/
-.concourse/
-.teamcity/
-.tc.yml
-.tc.yaml
-
-# Security
-*.key
-*.pem
-*.crt
-*.cert
-*.pub
-*.gpg
-*.asc
-*.secret
-*.secrets
-*.token
-*.tokens
-
-# Private
-private/
-private/**
-.secret
-.secrets
-.token
-.tokens
 
 # Cache
-.cache/
-.cache/**
-.caches/
-.caches/**
-
-# Lock files
-*.lock
-package-lock.json
-yarn.lock
-Gemfile.lock
-Pipfile.lock
-poetry.lock
-Cargo.lock
-composer.lock
-
-# IDE specific
-.vscode/
-.vscode/**
-.idea/
-.idea/**
-*.sublime-project
-*.sublime-workspace
-*.sln
-*.csproj
-*.csproj.user
-*.vbproj
-*.userprefs
-*.useroptions
-*.user
-*.userosscache
-*.suo
-*.userprefs
-*.useroptions
-*.user
-*.userosscache
-*.suo
-*.userprefs
-*.useroptions
-*.user
-*.userosscache
-*.suo
-*.userprefs
-*.useroptions
-*.user
-*.userosscache
-*.suo
-
-# Editor specific
-*.swp
-*.swo
-*.tmp
-*.log
-*.backup
-*.bak
-*.old
-*.new
-*.orig
-*.rej
-*.patch
-*.diff
-*.merge
-*.conflict
-
-# Environment
-.env
-.env.local
-.env.*
-*.env
-*.env.local
-*.env.*
-
-# System
-.DS_Store
-Thumbs.db
-ehthumbs.db
-Icon?
-._*
-
-# Backup
-*~
-*.bak
-*.backup
-*.old
-*.orig
-*.rej
-*.patch
-*.diff
-*.merge
-*.conflict
-
-# Logs
-*.log
-logs/
-logs/**
-
-# Temp
-tmp/
-tmp/**
-temp/
-temp/**
+.mypy_cache/
+.pytest_cache/
+.gradle/
 ```

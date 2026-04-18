@@ -8,8 +8,8 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@youtube-sync/db": "0.0.0",
-    "@youtube-sync/queue": "0.0.0",
+    "@youtube-sync/db": "0.1.0",
+    "@youtube-sync/queue": "0.1.0",
     "fastify": "^4.27.0"
   },
   "devDependencies": {
