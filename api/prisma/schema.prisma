@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Video {
+  id                   String   @id @default(cuid())
+  youtubeId           String   @unique
+  channelId           String
+  title               String
+  description         String?
+  publishedAt         DateTime
+  duration            Int?     // in seconds
+  viewCount           Int?
+  likeCount           Int?
+  commentCount        Int?
+  thumbnails          Json?
+  metadata            Json     // raw YouTube API response
+  extraction          Json?    // structured classification result
+  classificationVersion Int    @default(1)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@index([publishedAt])
+  @@index([classificationVersion])
+}
+
+model Channel {
+  id                 String   @id @default(cuid())
+  youtubeId          String   @unique
+  title              String
+  uploadsPlaylistId  String
+  lastSyncedAt       DateTime?
+  backfillCursor     String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  videos Video[]
+}
+
+model JobLog {
+  id          String   @id @default(cuid())
+  jobType     String   // sync_channel, enrich_videos, etc.
+  jobId       String?
+  channelId   String?
+  videoId     String?
+  status      String   // pending, processing, completed, failed
+  payload     Json?
+  result      Json?
+  error       String?
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([jobType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model CacheEntry {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}

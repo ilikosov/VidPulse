@@ -1,0 +1,47 @@
+{
+  "name": "vidpulse",
+  "version": "0.1.0",
+  "description": "YouTube video synchronization and classification service",
+  "private": true,
+  "workspaces": [
+    "api",
+    "worker",
+    "admin",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:worker\" \"npm run dev:admin\"",
+    "dev:api": "npm run dev --workspace=api",
+    "dev:worker": "npm run dev --workspace=worker",
+    "dev:admin": "npm run dev --workspace=admin",
+    "build": "npm run build --workspaces",
+    "build:api": "npm run build --workspace=api",
+    "build:worker": "npm run build --workspace=worker",
+    "build:admin": "npm run build --workspace=admin",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "db:migrate": "npm run db:migrate --workspace=api",
+    "db:generate": "npm run db:generate --workspace=api",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "concurrently": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "youtube",
+    "video",
+    "sync",
+    "classification",
+    "llm"
+  ],
+  "author": "VidPulse Team",
+  "license": "MIT"
+}
