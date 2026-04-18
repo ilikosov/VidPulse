@@ -1,6 +1,6 @@
 {
   "name": "@youtube-sync/api",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -8,8 +8,8 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@youtube-sync/db": "*",
-    "@youtube-sync/queue": "*",
+    "@youtube-sync/db": "0.0.0",
+    "@youtube-sync/queue": "0.0.0",
     "fastify": "^4.27.0"
   },
   "devDependencies": {

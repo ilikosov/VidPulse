@@ -1,6 +1,6 @@
 {
   "name": "@youtube-sync/worker",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -8,9 +8,9 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@youtube-sync/db": "*",
-    "@youtube-sync/queue": "*",
-    "@youtube-sync/youtube": "*"
+    "@youtube-sync/db": "0.0.0",
+    "@youtube-sync/queue": "0.0.0",
+    "@youtube-sync/youtube": "0.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
