@@ -1,40 +1,7 @@
-```
-# Dependencies
-node_modules/
-
-# Build outputs
-dist/
-build/
-coverage/
-htmlcov/
-
-# Logs
-*.log
-
-# Environment variables
+node_modules
+dist
 .env
-.env.local
-.env.*
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# Python cache (if any Python parts)
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-
-# Coverage
-.coverage
-
-# Distribution / packaging
-.pytest_cache/
-.mypy_cache/
-```
+downloads/
+previews/
+logs/
+*.log

@@ -1,7 +1,0 @@
-node_modules
-dist
-.env
-downloads/
-previews/
-logs/
-*.log
