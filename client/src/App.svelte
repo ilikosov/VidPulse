@@ -1,38 +1,65 @@
 <script lang="ts">
-  let count: number = 0
+  import { useRoutes } from 'svelte-spa-router';
+  import VideoTable from './components/VideoTable.svelte';
+  import VideoCard from './components/VideoCard.svelte';
+  import ReviewQueue from './components/ReviewQueue.svelte';
 
-  function increment(): void {
-    count += 1
-  }
+  const routes = {
+    '/videos': VideoTable,
+    '/videos/:id': VideoCard,
+    '/review': ReviewQueue,
+    '*': VideoTable, // Default to videos page
+  };
+
+  const dispatch = useRoutes(routes);
 </script>
 
-<main>
-  <h1>Welcome to K-pop Archive Manager</h1>
-  <p>Manage your K-pop video archive with ease.</p>
-  <button on:click={increment}>
-    Count: {count}
-  </button>
-</main>
+<div class="min-h-screen bg-gray-100">
+  <!-- Navigation -->
+  <nav class="bg-white shadow-sm border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <h1 class="text-xl font-bold text-pink-600">K-pop Archive Manager</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          <a
+            href="/videos"
+            class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
+          >
+            Videos
+          </a>
+          <a
+            href="/review"
+            class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
+          >
+            Review Queue
+          </a>
+          <span
+            class="px-3 py-2 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed"
+            title="Coming soon"
+          >
+            Dashboard
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main>
+    {#if dispatch}
+      <svelte:component this={dispatch.component} {...dispatch.props} />
+    {:else}
+      <VideoTable />
+    {/if}
+  </main>
+</div>
 
 <style>
-  main {
-    text-align: center;
-    padding: 2rem;
-    font-family: sans-serif;
-  }
-  h1 {
-    color: #ff6b9d;
-  }
-  button {
-    background: #ff6b9d;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 1rem;
-  }
-  button:hover {
-    background: #ff4785;
+  :global(body) {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   }
 </style>

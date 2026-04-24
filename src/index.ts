@@ -9,6 +9,7 @@ import channelRoutes from './routes/channel.routes';
 import playlistRoutes from './routes/playlist.routes';
 import syncRoutes from './routes/sync.routes';
 import videoRoutes from './routes/video.routes';
+import dictionaryRoutes from './routes/dictionary.routes';
 import { runScheduler } from './services/sync.service';
 
 const app = express();
@@ -30,6 +31,7 @@ app.use('/api/channels', channelRoutes);
 app.use('/api/playlists', playlistRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/videos', videoRoutes);
+app.use('/api/dictionary', dictionaryRoutes);
 
 // Start server
 app.listen(PORT, () => {

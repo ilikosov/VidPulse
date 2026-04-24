@@ -1,8 +1,103 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db';
 import { parseTitle } from '../services/parser/parser.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const router = Router();
+
+/**
+ * GET /api/videos - List all videos with filtering and pagination
+ * Query params: status, page, limit
+ */
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const status = req.query.status as string | undefined;
+    const offset = (page - 1) * limit;
+
+    let query = knex('videos')
+      .leftJoin('channels', 'videos.channel_id', 'channels.id')
+      .leftJoin('playlists', 'videos.playlist_id', 'playlists.id')
+      .select(
+        'videos.id',
+        'videos.youtube_id',
+        'videos.channel_id',
+        'videos.playlist_id',
+        'videos.original_title',
+        'videos.perf_date',
+        'videos.group_name',
+        'videos.artist_name',
+        'videos.song_title',
+        'videos.event',
+        'videos.camera_type',
+        'videos.status',
+        'videos.created_at',
+        'videos.updated_at',
+        'channels.title as channel_title',
+        'playlists.title as playlist_title'
+      );
+
+    if (status) {
+      query = query.where('videos.status', status);
+    }
+
+    query = query.orderBy('videos.created_at', 'desc');
+
+    const videos = await query.limit(limit).offset(offset);
+
+    const totalQuery = knex('videos');
+    if (status) {
+      totalQuery.where('status', status);
+    }
+    const total = await totalQuery.count('* as count').first();
+    const totalCount = parseInt(total?.count as string) || 0;
+
+    res.json({
+      videos,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching videos:', error);
+    res.status(500).json({ error: 'Failed to fetch videos' });
+  }
+});
+
+/**
+ * GET /api/videos/:id - Get single video details
+ */
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const video = await knex('videos')
+      .leftJoin('channels', 'videos.channel_id', 'channels.id')
+      .leftJoin('playlists', 'videos.playlist_id', 'playlists.id')
+      .select(
+        'videos.*',
+        'channels.title as channel_title',
+        'channels.youtube_id as channel_youtube_id',
+        'playlists.title as playlist_title'
+      )
+      .where('videos.id', id)
+      .first();
+
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    res.json(video);
+  } catch (error) {
+    console.error('Error fetching video:', error);
+    res.status(500).json({ error: 'Failed to fetch video' });
+  }
+});
 
 /**
  * PUT /api/videos/:id/metadata - Update video metadata manually
