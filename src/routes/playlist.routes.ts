@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import knex from '../db/knexfile';
+import knex from '../db/';
 import { youtubeService } from '../services/youtube.service';
 
 const router = Router();
@@ -48,9 +48,7 @@ router.post('/', async (req: Request, res: Response) => {
     const playlistId = youtubeService.getPlaylistIdFromUrl(url);
 
     // Check if playlist already exists
-    const existingPlaylist = await knex('playlists')
-      .where('youtube_id', playlistId)
-      .first();
+    const existingPlaylist = await knex('playlists').where('youtube_id', playlistId).first();
 
     if (existingPlaylist) {
       return res.status(409).json({ error: 'Playlist already exists' });
@@ -60,12 +58,14 @@ router.post('/', async (req: Request, res: Response) => {
     const playlistDetails = await youtubeService.getPlaylistDetails(playlistId);
 
     // Insert playlist into database
-    const [newPlaylist] = await knex('playlists').insert({
-      youtube_id: playlistId,
-      title: playlistDetails.title,
-      added_at: new Date().toISOString(),
-      last_checked_at: new Date().toISOString(),
-    }).returning('*');
+    const [newPlaylist] = await knex('playlists')
+      .insert({
+        youtube_id: playlistId,
+        title: playlistDetails.title,
+        added_at: new Date().toISOString(),
+        last_checked_at: new Date().toISOString(),
+      })
+      .returning('*');
 
     // Fetch all playlist items
     const videos = await youtubeService.fetchPlaylistItems(playlistId);
@@ -73,9 +73,7 @@ router.post('/', async (req: Request, res: Response) => {
     // Insert videos in a transaction, skipping existing ones
     await knex.transaction(async (trx) => {
       for (const video of videos) {
-        const existingVideo = await trx('videos')
-          .where('youtube_id', video.videoId)
-          .first();
+        const existingVideo = await trx('videos').where('youtube_id', video.videoId).first();
 
         if (!existingVideo) {
           await trx('videos').insert({

@@ -1,4 +1,4 @@
-import knex from '../db/knexfile';
+import knex from '../db';
 import { youtubeService } from './youtube.service';
 
 const SYNC_INTERVAL_HOURS = 1;
@@ -8,39 +8,39 @@ const SYNC_INTERVAL_HOURS = 1;
  */
 export async function syncChannels(): Promise<void> {
   console.log('Starting channel sync...');
-  
+
   const channels = await knex('channels').select('*');
-  
+
   for (const channel of channels) {
     try {
       const now = new Date();
       const lastCheckedAt = channel.last_checked_at ? new Date(channel.last_checked_at) : null;
-      
+
       // Skip if checked within the last hour
       if (lastCheckedAt) {
         const hoursSinceLastCheck = (now.getTime() - lastCheckedAt.getTime()) / (1000 * 60 * 60);
         if (hoursSinceLastCheck < SYNC_INTERVAL_HOURS) {
-          console.log(`Skipping channel ${channel.youtube_id} - checked ${hoursSinceLastCheck.toFixed(2)} hours ago`);
+          console.log(
+            `Skipping channel ${channel.youtube_id} - checked ${hoursSinceLastCheck.toFixed(2)} hours ago`,
+          );
           continue;
         }
       }
-      
+
       // Determine publishedAfter date
       const publishedAfter = lastCheckedAt ? lastCheckedAt.toISOString() : now.toISOString();
-      
+
       console.log(`Syncing channel ${channel.youtube_id} (since ${publishedAfter})...`);
-      
+
       // Fetch new videos
       const videos = await youtubeService.fetchChannelVideos(channel.youtube_id, publishedAfter);
-      
+
       // Insert new videos in a transaction
       if (videos.length > 0) {
         await knex.transaction(async (trx) => {
           for (const video of videos) {
-            const existingVideo = await trx('videos')
-              .where('youtube_id', video.videoId)
-              .first();
-            
+            const existingVideo = await trx('videos').where('youtube_id', video.videoId).first();
+
             if (!existingVideo) {
               await trx('videos').insert({
                 youtube_id: video.videoId,
@@ -58,18 +58,15 @@ export async function syncChannels(): Promise<void> {
       } else {
         console.log(`No new videos for channel ${channel.youtube_id}`);
       }
-      
+
       // Update last_checked_at
-      await knex('channels')
-        .where('id', channel.id)
-        .update({ last_checked_at: now.toISOString() });
-        
+      await knex('channels').where('id', channel.id).update({ last_checked_at: now.toISOString() });
     } catch (error) {
       console.error(`Error syncing channel ${channel.youtube_id}:`, error);
       // Continue with next channel even if this one fails
     }
   }
-  
+
   console.log('Channel sync completed.');
 }
 
@@ -78,33 +75,31 @@ export async function syncChannels(): Promise<void> {
  */
 export async function syncPlaylists(): Promise<void> {
   console.log('Starting playlist sync...');
-  
+
   const playlists = await knex('playlists').select('*');
-  
+
   for (const playlist of playlists) {
     try {
       console.log(`Syncing playlist ${playlist.youtube_id}...`);
-      
+
       // Fetch all playlist items
       const videos = await youtubeService.fetchPlaylistItems(playlist.youtube_id);
-      
+
       // Get existing video IDs for this playlist
       const existingVideos = await knex('videos')
         .where('playlist_id', playlist.id)
         .select('youtube_id');
-      const existingVideoIds = new Set(existingVideos.map(v => v.youtube_id));
-      
+      const existingVideoIds = new Set(existingVideos.map((v) => v.youtube_id));
+
       // Insert new videos in a transaction
-      const newVideos = videos.filter(v => !existingVideoIds.has(v.videoId));
-      
+      const newVideos = videos.filter((v) => !existingVideoIds.has(v.videoId));
+
       if (newVideos.length > 0) {
         await knex.transaction(async (trx) => {
           for (const video of newVideos) {
             // Also check if video exists in DB at all (might be from another playlist/channel)
-            const anyExistingVideo = await trx('videos')
-              .where('youtube_id', video.videoId)
-              .first();
-            
+            const anyExistingVideo = await trx('videos').where('youtube_id', video.videoId).first();
+
             if (!anyExistingVideo) {
               await trx('videos').insert({
                 youtube_id: video.videoId,
@@ -122,18 +117,17 @@ export async function syncPlaylists(): Promise<void> {
       } else {
         console.log(`No new videos for playlist ${playlist.youtube_id}`);
       }
-      
+
       // Update last_checked_at
       await knex('playlists')
         .where('id', playlist.id)
         .update({ last_checked_at: new Date().toISOString() });
-        
     } catch (error) {
       console.error(`Error syncing playlist ${playlist.youtube_id}:`, error);
       // Continue with next playlist even if this one fails
     }
   }
-  
+
   console.log('Playlist sync completed.');
 }
 
@@ -142,21 +136,23 @@ export async function syncPlaylists(): Promise<void> {
  */
 export function runScheduler(): void {
   const cronTime = process.env.SYNC_CRON_TIME || '0 3 * * *'; // Default: 3 AM daily
-  
-  import('node-cron').then((cron) => {
-    const job = cron.schedule(cronTime, async () => {
-      console.log('Running scheduled sync...');
-      try {
-        await syncChannels();
-        await syncPlaylists();
-        console.log('Scheduled sync completed.');
-      } catch (error) {
-        console.error('Scheduled sync failed:', error);
-      }
+
+  import('node-cron')
+    .then((cron) => {
+      const job = cron.schedule(cronTime, async () => {
+        console.log('Running scheduled sync...');
+        try {
+          await syncChannels();
+          await syncPlaylists();
+          console.log('Scheduled sync completed.');
+        } catch (error) {
+          console.error('Scheduled sync failed:', error);
+        }
+      });
+
+      console.log(`Sync scheduler started with cron pattern: ${cronTime}`);
+    })
+    .catch((error) => {
+      console.error('Failed to start sync scheduler:', error);
     });
-    
-    console.log(`Sync scheduler started with cron pattern: ${cronTime}`);
-  }).catch((error) => {
-    console.error('Failed to start sync scheduler:', error);
-  });
 }

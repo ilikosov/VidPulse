@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import knex from '../db/knexfile';
+import knex from '../db/';
 import { youtubeService } from '../services/youtube.service';
 
 const router = Router();
@@ -12,7 +12,15 @@ router.get('/', async (req: Request, res: Response) => {
     const offset = (page - 1) * limit;
 
     const channels = await knex('channels')
-      .select('id', 'youtube_id', 'title', 'thumbnail_url', 'is_favorite', 'added_at', 'last_checked_at')
+      .select(
+        'id',
+        'youtube_id',
+        'title',
+        'thumbnail_url',
+        'is_favorite',
+        'added_at',
+        'last_checked_at',
+      )
       .orderBy('added_at', 'desc')
       .limit(limit)
       .offset(offset);
@@ -48,9 +56,7 @@ router.post('/', async (req: Request, res: Response) => {
     const channelId = await youtubeService.getChannelIdFromUrl(url);
 
     // Check if channel already exists
-    const existingChannel = await knex('channels')
-      .where('youtube_id', channelId)
-      .first();
+    const existingChannel = await knex('channels').where('youtube_id', channelId).first();
 
     if (existingChannel) {
       return res.status(409).json({ error: 'Channel already exists' });
@@ -60,13 +66,15 @@ router.post('/', async (req: Request, res: Response) => {
     const channelDetails = await youtubeService.getChannelDetails(channelId);
 
     // Insert channel into database
-    const [newChannel] = await knex('channels').insert({
-      youtube_id: channelId,
-      title: channelDetails.title,
-      thumbnail_url: channelDetails.thumbnail_url,
-      added_at: new Date().toISOString(),
-      last_checked_at: new Date().toISOString(),
-    }).returning('*');
+    const [newChannel] = await knex('channels')
+      .insert({
+        youtube_id: channelId,
+        title: channelDetails.title,
+        thumbnail_url: channelDetails.thumbnail_url,
+        added_at: new Date().toISOString(),
+        last_checked_at: new Date().toISOString(),
+      })
+      .returning('*');
 
     // Trigger initial sync - fetch videos from last 30 days
     const thirtyDaysAgo = new Date();
@@ -78,9 +86,7 @@ router.post('/', async (req: Request, res: Response) => {
     // Insert videos in a transaction, skipping existing ones
     await knex.transaction(async (trx) => {
       for (const video of videos) {
-        const existingVideo = await trx('videos')
-          .where('youtube_id', video.videoId)
-          .first();
+        const existingVideo = await trx('videos').where('youtube_id', video.videoId).first();
 
         if (!existingVideo) {
           await trx('videos').insert({

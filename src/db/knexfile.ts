@@ -1,10 +1,11 @@
 import type { Knex } from 'knex';
+import path from 'path';
 
 const config: { [key: string]: Knex.Config } = {
   development: {
     client: 'better-sqlite3',
     connection: {
-      filename: './dev.sqlite3',
+      filename: path.resolve(__dirname, './dev.sqlite3'),
     },
     useNullAsDefault: true,
     pool: {
@@ -22,7 +23,7 @@ const config: { [key: string]: Knex.Config } = {
   production: {
     client: 'better-sqlite3',
     connection: {
-      filename: './prod.sqlite3',
+      filename: 'src/db/prod.sqlite3',
     },
     useNullAsDefault: true,
     pool: {

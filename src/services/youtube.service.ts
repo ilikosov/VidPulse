@@ -1,12 +1,12 @@
-import { google } from "googleapis";
-import { LRUCache } from "lru-cache";
-import type { VideoInfo, VideoDetails } from "../models/youtube.types";
+import { google } from 'googleapis';
+import { LRUCache } from 'lru-cache';
+import type { VideoInfo, VideoDetails } from '../models/youtube.types';
 
-const youtube = google.youtube("v3");
+const youtube = google.youtube('v3');
 const apiKey = process.env.YOUTUBE_API_KEY;
 
 if (!apiKey) {
-  throw Error("YOUTUBE_API_KEY is not set in environment variables");
+  throw Error('YOUTUBE_API_KEY is not set in environment variables');
 }
 
 // LRU Cache configuration: max 500 entries, TTL 1 hour (3600000 ms)
@@ -25,7 +25,7 @@ export class YouTubeService {
    * Supports: @username, channel/UC..., /c/name, direct IDs
    */
   async getChannelIdFromUrl(url: string): Promise<string> {
-    const cacheKey = getCacheKey("getChannelIdFromUrl", [url]);
+    const cacheKey = getCacheKey('getChannelIdFromUrl', [url]);
     const cached = cache.get(cacheKey);
     if (cached) {
       return cached;
@@ -41,14 +41,14 @@ export class YouTubeService {
       }
 
       // Handle @username format
-      if (!channelId && url.includes("@")) {
+      if (!channelId && url.includes('@')) {
         const usernameMatch = url.match(/@([a-zA-Z0-9_.-]+)/);
         if (usernameMatch) {
           const username = usernameMatch[1];
           const response = await youtube.channels.list({
             key: apiKey!,
             forUsername: username,
-            part: ["id"],
+            part: ['id'],
           });
           channelId = response.data.items?.[0]?.id || null;
         }
@@ -71,8 +71,8 @@ export class YouTubeService {
           const response = await youtube.search.list({
             key: apiKey!,
             q: customName,
-            type: "channel",
-            part: ["snippet"],
+            type: 'channel',
+            part: ['snippet'],
             maxResults: 1,
           });
           //@ts-ignore
@@ -88,7 +88,7 @@ export class YouTubeService {
           const response = await youtube.channels.list({
             key: apiKey!,
             forUsername: username,
-            part: ["id"],
+            part: ['id'],
           });
           channelId = response.data.items?.[0]?.id || null;
         }
@@ -101,7 +101,7 @@ export class YouTubeService {
       cache.set(cacheKey, channelId);
       return channelId;
     } catch (error) {
-      console.error("Error getting channel ID from URL:", error);
+      console.error('Error getting channel ID from URL:', error);
       throw error;
     }
   }
@@ -109,14 +109,8 @@ export class YouTubeService {
   /**
    * Fetch videos from a channel published after a specific date
    */
-  async fetchChannelVideos(
-    channelId: string,
-    publishedAfter: string,
-  ): Promise<VideoInfo[]> {
-    const cacheKey = getCacheKey("fetchChannelVideos", [
-      channelId,
-      publishedAfter,
-    ]);
+  async fetchChannelVideos(channelId: string, publishedAfter: string): Promise<VideoInfo[]> {
+    const cacheKey = getCacheKey('fetchChannelVideos', [channelId, publishedAfter]);
     const cached = cache.get(cacheKey);
     if (cached) return cached;
 
@@ -125,12 +119,11 @@ export class YouTubeService {
       const channelResponse = await youtube.channels.list({
         key: apiKey!,
         id: [channelId],
-        part: ["contentDetails"],
+        part: ['contentDetails'],
       });
       const uploadsPlaylistId =
-        channelResponse.data.items?.[0]?.contentDetails?.relatedPlaylists
-          ?.uploads;
-      if (!uploadsPlaylistId) throw new Error("Uploads playlist not found");
+        channelResponse.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+      if (!uploadsPlaylistId) throw new Error('Uploads playlist not found');
 
       // 2. Собираем все видео из этого плейлиста
       const videos: VideoInfo[] = [];
@@ -141,7 +134,7 @@ export class YouTubeService {
         const response = await youtube.playlistItems.list({
           key: apiKey!,
           playlistId: uploadsPlaylistId,
-          part: ["snippet"],
+          part: ['snippet'],
           maxResults: 50,
           pageToken,
         });
@@ -150,12 +143,12 @@ export class YouTubeService {
         for (const item of items) {
           const snippet = item.snippet;
           if (snippet?.resourceId?.videoId) {
-            const pubTime = new Date(snippet.publishedAt || "").getTime();
+            const pubTime = new Date(snippet.publishedAt || '').getTime();
             if (pubTime >= afterDate) {
               videos.push({
                 videoId: snippet.resourceId.videoId,
-                title: snippet.title || "",
-                publishedAt: snippet.publishedAt || "",
+                title: snippet.title || '',
+                publishedAt: snippet.publishedAt || '',
               });
             }
           }
@@ -173,7 +166,7 @@ export class YouTubeService {
       cache.set(cacheKey, videos);
       return videos;
     } catch (error) {
-      console.error("Error fetching channel videos:", error);
+      console.error('Error fetching channel videos:', error);
       throw error;
     }
   }
@@ -181,7 +174,7 @@ export class YouTubeService {
    * Fetch videos from a playlist with pagination support
    */
   async fetchPlaylistItems(playlistId: string): Promise<VideoInfo[]> {
-    const cacheKey = getCacheKey("fetchPlaylistItems", [playlistId]);
+    const cacheKey = getCacheKey('fetchPlaylistItems', [playlistId]);
     const cached = cache.get(cacheKey);
     if (cached) {
       return cached;
@@ -195,7 +188,7 @@ export class YouTubeService {
         const response = await youtube.playlistItems.list({
           key: apiKey!,
           playlistId: playlistId,
-          part: ["snippet"],
+          part: ['snippet'],
           maxResults: 50,
           pageToken,
         });
@@ -205,8 +198,8 @@ export class YouTubeService {
           if (item.snippet?.resourceId?.videoId) {
             videos.push({
               videoId: item.snippet.resourceId.videoId,
-              title: item.snippet.title || "",
-              publishedAt: item.snippet.publishedAt || "",
+              title: item.snippet.title || '',
+              publishedAt: item.snippet.publishedAt || '',
             });
           }
         }
@@ -217,7 +210,7 @@ export class YouTubeService {
       cache.set(cacheKey, videos);
       return videos;
     } catch (error) {
-      console.error("Error fetching playlist items:", error);
+      console.error('Error fetching playlist items:', error);
       throw error;
     }
   }
@@ -227,7 +220,7 @@ export class YouTubeService {
    * Common format: https://www.youtube.com/playlist?list=PL...
    */
   getPlaylistIdFromUrl(url: string): string {
-    const cacheKey = getCacheKey("getPlaylistIdFromUrl", [url]);
+    const cacheKey = getCacheKey('getPlaylistIdFromUrl', [url]);
     const cached = cache.get(cacheKey);
     if (cached) {
       return cached;
@@ -247,7 +240,7 @@ export class YouTubeService {
    * Fetch channel details including title and thumbnail
    */
   async getChannelDetails(channelId: string): Promise<{ title: string; thumbnail_url?: string }> {
-    const cacheKey = getCacheKey("getChannelDetails", [channelId]);
+    const cacheKey = getCacheKey('getChannelDetails', [channelId]);
     const cached = cache.get(cacheKey);
     if (cached) {
       return cached;
@@ -257,7 +250,7 @@ export class YouTubeService {
       const response = await youtube.channels.list({
         key: apiKey!,
         id: [channelId],
-        part: ["snippet"],
+        part: ['snippet'],
       });
 
       const item = response.data.items?.[0];
@@ -266,14 +259,15 @@ export class YouTubeService {
       }
 
       const result = {
-        title: item.snippet.title || "Unknown Channel",
-        thumbnail_url: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
+        title: item.snippet.title || 'Unknown Channel',
+        thumbnail_url:
+          item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || undefined,
       };
 
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
-      console.error("Error getting channel details:", error);
+      console.error('Error getting channel details:', error);
       throw error;
     }
   }
@@ -282,7 +276,7 @@ export class YouTubeService {
    * Fetch playlist details including title
    */
   async getPlaylistDetails(playlistId: string): Promise<{ title: string }> {
-    const cacheKey = getCacheKey("getPlaylistDetails", [playlistId]);
+    const cacheKey = getCacheKey('getPlaylistDetails', [playlistId]);
     const cached = cache.get(cacheKey);
     if (cached) {
       return cached;
@@ -292,7 +286,7 @@ export class YouTubeService {
       const response = await youtube.playlists.list({
         key: apiKey!,
         id: [playlistId],
-        part: ["snippet"],
+        part: ['snippet'],
       });
 
       const item = response.data.items?.[0];
@@ -301,13 +295,13 @@ export class YouTubeService {
       }
 
       const result = {
-        title: item.snippet.title || "Unknown Playlist",
+        title: item.snippet.title || 'Unknown Playlist',
       };
 
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
-      console.error("Error getting playlist details:", error);
+      console.error('Error getting playlist details:', error);
       throw error;
     }
   }
@@ -316,7 +310,7 @@ export class YouTubeService {
    * Get detailed information about a video
    */
   async getVideoDetails(videoId: string): Promise<VideoDetails> {
-    const cacheKey = getCacheKey("getVideoDetails", [videoId]);
+    const cacheKey = getCacheKey('getVideoDetails', [videoId]);
     const cached = cache.get(cacheKey);
     if (cached) {
       return cached;
@@ -326,7 +320,7 @@ export class YouTubeService {
       const response = await youtube.videos.list({
         key: apiKey!,
         id: [videoId],
-        part: ["snippet"],
+        part: ['snippet'],
       });
 
       const item = response.data.items?.[0];
@@ -335,16 +329,16 @@ export class YouTubeService {
       }
 
       const result: VideoDetails = {
-        title: item.snippet.title || "",
-        channelId: item.snippet.channelId || "",
-        publishedAt: item.snippet.publishedAt || "",
+        title: item.snippet.title || '',
+        channelId: item.snippet.channelId || '',
+        publishedAt: item.snippet.publishedAt || '',
         thumbnails: item.snippet.thumbnails,
       };
 
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
-      console.error("Error getting video details:", error);
+      console.error('Error getting video details:', error);
       throw error;
     }
   }

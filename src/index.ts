@@ -3,13 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+dotenv.config();
 
 import channelRoutes from './routes/channel.routes';
 import playlistRoutes from './routes/playlist.routes';
 import syncRoutes from './routes/sync.routes';
 import { runScheduler } from './services/sync.service';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
