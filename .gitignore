@@ -1,7 +1,13 @@
-node_modules
-dist
+```
+# Database
+src/db/dev.sqlite3
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment
 .env
-downloads/
-previews/
-logs/
-*.log
+.env.local
+*.env.*
+```
