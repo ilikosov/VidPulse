@@ -1,4 +1,3 @@
-```
 # Dependencies
 node_modules/
 
@@ -55,4 +54,7 @@ Thumbs.db
 *.xz
 *.7z
 *.rar
-```
+check_scripts/*
+src/db/dev.sqlite3
+src/db/dev.sqlite3-shm
+src/db/dev.sqlite3-wal
