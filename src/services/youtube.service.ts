@@ -223,6 +223,96 @@ export class YouTubeService {
   }
 
   /**
+   * Extract playlist ID from YouTube playlist URL
+   * Common format: https://www.youtube.com/playlist?list=PL...
+   */
+  getPlaylistIdFromUrl(url: string): string {
+    const cacheKey = getCacheKey("getPlaylistIdFromUrl", [url]);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+    if (!match) {
+      throw new Error(`Could not extract playlist ID from URL: ${url}`);
+    }
+
+    const playlistId = match[1];
+    cache.set(cacheKey, playlistId);
+    return playlistId;
+  }
+
+  /**
+   * Fetch channel details including title and thumbnail
+   */
+  async getChannelDetails(channelId: string): Promise<{ title: string; thumbnail_url?: string }> {
+    const cacheKey = getCacheKey("getChannelDetails", [channelId]);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const response = await youtube.channels.list({
+        key: apiKey!,
+        id: [channelId],
+        part: ["snippet"],
+      });
+
+      const item = response.data.items?.[0];
+      if (!item || !item.snippet) {
+        throw new Error(`Channel not found: ${channelId}`);
+      }
+
+      const result = {
+        title: item.snippet.title || "Unknown Channel",
+        thumbnail_url: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
+      };
+
+      cache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error("Error getting channel details:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch playlist details including title
+   */
+  async getPlaylistDetails(playlistId: string): Promise<{ title: string }> {
+    const cacheKey = getCacheKey("getPlaylistDetails", [playlistId]);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const response = await youtube.playlists.list({
+        key: apiKey!,
+        id: [playlistId],
+        part: ["snippet"],
+      });
+
+      const item = response.data.items?.[0];
+      if (!item || !item.snippet) {
+        throw new Error(`Playlist not found: ${playlistId}`);
+      }
+
+      const result = {
+        title: item.snippet.title || "Unknown Playlist",
+      };
+
+      cache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error("Error getting playlist details:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get detailed information about a video
    */
   async getVideoDetails(videoId: string): Promise<VideoDetails> {
@@ -259,3 +349,6 @@ export class YouTubeService {
     }
   }
 }
+
+// Export singleton instance for sharing across modules
+export const youtubeService = new YouTubeService();
