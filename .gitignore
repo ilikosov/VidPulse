@@ -25,3 +25,7 @@ target/
 .DS_Store
 Thumbs.db
 ```
+check_scripts/*
+src/db/dev.sqlite3
+src/db/dev.sqlite3-shm
+src/db/dev.sqlite3-wal

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getVideo, updateMetadata, type Video } from '../api';
-  import { goto } from 'svelte-spa-router';
+  import { push } from 'svelte-spa-router';
   import AutocompleteInput from './AutocompleteInput.svelte';
 
   export let id: string;
@@ -9,7 +9,7 @@
   let video: Video | null = null;
   let loading: boolean = true;
   let error: string | null = null;
-  
+
   // Edit mode state
   let isEditing: boolean = false;
   let editForm: {
@@ -35,7 +35,7 @@
     error = null;
     try {
       video = await getVideo(id);
-      
+
       // Initialize edit form with current values
       editForm = {
         perf_date: formatDateForEdit(video.perf_date),
@@ -78,10 +78,10 @@
         event: editForm.event ? '@' + editForm.event.toUpperCase() : null,
         camera_type: editForm.camera_type || null,
       };
-      
+
       video = await updateMetadata(id, updateData);
       isEditing = false;
-      
+
       // Refresh the video data
       await fetchVideo();
     } catch (err) {
@@ -108,14 +108,22 @@
 
   function getStatusColor(status: string): string {
     switch (status) {
-      case 'new': return 'bg-green-100 text-green-800';
-      case 'needs_review': return 'bg-red-100 text-red-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'ready': return 'bg-purple-100 text-purple-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      case 'error': return 'bg-red-200 text-red-900';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'new':
+        return 'bg-green-100 text-green-800';
+      case 'needs_review':
+        return 'bg-red-100 text-red-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'processing':
+        return 'bg-blue-100 text-blue-800';
+      case 'ready':
+        return 'bg-purple-100 text-purple-800';
+      case 'completed':
+        return 'bg-gray-100 text-gray-800';
+      case 'error':
+        return 'bg-red-200 text-red-900';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   }
 
@@ -129,7 +137,12 @@
   }
 
   function goBack() {
-    goto('/videos');
+    push('/videos');
+  }
+
+  function handleImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+    img.src = `https://i.ytimg.com/vi/${video?.youtube_id}/hqdefault.jpg`;
   }
 
   onMount(() => {
@@ -138,10 +151,7 @@
 </script>
 
 <div class="p-6 max-w-5xl mx-auto">
-  <button 
-    on:click={goBack}
-    class="mb-4 text-pink-600 hover:text-pink-800 font-medium"
-  >
+  <button on:click={goBack} class="mb-4 text-pink-600 hover:text-pink-800 font-medium">
     ← Back to Videos
   </button>
 
@@ -159,7 +169,9 @@
       <div class="bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-4">
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-bold text-white truncate">{video.original_title}</h1>
-          <span class="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-white/20 text-white">
+          <span
+            class="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-white/20 text-white"
+          >
             {video.status}
           </span>
         </div>
@@ -169,18 +181,15 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <!-- Thumbnail -->
           <div class="md:col-span-1">
-            <img 
-              src="https://img.youtube.com/vi/{video.youtube_id}/maxresdefault.jpg" 
+            <img
+              src="https://img.youtube.com/vi/{video.youtube_id}/maxresdefault.jpg"
               alt="Thumbnail"
               class="w-full rounded-lg shadow-md"
-              on:error={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = `https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`;
-              }}
+              on:error={handleImageError}
             />
-            <a 
-              href="https://www.youtube.com/watch?v={video.youtube_id}" 
-              target="_blank" 
+            <a
+              href="https://www.youtube.com/watch?v={video.youtube_id}"
+              target="_blank"
               rel="noopener noreferrer"
               class="mt-2 block text-center text-sm text-pink-600 hover:text-pink-800"
             >
@@ -192,7 +201,9 @@
           <div class="md:col-span-2 space-y-4">
             <div>
               <h3 class="text-sm font-medium text-gray-500">Published Date</h3>
-              <p class="text-gray-900">{formatDateDisplay(video.published_at)}</p>
+              <p class="text-gray-900">
+                {video.published_at && formatDateDisplay(video.published_at)}
+              </p>
             </div>
 
             {#if video.channel_title}
@@ -266,7 +277,9 @@
                   </div>
 
                   {#if saveError}
-                    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">
+                    <div
+                      class="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm"
+                    >
                       {saveError}
                     </div>
                   {/if}
@@ -292,7 +305,9 @@
                 <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <dt class="text-sm font-medium text-gray-500">Performance Date</dt>
-                    <dd class="text-gray-900">{video.perf_date ? formatDateDisplay(video.perf_date) : '-'}</dd>
+                    <dd class="text-gray-900">
+                      {video.perf_date ? formatDateDisplay(video.perf_date) : '-'}
+                    </dd>
                   </div>
                   <div>
                     <dt class="text-sm font-medium text-gray-500">Group</dt>
@@ -349,9 +364,7 @@
             <!-- Preview Images Section (placeholder) -->
             <div class="border-t pt-4 mt-4">
               <h3 class="text-sm font-medium text-gray-500 mb-2">Preview Images</h3>
-              <div class="text-gray-400 text-sm italic">
-                No preview images available yet.
-              </div>
+              <div class="text-gray-400 text-sm italic">No preview images available yet.</div>
             </div>
           </div>
         </div>

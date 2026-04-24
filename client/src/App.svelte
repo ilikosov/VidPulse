@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { useRoutes } from 'svelte-spa-router';
+  import Router from 'svelte-spa-router';
   import VideoTable from './components/VideoTable.svelte';
   import VideoCard from './components/VideoCard.svelte';
   import ReviewQueue from './components/ReviewQueue.svelte';
@@ -10,8 +10,6 @@
     '/review': ReviewQueue,
     '*': VideoTable, // Default to videos page
   };
-
-  const dispatch = useRoutes(routes);
 </script>
 
 <div class="min-h-screen bg-gray-100">
@@ -47,12 +45,8 @@
   </nav>
 
   <!-- Main Content -->
-  <main>
-    {#if dispatch}
-      <svelte:component this={dispatch.component} {...dispatch.props} />
-    {:else}
-      <VideoTable />
-    {/if}
+  <main class="container mx-auto p-4">
+    <Router {routes} />
   </main>
 </div>
 

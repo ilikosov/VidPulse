@@ -36,7 +36,7 @@ router.get('/', async (req: Request, res: Response) => {
       case 'artists':
         // For artists, we can return all artist names from all groups
         const artistsDict = dictData.artists || {};
-        results = Object.values(artistsDict).flat();
+        results = Object.values(artistsDict).flat() as string[];
         break;
       case 'songs':
         results = dictData.songs || [];
@@ -45,12 +45,16 @@ router.get('/', async (req: Request, res: Response) => {
         results = dictData.events || [];
         break;
       default:
-        return res.status(400).json({ error: `Invalid type: ${type}. Valid types are: groups, artists, songs, events` });
+        return res
+          .status(400)
+          .json({
+            error: `Invalid type: ${type}. Valid types are: groups, artists, songs, events`,
+          });
     }
 
     // Filter by query if provided
     if (query) {
-      results = results.filter(item => item.toLowerCase().includes(query));
+      results = results.filter((item) => item.toLowerCase().includes(query));
     }
 
     // Limit results to 50 for performance
