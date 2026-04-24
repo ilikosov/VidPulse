@@ -93,3 +93,8 @@ go.work.sum
 tmp/
 temp/
 ```
+
+check_scripts
+src/db/dev.sqlite3-shm
+src/db/dev.sqlite3
+src/db/dev.sqlite3-wal

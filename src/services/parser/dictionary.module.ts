@@ -8,14 +8,16 @@ import { ParserModule, ParsedMetadata } from './parser.types';
 function levenshteinDistance(str1: string, str2: string): number {
   const m = str1.length;
   const n = str2.length;
-  
+
   // Create a matrix
-  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
-  
+  const dp: number[][] = Array(m + 1)
+    .fill(null)
+    .map(() => Array(n + 1).fill(0));
+
   // Initialize first column and row
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
-  
+
   // Fill the matrix
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
@@ -23,14 +25,14 @@ function levenshteinDistance(str1: string, str2: string): number {
         dp[i][j] = dp[i - 1][j - 1];
       } else {
         dp[i][j] = Math.min(
-          dp[i - 1][j] + 1,     // deletion
-          dp[i][j - 1] + 1,     // insertion
-          dp[i - 1][j - 1] + 1  // substitution
+          dp[i - 1][j] + 1, // deletion
+          dp[i][j - 1] + 1, // insertion
+          dp[i - 1][j - 1] + 1, // substitution
         );
       }
     }
   }
-  
+
   return dp[m][n];
 }
 
@@ -41,7 +43,7 @@ function similarity(str1: string, str2: string): number {
   const maxLen = Math.max(str1.length, str2.length);
   if (maxLen === 0) return 1;
   const distance = levenshteinDistance(str1, str2);
-  return 1 - (distance / maxLen);
+  return 1 - distance / maxLen;
 }
 
 interface KpopDictionary {
@@ -75,7 +77,7 @@ export class DictionaryModule implements ParserModule {
     try {
       const content = fs.readFileSync(this.dictionaryPath, 'utf-8');
       this.dictionary = JSON.parse(content);
-      return this.dictionary;
+      return this.dictionary!;
     } catch (error) {
       console.warn(`Failed to load dictionary from ${this.dictionaryPath}:`, error);
       // Return empty dictionary as fallback
@@ -85,7 +87,7 @@ export class DictionaryModule implements ParserModule {
         songs: [],
         events: [],
         aliases: {},
-        cameraTypes: {}
+        cameraTypes: {},
       };
       return this.dictionary;
     }
@@ -93,7 +95,7 @@ export class DictionaryModule implements ParserModule {
 
   async parse(
     title: string,
-    currentMeta: Partial<ParsedMetadata>
+    currentMeta: Partial<ParsedMetadata>,
   ): Promise<{ metadata: Partial<ParsedMetadata>; confidence: number }> {
     const dictionary = this.loadDictionary();
     const metadata: Partial<ParsedMetadata> = { ...currentMeta };
@@ -103,7 +105,11 @@ export class DictionaryModule implements ParserModule {
     // Normalize and correct group_name
     fieldsChecked++;
     if (metadata.group_name) {
-      const corrected = this.findBestMatch(metadata.group_name, dictionary.groups, dictionary.aliases);
+      const corrected = this.findBestMatch(
+        metadata.group_name,
+        dictionary.groups,
+        dictionary.aliases,
+      );
       if (corrected && corrected !== metadata.group_name) {
         metadata.group_name = corrected;
         correctionsMade++;
@@ -131,11 +137,11 @@ export class DictionaryModule implements ParserModule {
       } else if (corrected) {
         correctionsMade++;
       }
-      
+
       // Also check if artist belongs to a known group
       if (metadata.artist_name && !metadata.group_name) {
         for (const [group, artists] of Object.entries(dictionary.artists)) {
-          if (artists.some(a => a.toLowerCase() === metadata.artist_name?.toLowerCase())) {
+          if (artists.some((a) => a.toLowerCase() === metadata.artist_name?.toLowerCase())) {
             metadata.group_name = group;
             correctionsMade++;
             break;
@@ -157,7 +163,11 @@ export class DictionaryModule implements ParserModule {
     // Normalize and correct song_title
     fieldsChecked++;
     if (metadata.song_title) {
-      const corrected = this.findBestMatch(metadata.song_title, dictionary.songs, dictionary.aliases);
+      const corrected = this.findBestMatch(
+        metadata.song_title,
+        dictionary.songs,
+        dictionary.aliases,
+      );
       if (corrected && corrected !== metadata.song_title) {
         metadata.song_title = corrected;
         correctionsMade++;
@@ -204,7 +214,7 @@ export class DictionaryModule implements ParserModule {
     }
 
     const confidence = fieldsChecked > 0 ? correctionsMade / fieldsChecked : 0;
-    
+
     return { metadata, confidence };
   }
 
@@ -214,24 +224,25 @@ export class DictionaryModule implements ParserModule {
   private findBestMatch(
     input: string,
     candidates: string[],
-    aliases: Record<string, string>
+    aliases: Record<string, string>,
   ): string | null {
     const normalizedInput = input.trim().toLowerCase();
-    
+
     // First check aliases
     if (aliases[normalizedInput]) {
       return aliases[normalizedInput];
     }
 
     // Check exact match (case-insensitive)
-    const exactMatch = candidates.find(c => c.toLowerCase() === normalizedInput);
+    const exactMatch = candidates.find((c) => c.toLowerCase() === normalizedInput);
     if (exactMatch) {
       return exactMatch;
     }
 
     // Check contains match
-    const containsMatch = candidates.find(c => c.toLowerCase().includes(normalizedInput) || 
-                                              normalizedInput.includes(c.toLowerCase()));
+    const containsMatch = candidates.find(
+      (c) => c.toLowerCase().includes(normalizedInput) || normalizedInput.includes(c.toLowerCase()),
+    );
     if (containsMatch) {
       return containsMatch;
     }
@@ -256,7 +267,7 @@ export class DictionaryModule implements ParserModule {
    */
   private findGroupInTitle(title: string, dictionary: KpopDictionary): string | null {
     const lowerTitle = title.toLowerCase();
-    
+
     // Check aliases first
     for (const [alias, canonical] of Object.entries(dictionary.aliases)) {
       if (dictionary.groups.includes(canonical) && lowerTitle.includes(alias.toLowerCase())) {
@@ -279,10 +290,10 @@ export class DictionaryModule implements ParserModule {
    */
   private findArtistInTitle(
     title: string,
-    dictionary: KpopDictionary
+    dictionary: KpopDictionary,
   ): { name: string; group?: string } | null {
     const lowerTitle = title.toLowerCase();
-    
+
     for (const [group, artists] of Object.entries(dictionary.artists)) {
       for (const artist of artists) {
         if (lowerTitle.includes(artist.toLowerCase())) {
@@ -311,7 +322,7 @@ export class DictionaryModule implements ParserModule {
    */
   private findSongInTitle(title: string, dictionary: KpopDictionary): string | null {
     const lowerTitle = title.toLowerCase();
-    
+
     // Check songs directly
     for (const song of dictionary.songs) {
       if (lowerTitle.includes(song.toLowerCase())) {

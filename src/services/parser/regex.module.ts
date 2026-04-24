@@ -6,10 +6,10 @@ import { ParserModule, ParsedMetadata } from './parser.types';
 export class RegexModule implements ParserModule {
   // Date pattern: YYMMDD, often at the beginning, possibly in brackets
   private datePattern = /(?:^|\[|\()(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))(?:\]|\)|\s|$)/i;
-  
+
   // Event pattern: @EVENTNAME (e.g., @MCOUNTDOWN, @MUSICCORE)
   private eventPattern = /@([A-Z0-9가 - 힣]+)/i;
-  
+
   // Camera type keywords
   private cameraTypeKeywords = [
     'vertical fancam',
@@ -21,21 +21,22 @@ export class RegexModule implements ParserModule {
     'cam',
     'full cam',
     'face cam',
-    'center cam'
+    'center cam',
   ];
-  
+
   // Common group name patterns (usually before song or in parentheses)
-  private groupPattern = /(?:^|\[|\()([A-Za-z가 - 힣0-9\s&]+?)(?:\)|\]|\s+-\s+|feat\.|\s*\()\s*(?=\[|\(|@|$)/i;
-  
+  private groupPattern =
+    /(?:^|\[|\()([A-Za-z가 - 힣0-9\s&]+?)(?:\)|\]|\s+-\s+|feat\.|\s*\()\s*(?=\[|\(|@|$)/i;
+
   // Artist name pattern (often before "fancam" or in parentheses for solo cams)
   private artistPattern = /(?:^|\[|\()([A-Za-z가 - 힣]+)\s*(?:fancam|cam|직캠)/i;
-  
+
   // Song title pattern (often after group name or before event/date)
-  private songPattern = /(?:"([^"]+)"|'([^']+)')|(?:-\s*([^([\]@]+?))(?:\s*[@[(]|$))/i;
+  private songPattern = /(?:"([^"]+)"|'([^']+)'|-\s*([^@[(]+?))(?=\s*[@[(]|$)/i;
 
   async parse(
     title: string,
-    currentMeta: Partial<ParsedMetadata>
+    currentMeta: Partial<ParsedMetadata>,
   ): Promise<{ metadata: Partial<ParsedMetadata>; confidence: number }> {
     const metadata: Partial<ParsedMetadata> = { ...currentMeta };
     let fieldsExtracted = 0;
@@ -101,11 +102,11 @@ export class RegexModule implements ParserModule {
     if (!metadata.group_name && !metadata.artist_name) {
       // Try to extract group name from various patterns
       const groupPatterns = [
-        /\[([A-Za-z가 - 힣0-9&\s]+?)\](?=\s*[-|])/i,  // [GROUP] - Song
-        /\(([A-Za-z가 - 힣0-9&\s]+?)\)(?=\s*[-|])/i,  // (GROUP) - Song
-        /^([A-Za-z가 - 힣0-9&\s]+?)\s*[-|]/i,  // GROUP - Song
+        /\[([A-Za-z가 - 힣0-9&\s]+?)\](?=\s*[-|])/i, // [GROUP] - Song
+        /\(([A-Za-z가 - 힣0-9&\s]+?)\)(?=\s*[-|])/i, // (GROUP) - Song
+        /^([A-Za-z가 - 힣0-9&\s]+?)\s*[-|]/i, // GROUP - Song
       ];
-      
+
       for (const pattern of groupPatterns) {
         const match = title.match(pattern);
         if (match && match[1]) {
@@ -132,7 +133,7 @@ export class RegexModule implements ParserModule {
           fieldsExtracted++;
         }
       }
-      
+
       // Alternative: look for text between group and event/date
       if (!metadata.song_title) {
         const altPattern = /(?:\[?[A-Za-z가 - 힣]+\]?[-|]\s*)([^(@\[\]]+?)(?:@|\[|\(|$)/i;
@@ -150,15 +151,42 @@ export class RegexModule implements ParserModule {
     }
 
     const confidence = fieldsAttempted > 0 ? fieldsExtracted / fieldsAttempted : 0;
-    
+
     return { metadata, confidence };
   }
 
   private isCommonWord(word: string): boolean {
-    const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
-                         'of', 'with', 'by', 'from', 'up', 'about', 'into', 'over', 'after',
-                         'fancam', 'cam', 'video', 'mv', 'teaser', 'preview', 'highlight',
-                         '直캠', '입캠'];
+    const commonWords = [
+      'the',
+      'a',
+      'an',
+      'and',
+      'or',
+      'but',
+      'in',
+      'on',
+      'at',
+      'to',
+      'for',
+      'of',
+      'with',
+      'by',
+      'from',
+      'up',
+      'about',
+      'into',
+      'over',
+      'after',
+      'fancam',
+      'cam',
+      'video',
+      'mv',
+      'teaser',
+      'preview',
+      'highlight',
+      '直캠',
+      '입캠',
+    ];
     return commonWords.includes(word.toLowerCase());
   }
 
