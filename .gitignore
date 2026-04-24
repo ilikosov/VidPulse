@@ -2,99 +2,26 @@
 # Dependencies
 node_modules/
 
+# Environment
+.env
+.env.local
+*.env.*
+
 # Build artifacts
 dist/
 build/
 target/
 
-# Environment variables
-.env
-.env.local
-*.env.*
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Cache directories
+.cache/
+.node_modules/
+.pnp/
+.pnp.js
 
 # Logs
 *.log
 
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
 # OS generated files
 .DS_Store
 Thumbs.db
-
-# Testing
-.mypy_cache/
-.pytest_cache/
-.nyc_output/
-coverage.xml
-
-# Distribution / packaging
-*.tar.gz
-*.whl
-*.egg
-*.egg-info/
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Translations
-*.mo
-
-# Django
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask
-instance/
-.webassets-cache
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Docker
-.dockerenv
-
-# Gradle
-.gradle/
-build/
-
-# SASS
-.sass-cache/
-
-# Rust
-Cargo.lock
-/target/
-
-# Go
-*.out
-go.work.sum
-
-# Temporary folders
-tmp/
-temp/
 ```
-
-check_scripts
-src/db/dev.sqlite3-shm
-src/db/dev.sqlite3
-src/db/dev.sqlite3-wal
