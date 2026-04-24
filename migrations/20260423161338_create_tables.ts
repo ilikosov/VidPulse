@@ -1,6 +1,9 @@
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
+
+  await knex.raw('PRAGMA foreign_keys = ON;');
+
   // Create channels table
   await knex.schema.createTable('channels', (table) => {
     table.increments('id').primary();
@@ -81,6 +84,10 @@ export async function up(knex: Knex): Promise<void> {
     table.index('duplicate_group_id');
     table.index(['perf_date', 'group_name', 'artist_name', 'song_title', 'event'], 'videos_perf_meta_idx');
   });
+
+  await knex.schema.raw('CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);');
+  await knex.schema.raw('CREATE INDEX IF NOT EXISTS idx_videos_duplicate_group ON videos(duplicate_group_id);');
+
 }
 
 export async function down(knex: Knex): Promise<void> {
