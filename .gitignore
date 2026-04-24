@@ -1,49 +1,56 @@
+```
 # Dependencies
 node_modules/
 
-# Environment
-.env
-.env.local
-.env.*
+# Build artifacts
+dist/
+build/
+target/
 
-# Logs and temp files
-*.log
-*.tmp
-
-# Editors
-.vscode/
-.idea/
-
-# Python
+# Python related
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py.class
+*.py.obj
+.Python
+env/
+venv/
+.venv/
+.env
+.env.local
+.env.*
 
-# Build outputs
-dist/
-build/
-*.min.js
-*.bundle.js
+# Logs
+*.log
 
 # Coverage
 coverage/
 htmlcov/
 .coverage
 
-# Testing
-*.test.js
-*.spec.js
-.test*
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
 
-# OS generated files
+# OS files
 .DS_Store
 Thumbs.db
 
-# Temporary files
-*.tmp
-*.temp
-*.bak
+# Testing
+.mypy_cache/
+.pytest_cache/
+.nyc_output/
+coverage.xml
+
+# Distribution / packaging
+*.tar.gz
+*.whl
+*.egg-info/
 
 # Compressed files
 *.zip
@@ -54,7 +61,14 @@ Thumbs.db
 *.xz
 *.7z
 *.rar
-check_scripts/*
-src/db/dev.sqlite3
-src/db/dev.sqlite3-shm
-src/db/dev.sqlite3-wal
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+```
