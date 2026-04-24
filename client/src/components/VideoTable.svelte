@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getVideos, type Video, type Pagination } from '../api';
+  import { push } from 'svelte-spa-router';
 
   let videos: Video[] = [];
   let pagination: Pagination = { page: 1, limit: 20, total: 0, totalPages: 0 };
   let loading: boolean = true;
   let error: string | null = null;
-  
+
   let statusFilter: string = '';
   let currentPage: number = 1;
   const limit: number = 20;
@@ -54,7 +55,7 @@
   }
 
   function navigateToVideo(id: string) {
-    window.location.href = `/videos/${id}`;
+    push(`/videos/${id}`);
   }
 
   function formatDate(dateString: string | null): string {
@@ -68,14 +69,22 @@
 
   function getStatusColor(status: string): string {
     switch (status) {
-      case 'new': return 'bg-green-100 text-green-800';
-      case 'needs_review': return 'bg-red-100 text-red-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'ready': return 'bg-purple-100 text-purple-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      case 'error': return 'bg-red-200 text-red-900';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'new':
+        return 'bg-green-100 text-green-800';
+      case 'needs_review':
+        return 'bg-red-100 text-red-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'processing':
+        return 'bg-blue-100 text-blue-800';
+      case 'ready':
+        return 'bg-purple-100 text-purple-800';
+      case 'completed':
+        return 'bg-gray-100 text-gray-800';
+      case 'error':
+        return 'bg-red-200 text-red-900';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   }
 
@@ -86,7 +95,7 @@
 
 <div class="p-6">
   <h1 class="text-2xl font-bold text-gray-900 mb-6">Video Library</h1>
-  
+
   <!-- Filters -->
   <div class="mb-6 flex items-center gap-4">
     <label for="status-filter" class="text-sm font-medium text-gray-700">Status:</label>
@@ -116,30 +125,53 @@
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thumbnail</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Original Title</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Artist</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Song</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >Thumbnail</th
+            >
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >Original Title</th
+            >
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >Group</th
+            >
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >Artist</th
+            >
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >Song</th
+            >
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >Status</th
+            >
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >Date Added</th
+            >
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           {#each videos as video}
-            <tr 
+            <tr
               class="hover:bg-gray-50 cursor-pointer transition-colors"
               on:click={() => navigateToVideo(video.id)}
             >
               <td class="px-6 py-4 whitespace-nowrap">
-                <img 
-                  src="https://img.youtube.com/vi/{video.youtube_id}/mqdefault.jpg" 
+                <img
+                  src="https://img.youtube.com/vi/{video.youtube_id}/mqdefault.jpg"
                   alt="Thumbnail"
                   class="w-24 h-18 object-cover rounded"
                 />
               </td>
               <td class="px-6 py-4">
-                <div class="text-sm font-medium text-gray-900 truncate max-w-xs">{video.original_title}</div>
+                <div class="text-sm font-medium text-gray-900 truncate max-w-xs">
+                  {video.original_title}
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm text-gray-900">{video.group_name || '-'}</span>
@@ -151,7 +183,11 @@
                 <span class="text-sm text-gray-900">{video.song_title || '-'}</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(video.status)}">
+                <span
+                  class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(
+                    video.status,
+                  )}"
+                >
                   {video.status}
                 </span>
               </td>
@@ -160,12 +196,10 @@
               </td>
             </tr>
           {/each}
-          
+
           {#if videos.length === 0}
             <tr>
-              <td colspan="7" class="px-6 py-8 text-center text-gray-500">
-                No videos found
-              </td>
+              <td colspan="7" class="px-6 py-8 text-center text-gray-500"> No videos found </td>
             </tr>
           {/if}
         </tbody>
@@ -182,11 +216,11 @@
         >
           Previous
         </button>
-        
+
         <span class="text-sm text-gray-700">
           Page {currentPage} of {pagination.totalPages}
         </span>
-        
+
         <button
           disabled={currentPage === pagination.totalPages}
           on:click={() => goToPage(currentPage + 1)}

@@ -3,6 +3,7 @@
   import VideoTable from './components/VideoTable.svelte';
   import VideoCard from './components/VideoCard.svelte';
   import ReviewQueue from './components/ReviewQueue.svelte';
+  import { link } from 'svelte-spa-router';
 
   const routes = {
     '/videos': VideoTable,
@@ -24,12 +25,14 @@
           <a
             href="/videos"
             class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
+            use:link
           >
             Videos
           </a>
           <a
             href="/review"
             class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
+            use:link
           >
             Review Queue
           </a>
