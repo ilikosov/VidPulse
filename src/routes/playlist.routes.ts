@@ -76,12 +76,28 @@ router.post('/', async (req: Request, res: Response) => {
         const existingVideo = await trx('videos').where('youtube_id', video.videoId).first();
 
         if (!existingVideo) {
+          // Parse metadata from title
+          const { parseTitle } = await import('../services/parser/parser.service');
+          const { metadata, needsReview } = await parseTitle(video.title);
+          
+          const updateData: Record<string, any> = {};
+          if (metadata.perf_date) {
+            const dateStr = metadata.perf_date;
+            updateData.perf_date = new Date(`20${dateStr.slice(0,2)}-${dateStr.slice(2,4)}-${dateStr.slice(4,6)}`).toISOString();
+          }
+          if (metadata.group_name !== undefined) updateData.group_name = metadata.group_name || null;
+          if (metadata.artist_name !== undefined) updateData.artist_name = metadata.artist_name || null;
+          if (metadata.song_title !== undefined) updateData.song_title = metadata.song_title || null;
+          if (metadata.event !== undefined) updateData.event = metadata.event || null;
+          if (metadata.camera_type !== undefined) updateData.camera_type = metadata.camera_type || null;
+          
           await trx('videos').insert({
             youtube_id: video.videoId,
             playlist_id: newPlaylist.id,
             original_title: video.title,
             published_at: video.publishedAt,
-            status: 'new',
+            status: needsReview ? 'needs_review' : 'new',
+            ...updateData,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           });
