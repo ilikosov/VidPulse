@@ -8,6 +8,7 @@ dotenv.config();
 import channelRoutes from './routes/channel.routes';
 import playlistRoutes from './routes/playlist.routes';
 import syncRoutes from './routes/sync.routes';
+import videoRoutes from './routes/video.routes';
 import { runScheduler } from './services/sync.service';
 
 const app = express();
@@ -28,6 +29,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 app.use('/api/channels', channelRoutes);
 app.use('/api/playlists', playlistRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/videos', videoRoutes);
 
 // Start server
 app.listen(PORT, () => {

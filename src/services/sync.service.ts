@@ -1,7 +1,51 @@
 import knex from '../db';
 import { youtubeService } from './youtube.service';
+import { parseTitle } from './parser/parser.service';
 
 const SYNC_INTERVAL_HOURS = 1;
+
+/**
+ * Parse metadata from title and return update data with status
+ */
+async function parseVideoMetadata(originalTitle: string): Promise<{
+  metadata: Record<string, any>;
+  status: string;
+}> {
+  const { metadata, needsReview } = await parseTitle(originalTitle);
+  
+  const updateData: Record<string, any> = {};
+  
+  if (metadata.perf_date) {
+    // Convert YYMMDD to proper date
+    const dateStr = metadata.perf_date;
+    updateData.perf_date = new Date(`20${dateStr.slice(0,2)}-${dateStr.slice(2,4)}-${dateStr.slice(4,6)}`).toISOString();
+  }
+  
+  if (metadata.group_name !== undefined) {
+    updateData.group_name = metadata.group_name || null;
+  }
+  
+  if (metadata.artist_name !== undefined) {
+    updateData.artist_name = metadata.artist_name || null;
+  }
+  
+  if (metadata.song_title !== undefined) {
+    updateData.song_title = metadata.song_title || null;
+  }
+  
+  if (metadata.event !== undefined) {
+    updateData.event = metadata.event || null;
+  }
+  
+  if (metadata.camera_type !== undefined) {
+    updateData.camera_type = metadata.camera_type || null;
+  }
+  
+  return {
+    metadata: updateData,
+    status: needsReview ? 'needs_review' : 'new'
+  };
+}
 
 /**
  * Sync all channels - fetch new videos published since last check
@@ -42,12 +86,16 @@ export async function syncChannels(): Promise<void> {
             const existingVideo = await trx('videos').where('youtube_id', video.videoId).first();
 
             if (!existingVideo) {
+              // Parse metadata from title
+              const { metadata, status } = await parseVideoMetadata(video.title);
+              
               await trx('videos').insert({
                 youtube_id: video.videoId,
                 channel_id: channel.id,
                 original_title: video.title,
                 published_at: video.publishedAt,
-                status: 'new',
+                status: status,
+                ...metadata,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               });
@@ -101,12 +149,16 @@ export async function syncPlaylists(): Promise<void> {
             const anyExistingVideo = await trx('videos').where('youtube_id', video.videoId).first();
 
             if (!anyExistingVideo) {
+              // Parse metadata from title
+              const { metadata, status } = await parseVideoMetadata(video.title);
+              
               await trx('videos').insert({
                 youtube_id: video.videoId,
                 playlist_id: playlist.id,
                 original_title: video.title,
                 published_at: video.publishedAt,
-                status: 'new',
+                status: status,
+                ...metadata,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               });
