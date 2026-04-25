@@ -43,8 +43,7 @@ export async function parseTitle(
     try {
       const result = await module.parse(title, currentMetadata);
       
-      // Merge the results - only update fields that are not already set
-      // or if the new confidence is higher
+      // Merge the results: later modules may normalize/correct earlier extraction
       for (const key of Object.keys(result.metadata) as Array<keyof ParsedMetadata>) {
         if (key === 'confidence') {
           continue;
@@ -52,10 +51,7 @@ export async function parseTitle(
         
         const value = result.metadata[key];
         if (value !== undefined && value !== null && value !== '') {
-          // Only update if field is not already set
-          if (currentMetadata[key] === undefined || currentMetadata[key] === null || currentMetadata[key] === '') {
-            (currentMetadata as any)[key] = value;
-          }
+          (currentMetadata as any)[key] = value;
         }
       }
       

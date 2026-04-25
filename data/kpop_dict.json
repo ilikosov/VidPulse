@@ -26,7 +26,9 @@
     "EVERGLOW",
     "LOONA",
     "STAYC",
-    "NMIXX"
+    "NMIXX",
+    "KICKFLIP",
+    "KISS OF LIFE"
   ],
   "artists": {
     "ITZY": ["YEJI", "LIA", "RYUJIN", "CHAERYEONG", "YUNA"],
@@ -44,11 +46,15 @@
     "ENHYPEN": ["HEESEUNG", "JAY", "JAKE", "SUNGHOON", "SUNOO", "JUNGWON", "NI-KI"],
     "SEVENTEEN": ["SCOUPS", "JEONGHAN", "JOSHUA", "JUN", "HOSHI", "WONWOO", "WOOZI", "THE8", "MINGYU", "DK", "SEUNGKWAN", "VERNON", "DINO"],
     "NCT": ["TAEIL", "JOHNNY", "TAEYONG", "YUTA", "KUN", "DOYOUNG", "TEN", "JAEHYUN", "WINWIN", "JUNGWOO", "MARK", "RENJUN", "JENO", "HAECHAN", "JAEMIN", "CHENLE", "JISUNG"],
-    "EXO": ["SUHO", "XIUMIN", "LAY", "BAEKHYUN", "CHEN", "CHANYEOL", "D.O.", "KAI", "SEHUN"]
+    "EXO": ["SUHO", "XIUMIN", "LAY", "BAEKHYUN", "CHEN", "CHANYEOL", "D.O.", "KAI", "SEHUN"],
+    "NMIXX": ["LILY", "HAEWON", "SULLYOON", "BAE", "JIWOO", "KYUJIN"],
+    "KISS OF LIFE": ["JULIE", "NATTY", "BELLE", "HANEUL"],
+    "KICKFLIP": ["DONGHYEON"],
+    "SOLO": ["DAYOUNG", "MOON BYUL"]
   },
   "songs": [
     "WANNABE",
-    "DYNAMITE",
+    "Dynamite",
     "DDU-DU DDU-DU",
     "HOW YOU LIKE THAT",
     "LOVE SHOT",
@@ -78,7 +84,9 @@
     "I AM",
     "KITSCH",
     "BADDIE",
-    "DRAMA",
+    "Drama",
+    "Shut Down",
+    "Love Me Like This",
     "ARMAGEDDON",
     "SPICY",
     "NEXT LEVEL",
@@ -138,6 +146,9 @@
     "에스파": "AESPA",
     "ive": "IVE",
     "아이브": "IVE",
+    "kickflip": "KICKFLIP",
+    "키스오브라이프": "KISS OF LIFE",
+    "kiss of life": "KISS OF LIFE",
     "newjeans": "NEWJEANS",
     "뉴진스": "NEWJEANS",
     "le sserafim": "LE SSERAFIM",
@@ -173,6 +184,7 @@
     "스테이씨": "STAYC",
     "nmixx": "NMIXX",
     "엔믹스": "NMIXX",
+    "설윤": "SULLYOON",
     "m countdown": "MCOUNTDOWN",
     "엠카운트다운": "MCOUNTDOWN",
     "music core": "MUSICCORE",
