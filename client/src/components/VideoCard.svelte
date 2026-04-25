@@ -70,6 +70,10 @@
     saving = true;
     saveError = null;
     try {
+      if (!video) {
+        throw new Error('Cannot save changes: video data is not loaded.');
+      }
+
       const updateData = {
         perf_date: editForm.perf_date || null,
         group_name: editForm.group_name || null,
@@ -79,7 +83,7 @@
         camera_type: editForm.camera_type || null,
       };
 
-      video = await updateMetadata(id, updateData);
+      video = await updateMetadata(video.id, updateData);
       isEditing = false;
 
       // Refresh the video data
