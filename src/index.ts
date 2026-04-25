@@ -10,6 +10,7 @@ import playlistRoutes from './routes/playlist.routes';
 import syncRoutes from './routes/sync.routes';
 import videoRoutes from './routes/video.routes';
 import dictionaryRoutes from './routes/dictionary.routes';
+import parserRoutes from './routes/parser.routes';
 import { runScheduler } from './services/sync.service';
 
 const app = express();
@@ -32,6 +33,7 @@ app.use('/api/playlists', playlistRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/dictionary', dictionaryRoutes);
+app.use('/api/parser', parserRoutes);
 
 // Start server
 app.listen(PORT, () => {
