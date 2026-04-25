@@ -25,8 +25,12 @@ function hasRequiredFields(metadata: Partial<ParsedMetadata>): boolean {
  * Main parser service that orchestrates multiple parsing modules
  */
 export async function parseTitle(
-  title: string
+  title: string,
+  publishedAt?: string
 ): Promise<{ metadata: Partial<ParsedMetadata>; needsReview: boolean }> {
+  // publishedAt is accepted for future parser enhancements
+  void publishedAt;
+
   // Initialize modules in order
   const modules: ParserModule[] = [
     new RegexModule(),
