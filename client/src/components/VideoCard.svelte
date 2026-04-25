@@ -4,7 +4,7 @@
   import { push } from 'svelte-spa-router';
   import AutocompleteInput from './AutocompleteInput.svelte';
 
-  export let id: string;
+  export let params: { id: string } = {} as any;
 
   let video: Video | null = null;
   let loading: boolean = true;
@@ -34,7 +34,7 @@
     loading = true;
     error = null;
     try {
-      video = await getVideo(id);
+      video = await getVideo(params.id);
 
       // Initialize edit form with current values
       editForm = {
