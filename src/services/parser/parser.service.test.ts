@@ -20,7 +20,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     const result = await parseTitle(title);
 
     expect(toResultString(result)).toBe(
-      "group_name= | artist_name=KickFlip Donghyeon Fan | song_title=Poppin'' | event=@SBS INKIGAYO 260419 | camera_type=4K | perf_date= | needs_review=true"
+      "group_name=KICKFLIP | artist_name=DONGHYEON | song_title=눈에 거슬리고 싶어 (Eye-Poppin') | event=@INKIGAYO | camera_type=페이스캠4K | perf_date=260419 | needs_review=false"
     );
   });
 
@@ -29,7 +29,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     const result = await parseTitle(title);
 
     expect(toResultString(result)).toBe(
-      'group_name=STRAY KIDS | artist_name=KISS OF LIFE HANEUL Fan | song_title=Who is she | event=@SBS INKIGAYO 260419 | camera_type=4K | perf_date= | needs_review=true'
+      'group_name=KISS OF LIFE | artist_name=HANEUL | song_title=Who is she | event=@INKIGAYO | camera_type=안방1열 직캠4K | perf_date=260419 | needs_review=false'
     );
   });
 
@@ -38,7 +38,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     const result = await parseTitle(title);
 
     expect(toResultString(result)).toBe(
-      "group_name= | artist_name=DAYOUNG Fan | song_title=s a girl to do | event=@SBS INKIGAYO 260419 | camera_type=4K | perf_date= | needs_review=true"
+      "group_name=SOLO | artist_name=DAYOUNG | song_title=What's a girl to do | event=@INKIGAYO | camera_type=안방1열 직캠4K | perf_date=260419 | needs_review=false"
     );
   });
 
@@ -47,7 +47,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     const result = await parseTitle(title);
 
     expect(toResultString(result)).toBe(
-      'group_name=ITZY | artist_name=YUNA Face | song_title=Ice Cream | event=@SBS INKIGAYO 260329 | camera_type=4K | perf_date= | needs_review=true'
+      'group_name=ITZY | artist_name=YUNA | song_title=Ice Cream | event=@INKIGAYO | camera_type=페이스캠4K | perf_date=260329 | needs_review=false'
     );
   });
 
@@ -56,7 +56,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     const result = await parseTitle(title);
 
     expect(toResultString(result)).toBe(
-      'group_name= | artist_name=Moon Byul Fan | song_title=Hertz | event=@SBS INKIGAYO 260329 | camera_type=4K | perf_date= | needs_review=true'
+      'group_name=Moon | artist_name=MOON BYUL | song_title=Hertz | event=@INKIGAYO | camera_type=안방1열 직캠4K | perf_date=260329 | needs_review=false'
     );
   });
 });
