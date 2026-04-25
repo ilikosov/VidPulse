@@ -93,8 +93,8 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('training_data');
   await knex.schema.dropTableIfExists('status_history');
-  await knex.schema.dropTableIfExists('duplicate_groups');
   await knex.schema.dropTableIfExists('videos');
+  await knex.schema.dropTableIfExists('duplicate_groups');
   await knex.schema.dropTableIfExists('playlists');
   await knex.schema.dropTableIfExists('channels');
 }
