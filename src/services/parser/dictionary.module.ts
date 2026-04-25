@@ -1,5 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
+declare const require: any;
+declare const process: any;
+const fs = require('fs');
+const path = require('path');
 import { ParserModule, ParsedMetadata } from './parser.types';
 
 /**
@@ -197,17 +199,22 @@ export class DictionaryModule implements ParserModule {
     // Normalize camera_type
     fieldsChecked++;
     if (metadata.camera_type) {
-      const lowerCameraType = metadata.camera_type.toLowerCase();
-      if (dictionary.cameraTypes[lowerCameraType]) {
-        metadata.camera_type = dictionary.cameraTypes[lowerCameraType];
+      // Keep non-Latin custom tags as-is (e.g., Korean camera tags)
+      if (/[^\x00-\x7F]/.test(metadata.camera_type)) {
         correctionsMade++;
       } else {
-        // Try to find partial match
-        for (const [key, value] of Object.entries(dictionary.cameraTypes)) {
-          if (lowerCameraType.includes(key) || key.includes(lowerCameraType)) {
-            metadata.camera_type = value;
-            correctionsMade++;
-            break;
+        const lowerCameraType = metadata.camera_type.toLowerCase();
+        if (dictionary.cameraTypes[lowerCameraType]) {
+          metadata.camera_type = dictionary.cameraTypes[lowerCameraType];
+          correctionsMade++;
+        } else {
+          // Try to find partial match
+          for (const [key, value] of Object.entries(dictionary.cameraTypes)) {
+            if (lowerCameraType.includes(key) || key.includes(lowerCameraType)) {
+              metadata.camera_type = value;
+              correctionsMade++;
+              break;
+            }
           }
         }
       }
@@ -240,16 +247,20 @@ export class DictionaryModule implements ParserModule {
     }
 
     // Check contains match
-    const containsMatch = candidates.find(
-      (c) => c.toLowerCase().includes(normalizedInput) || normalizedInput.includes(c.toLowerCase()),
-    );
+    const containsMatch = candidates.find((c) => {
+      const candidate = c.toLowerCase();
+      if (candidate.length < 3 || normalizedInput.length < 3) {
+        return false;
+      }
+      return candidate.includes(normalizedInput) || normalizedInput.includes(candidate);
+    });
     if (containsMatch) {
       return containsMatch;
     }
 
     // Fuzzy match with threshold
     let bestMatch: string | null = null;
-    let bestScore = 0.7; // Minimum similarity threshold
+    let bestScore = normalizedInput.length <= 4 ? 0.9 : 0.7; // Be stricter for short tokens
 
     for (const candidate of candidates) {
       const score = similarity(normalizedInput, candidate.toLowerCase());
@@ -296,7 +307,9 @@ export class DictionaryModule implements ParserModule {
 
     for (const [group, artists] of Object.entries(dictionary.artists)) {
       for (const artist of artists) {
-        if (lowerTitle.includes(artist.toLowerCase())) {
+        const artistLower = artist.toLowerCase();
+        const escapedArtist = artistLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`(^|\\W)${escapedArtist}($|\\W)`, 'i').test(lowerTitle)) {
           return { name: artist, group };
         }
       }

@@ -20,10 +20,10 @@ const testCases: TestCase[] = [
     publishedAt: '2026-04-19T00:00:00Z',
     expected: {
       perf_date: '260419',
-      group_name: 'KickFlip', // из английского названия группы в скобках
-      artist_name: 'Donghyeon', // из скобок участника
+      group_name: 'KICKFLIP', // из английского названия группы в скобках
+      artist_name: 'DONGHYEON', // из скобок участника
       song_title: "눈에 거슬리고 싶어 (Eye-Poppin')",
-      event: '@SBS INKIGAYO',
+      event: '@INKIGAYO',
       camera_type: '페이스캠4K', // или FaceCam 4K
     },
   },
@@ -36,7 +36,7 @@ const testCases: TestCase[] = [
       group_name: 'KISS OF LIFE',
       artist_name: 'HANEUL',
       song_title: 'Who is she',
-      event: '@SBS INKIGAYO',
+      event: '@INKIGAYO',
       camera_type: '안방1열 직캠4K', // вертикальный fancam 4K
     },
   },
@@ -47,7 +47,7 @@ const testCases: TestCase[] = [
       perf_date: '260419',
       artist_name: 'DAYOUNG',
       song_title: "What's a girl to do",
-      event: '@SBS INKIGAYO',
+      event: '@INKIGAYO',
       camera_type: '안방1열 직캠4K',
       // group_name может отсутствовать (соло)
     },
@@ -57,9 +57,9 @@ const testCases: TestCase[] = [
     publishedAt: '2026-03-29T00:00:00Z',
     expected: {
       perf_date: '260329',
-      artist_name: 'Moon Byul',
+      artist_name: 'MOON BYUL',
       song_title: 'Hertz',
-      event: '@SBS INKIGAYO',
+      event: '@INKIGAYO',
       camera_type: '안방1열 직캠4K',
     },
   },
@@ -70,8 +70,89 @@ const testCases: TestCase[] = [
       perf_date: '260329',
       artist_name: 'YUNA',
       song_title: 'Ice Cream',
-      event: '@SBS INKIGAYO',
+      event: '@INKIGAYO',
       camera_type: '페이스캠4K',
+    },
+  },
+  {
+    title: '[4K] 240418 ITZY (YEJI) WANNABE @MCOUNTDOWN',
+    publishedAt: '2024-04-18T00:00:00Z',
+    expected: {
+      camera_type: '4K',
+      perf_date: '240418',
+      group_name: 'ITZY',
+      artist_name: 'YEJI',
+      song_title: 'WANNABE',
+      event: '@MCOUNTDOWN',
+    },
+  },
+  {
+    title: "[240316] IVE (WONYOUNG) 'LOVE DIVE' @MUSICCORE 4K",
+    publishedAt: '2024-03-16T00:00:00Z',
+    expected: {
+      perf_date: '240316',
+      group_name: 'IVE',
+      artist_name: 'WONYOUNG',
+      song_title: 'LOVE DIVE',
+      event: '@MUSICCORE',
+      camera_type: '4K',
+    },
+  },
+  {
+    title: '[4K] 231015 BTS Dynamite @INKIGAYO 231015',
+    publishedAt: '2023-10-15T00:00:00Z',
+    expected: {
+      perf_date: '231015',
+      group_name: 'BTS',
+      song_title: 'Dynamite',
+      event: '@INKIGAYO',
+      camera_type: '4K',
+    },
+  },
+  {
+    title: "[FANCAM] 240220 BLACKPINK 'Shut Down' @MUSICCORE",
+    publishedAt: '2024-02-20T00:00:00Z',
+    expected: {
+      camera_type: 'FANCAM',
+      perf_date: '240220',
+      group_name: 'BLACKPINK',
+      song_title: 'Shut Down',
+      event: '@MUSICCORE',
+    },
+  },
+  {
+    title: "[VERTICAL FANCAM] 240305 AESPA (KARINA) 'Drama' @MCOUNTDOWN",
+    publishedAt: '2024-03-05T00:00:00Z',
+    expected: {
+      camera_type: 'VERTICAL FANCAM',
+      perf_date: '240305',
+      group_name: 'AESPA',
+      artist_name: 'KARINA',
+      song_title: 'Drama',
+      event: '@MCOUNTDOWN',
+    },
+  },
+  {
+    title: "@MCOUNTDOWN [4K] 240101 NEWJEANS (HANNI) 'OMG'",
+    publishedAt: '2024-01-01T00:00:00Z',
+    expected: {
+      event: '@MCOUNTDOWN',
+      camera_type: '4K',
+      perf_date: '240101',
+      group_name: 'NEWJEANS',
+      artist_name: 'HANNI',
+      song_title: 'OMG',
+    },
+  },
+  {
+    title: "240517 엔믹스 (설윤) 'Love Me Like This' @MUSICCORE",
+    publishedAt: '2024-05-17T00:00:00Z',
+    expected: {
+      perf_date: '240517',
+      group_name: 'NMIXX',
+      artist_name: 'SULLYOON',
+      song_title: 'Love Me Like This',
+      event: '@MUSICCORE',
     },
   },
 ];
