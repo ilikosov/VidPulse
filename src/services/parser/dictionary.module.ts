@@ -225,6 +225,35 @@ export class DictionaryModule implements ParserModule {
     return { metadata, confidence };
   }
 
+  public searchInTags(tags: string[], field: 'group' | 'artist' | 'song' | 'event'): string | null {
+    const dictionary = this.loadDictionary();
+    let candidates: string[] = [];
+
+    if (field === 'group') {
+      candidates = dictionary.groups;
+    } else if (field === 'artist') {
+      candidates = Object.values(dictionary.artists).flat();
+    } else if (field === 'song') {
+      candidates = dictionary.songs;
+    } else {
+      candidates = dictionary.events;
+    }
+
+    for (const tag of tags) {
+      const normalizedTag = tag.trim();
+      if (!normalizedTag) {
+        continue;
+      }
+
+      const bestMatch = this.findBestMatch(normalizedTag, candidates, dictionary.aliases);
+      if (bestMatch && similarity(normalizedTag.toLowerCase(), bestMatch.toLowerCase()) > 0.8) {
+        return bestMatch;
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Find best match for a string in a list of candidates using fuzzy matching
    */
