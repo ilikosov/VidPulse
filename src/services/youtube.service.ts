@@ -321,6 +321,7 @@ export class YouTubeService {
         key: apiKey!,
         id: [videoId],
         part: ['snippet'],
+        fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))',
       });
 
       const item = response.data.items?.[0];
@@ -333,6 +334,7 @@ export class YouTubeService {
         channelId: item.snippet.channelId || '',
         publishedAt: item.snippet.publishedAt || '',
         thumbnails: item.snippet.thumbnails,
+        tags: item.snippet.tags,
       };
 
       cache.set(cacheKey, result);

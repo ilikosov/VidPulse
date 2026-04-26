@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db';
 import { parseTitle } from '../services/parser/parser.service';
+import { youtubeService } from '../services/youtube.service';
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.post('/reparse-all', async (req: Request, res: Response) => {
     const status = (req.query.status as string) || 'new';
 
     const videos = await knex('videos')
-      .select('id', 'original_title', 'published_at', 'status')
+      .select('id', 'youtube_id', 'original_title', 'published_at', 'status')
       .where('status', status);
 
     if (videos.length === 0) {
@@ -32,9 +33,11 @@ router.post('/reparse-all', async (req: Request, res: Response) => {
 
     for (const video of videos) {
       try {
+        const details = await youtubeService.getVideoDetails(video.youtube_id);
         const { metadata, needsReview } = await parseTitle(
-          video.original_title,
-          video.published_at,
+          details.title || video.original_title,
+          details.publishedAt || video.published_at,
+          details.tags,
         );
 
         const updateData: Record<string, string | null> = {
@@ -81,16 +84,18 @@ router.post('/reparse-batch', async (req: Request, res: Response) => {
     }
 
     const videos = await knex('videos')
-      .select('id', 'original_title', 'published_at', 'status')
+      .select('id', 'youtube_id', 'original_title', 'published_at', 'status')
       .whereIn('id', videoIds);
 
     let updated = 0;
 
     for (const video of videos) {
       try {
+        const details = await youtubeService.getVideoDetails(video.youtube_id);
         const { metadata, needsReview } = await parseTitle(
-          video.original_title,
-          video.published_at,
+          details.title || video.original_title,
+          details.publishedAt || video.published_at,
+          details.tags,
         );
         const nextStatus = needsReview ? 'needs_review' : video.status;
 
