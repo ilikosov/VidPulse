@@ -6,6 +6,21 @@ import * as path from 'path';
 
 const router = Router();
 
+type BatchValidationResult = { valid: true; videoIds: number[] } | { valid: false; error: string };
+
+function validateVideoIds(body: unknown): BatchValidationResult {
+  const videoIds = (body as { videoIds?: unknown })?.videoIds;
+  if (!Array.isArray(videoIds) || videoIds.length === 0) {
+    return { valid: false, error: 'videoIds must be a non-empty array of numbers' };
+  }
+
+  if (!videoIds.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+    return { valid: false, error: 'videoIds must contain only positive integers' };
+  }
+
+  return { valid: true, videoIds };
+}
+
 /**
  * GET /api/videos - List all videos with filtering and pagination
  * Query params: status, page, limit
@@ -36,7 +51,7 @@ router.get('/', async (req: Request, res: Response) => {
         'videos.created_at',
         'videos.updated_at',
         'channels.title as channel_title',
-        'playlists.title as playlist_title'
+        'playlists.title as playlist_title',
       );
 
     if (status) {
@@ -69,6 +84,125 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/batch/confirm-download', async (req: Request, res: Response) => {
+  const validation = validateVideoIds(req.body);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const errors: Array<{ videoId: number; error: string }> = [];
+  let succeeded = 0;
+
+  for (const videoId of validation.videoIds) {
+    try {
+      const video = await knex('videos').where('id', videoId).first();
+      if (!video) {
+        errors.push({ videoId, error: 'Video not found' });
+        continue;
+      }
+
+      if (video.status !== 'new') {
+        errors.push({ videoId, error: `Invalid status '${video.status}'. Expected 'new'.` });
+        continue;
+      }
+
+      const filePath = path.join(process.cwd(), 'downloads', video.youtube_id, 'original.mp4');
+      if (!fs.existsSync(filePath)) {
+        errors.push({ videoId, error: `Download file missing at ${filePath}` });
+        continue;
+      }
+
+      await knex.transaction(async (trx) => {
+        await trx('videos').where('id', videoId).update({
+          status: 'downloaded',
+          file_path: filePath,
+          updated_at: new Date().toISOString(),
+        });
+        await trx('status_history').insert({
+          video_id: videoId,
+          old_status: video.status,
+          new_status: 'downloaded',
+        });
+      });
+
+      succeeded += 1;
+    } catch (error) {
+      console.error(`Error confirming download for video ${videoId}:`, error);
+      errors.push({ videoId, error: 'Internal error while confirming download' });
+    }
+  }
+
+  return res.json({
+    processed: validation.videoIds.length,
+    succeeded,
+    failed: validation.videoIds.length - succeeded,
+    errors,
+  });
+});
+
+router.post('/batch/complete', async (req: Request, res: Response) => {
+  const validation = validateVideoIds(req.body);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const errors: Array<{ videoId: number; error: string }> = [];
+  let succeeded = 0;
+  const allowedStatuses = ['thumbnails_generated', 'ready_for_upload'];
+
+  for (const videoId of validation.videoIds) {
+    try {
+      const video = await knex('videos').where('id', videoId).first();
+      if (!video) {
+        errors.push({ videoId, error: 'Video not found' });
+        continue;
+      }
+
+      if (!allowedStatuses.includes(video.status)) {
+        errors.push({
+          videoId,
+          error: `Invalid status '${video.status}'. Expected one of: ${allowedStatuses.join(', ')}`,
+        });
+        continue;
+      }
+
+      const downloadDir = path.join(process.cwd(), 'downloads', video.youtube_id);
+      const previewDir = path.join(process.cwd(), 'previews', video.youtube_id);
+
+      if (fs.existsSync(downloadDir)) {
+        fs.rmSync(downloadDir, { recursive: true, force: true });
+      }
+      if (fs.existsSync(previewDir)) {
+        fs.rmSync(previewDir, { recursive: true, force: true });
+      }
+
+      await knex.transaction(async (trx) => {
+        await trx('videos').where('id', videoId).update({
+          status: 'completed',
+          updated_at: new Date().toISOString(),
+        });
+        await trx('status_history').insert({
+          video_id: videoId,
+          old_status: video.status,
+          new_status: 'completed',
+        });
+      });
+
+      succeeded += 1;
+    } catch (error) {
+      console.error(`Error completing video ${videoId}:`, error);
+      errors.push({ videoId, error: 'Internal error while completing video' });
+    }
+  }
+
+  return res.json({
+    processed: validation.videoIds.length,
+    succeeded,
+    failed: validation.videoIds.length - succeeded,
+    errors,
+  });
+});
+
 /**
  * GET /api/videos/:id - Get single video details
  */
@@ -83,7 +217,7 @@ router.get('/:id', async (req: Request, res: Response) => {
         'videos.*',
         'channels.title as channel_title',
         'channels.youtube_id as channel_youtube_id',
-        'playlists.title as playlist_title'
+        'playlists.title as playlist_title',
       )
       .where('videos.id', id)
       .first();
@@ -101,21 +235,14 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 /**
  * PUT /api/videos/:id/metadata - Update video metadata manually
- * 
+ *
  * This endpoint allows manual editing of parsed metadata fields.
  * It validates the video exists and is in an editable state.
  */
 router.put('/:id/metadata', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const {
-      perf_date,
-      group_name,
-      artist_name,
-      song_title,
-      event,
-      camera_type
-    } = req.body;
+    const { perf_date, group_name, artist_name, song_title, event, camera_type } = req.body;
 
     // Find the video
     const video = await knex('videos').where('id', id).first();
@@ -128,21 +255,25 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
     const editableStatuses = ['new', 'needs_review', 'pending'];
     if (!editableStatuses.includes(video.status)) {
       return res.status(400).json({
-        error: `Cannot edit metadata for video with status '${video.status}'. Only videos with status 'new', 'needs_review', or 'pending' can be edited.`
+        error: `Cannot edit metadata for video with status '${video.status}'. Only videos with status 'new', 'needs_review', or 'pending' can be edited.`,
       });
     }
 
     // Build update object with only provided fields
     const updateData: Record<string, any> = {};
-    
+
     if (perf_date !== undefined) {
       // Validate perf_date format (YYMMDD)
       if (perf_date && !/^\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/.test(perf_date)) {
         return res.status(400).json({
-          error: 'Invalid perf_date format. Expected YYMMDD (e.g., 240315 for March 15, 2024)'
+          error: 'Invalid perf_date format. Expected YYMMDD (e.g., 240315 for March 15, 2024)',
         });
       }
-      updateData.perf_date = perf_date ? new Date(`20${perf_date.slice(0,2)}-${perf_date.slice(2,4)}-${perf_date.slice(4,6)}`).toISOString() : null;
+      updateData.perf_date = perf_date
+        ? new Date(
+            `20${perf_date.slice(0, 2)}-${perf_date.slice(2, 4)}-${perf_date.slice(4, 6)}`,
+          ).toISOString()
+        : null;
     }
 
     if (group_name !== undefined) {
@@ -196,7 +327,7 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
         await trx('status_history').insert({
           video_id: id,
           old_status: video.status,
-          new_status: updateData.status
+          new_status: updateData.status,
         });
       }
 
@@ -207,13 +338,13 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
         artist_name: updateData.artist_name ?? video.artist_name,
         song_title: updateData.song_title ?? video.song_title,
         event: updateData.event ?? video.event,
-        camera_type: updateData.camera_type ?? video.camera_type
+        camera_type: updateData.camera_type ?? video.camera_type,
       };
 
       await trx('training_data').insert({
         video_id: id,
         original_title: video.original_title,
-        final_metadata_json: JSON.stringify(finalMetadata)
+        final_metadata_json: JSON.stringify(finalMetadata),
       });
 
       // Fetch and return the updated video
@@ -230,7 +361,7 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
 
 /**
  * POST /api/videos/:id/parse - Re-parse video title
- * 
+ *
  * This endpoint re-runs the parser on the original title.
  * Useful when the parser logic has been updated.
  */
@@ -250,13 +381,15 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
 
     // Build update object
     const updateData: Record<string, any> = {
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     if (metadata.perf_date) {
       // Convert YYMMDD to proper date
       const dateStr = metadata.perf_date;
-      updateData.perf_date = new Date(`20${dateStr.slice(0,2)}-${dateStr.slice(2,4)}-${dateStr.slice(4,6)}`).toISOString();
+      updateData.perf_date = new Date(
+        `20${dateStr.slice(0, 2)}-${dateStr.slice(2, 4)}-${dateStr.slice(4, 6)}`,
+      ).toISOString();
     }
 
     if (metadata.group_name !== undefined) {
@@ -292,7 +425,7 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
       await trx('status_history').insert({
         video_id: id,
         old_status: video.status,
-        new_status: newStatus
+        new_status: newStatus,
       });
 
       // Fetch and return the updated video
@@ -303,7 +436,7 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
     res.json({
       video: updatedVideo,
       parsedMetadata: metadata,
-      needsReview
+      needsReview,
     });
   } catch (error) {
     console.error('Error re-parsing video title:', error);

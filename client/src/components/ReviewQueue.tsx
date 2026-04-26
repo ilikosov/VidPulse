@@ -1,4 +1,17 @@
-import { Alert, Button, Card, Col, Empty, Input, Row, Space, Spin, Tag, Typography, message } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Empty,
+  Input,
+  Row,
+  Space,
+  Spin,
+  Tag,
+  Typography,
+  message,
+} from 'antd';
 import { useEffect, useState } from 'react';
 import { getVideos, updateMetadata, type Video } from '../api';
 import AutocompleteInput from './AutocompleteInput';
@@ -61,12 +74,18 @@ function ReviewQueue() {
     void fetchVideos();
   }, []);
 
-  const handleFieldChange = (id: string, key: keyof ReviewVideo['editForm'], value: string) => {
-    setVideos((prev) => prev.map((video) => (video.id === id ? { ...video, editForm: { ...video.editForm, [key]: value } } : video)));
+  const handleFieldChange = (id: number, key: keyof ReviewVideo['editForm'], value: string) => {
+    setVideos((prev) =>
+      prev.map((video) =>
+        video.id === id ? { ...video, editForm: { ...video.editForm, [key]: value } } : video,
+      ),
+    );
   };
 
   const handleSave = async (video: ReviewVideo) => {
-    setVideos((prev) => prev.map((item) => (item.id === video.id ? { ...item, saving: true } : item)));
+    setVideos((prev) =>
+      prev.map((item) => (item.id === video.id ? { ...item, saving: true } : item)),
+    );
     try {
       await updateMetadata(video.id, {
         perf_date: video.editForm.perf_date || null,
@@ -77,12 +96,16 @@ function ReviewQueue() {
         camera_type: video.editForm.camera_type || null,
       });
       message.success(`Saved: ${video.original_title}`);
-      setVideos((prev) => prev.map((item) => (item.id === video.id ? { ...item, saving: false, saved: true } : item)));
+      setVideos((prev) =>
+        prev.map((item) => (item.id === video.id ? { ...item, saving: false, saved: true } : item)),
+      );
       setTimeout(() => {
         setVideos((prev) => prev.filter((item) => item.id !== video.id));
       }, 1200);
     } catch (err) {
-      setVideos((prev) => prev.map((item) => (item.id === video.id ? { ...item, saving: false } : item)));
+      setVideos((prev) =>
+        prev.map((item) => (item.id === video.id ? { ...item, saving: false } : item)),
+      );
       message.error(err instanceof Error ? err.message : 'Failed to save changes');
     }
   };
@@ -94,7 +117,8 @@ function ReviewQueue() {
           Review Queue
         </Typography.Title>
         <Typography.Text type="secondary">
-          Videos that need manual review. Correct the metadata and save to move them to “new” status.
+          Videos that need manual review. Correct the metadata and save to move them to “new”
+          status.
         </Typography.Text>
       </div>
 
@@ -106,20 +130,33 @@ function ReviewQueue() {
         </div>
       ) : null}
 
-      {!loading && videos.length === 0 ? <Empty description="All caught up! No videos need review." /> : null}
+      {!loading && videos.length === 0 ? (
+        <Empty description="All caught up! No videos need review." />
+      ) : null}
 
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         {videos.map((video) => (
           <Card
             key={video.id}
-            style={{ opacity: video.saved ? 0.65 : 1, borderColor: video.saved ? '#b7eb8f' : undefined }}
+            style={{
+              opacity: video.saved ? 0.65 : 1,
+              borderColor: video.saved ? '#b7eb8f' : undefined,
+            }}
             title={
               <Space>
-                <img src={`https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`} width={120} style={{ borderRadius: 4 }} />
+                <img
+                  src={`https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`}
+                  width={120}
+                  style={{ borderRadius: 4 }}
+                />
                 <div>
                   <Typography.Text strong>{video.original_title}</Typography.Text>
                   <br />
-                  <a href={`https://www.youtube.com/watch?v=${video.youtube_id}`} target="_blank" rel="noreferrer">
+                  <a
+                    href={`https://www.youtube.com/watch?v=${video.youtube_id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     Watch on YouTube
                   </a>
                 </div>
@@ -172,7 +209,9 @@ function ReviewQueue() {
                 <div style={{ marginBottom: 6, fontWeight: 500 }}>Camera Type</div>
                 <Input
                   value={video.editForm.camera_type}
-                  onChange={(event) => handleFieldChange(video.id, 'camera_type', event.target.value)}
+                  onChange={(event) =>
+                    handleFieldChange(video.id, 'camera_type', event.target.value)
+                  }
                 />
               </Col>
             </Row>

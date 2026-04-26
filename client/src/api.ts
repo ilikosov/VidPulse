@@ -1,7 +1,7 @@
 const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api';
 
 export interface Video {
-  id: string;
+  id: number;
   youtube_id: string;
   channel_id: string | null;
   playlist_id: string | null;
@@ -39,6 +39,18 @@ export interface DictionaryResponse {
   query: string;
 }
 
+export interface BatchResultError {
+  videoId: number;
+  error: string;
+}
+
+export interface BatchResult {
+  processed: number;
+  succeeded: number;
+  failed: number;
+  errors?: BatchResultError[];
+}
+
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
@@ -70,12 +82,12 @@ export async function getVideos(filters?: {
   return fetchApi<VideosResponse>(`/videos${queryString ? '?' + queryString : ''}`);
 }
 
-export async function getVideo(id: string): Promise<Video> {
+export async function getVideo(id: number | string): Promise<Video> {
   return fetchApi<Video>(`/videos/${id}`);
 }
 
 export async function updateMetadata(
-  id: string,
+  id: number | string,
   data: {
     perf_date?: string | null;
     group_name?: string | null;
@@ -83,7 +95,7 @@ export async function updateMetadata(
     song_title?: string | null;
     event?: string | null;
     camera_type?: string | null;
-  }
+  },
 ): Promise<Video> {
   return fetchApi<Video>(`/videos/${id}/metadata`, {
     method: 'PUT',
@@ -91,8 +103,32 @@ export async function updateMetadata(
   });
 }
 
-export async function getDictionary(type: 'groups' | 'artists' | 'songs' | 'events', query?: string): Promise<DictionaryResponse> {
+export async function getDictionary(
+  type: 'groups' | 'artists' | 'songs' | 'events',
+  query?: string,
+): Promise<DictionaryResponse> {
   const params = new URLSearchParams({ type });
   if (query) params.set('q', query);
   return fetchApi<DictionaryResponse>(`/dictionary?${params.toString()}`);
+}
+
+export async function batchConfirmDownload(videoIds: number[]): Promise<BatchResult> {
+  return fetchApi<BatchResult>('/videos/batch/confirm-download', {
+    method: 'POST',
+    body: JSON.stringify({ videoIds }),
+  });
+}
+
+export async function batchComplete(videoIds: number[]): Promise<BatchResult> {
+  return fetchApi<BatchResult>('/videos/batch/complete', {
+    method: 'POST',
+    body: JSON.stringify({ videoIds }),
+  });
+}
+
+export async function reparseBatch(videoIds: number[]): Promise<{ updated: number }> {
+  return fetchApi<{ updated: number }>('/parser/reparse-batch', {
+    method: 'POST',
+    body: JSON.stringify({ videoIds }),
+  });
 }
