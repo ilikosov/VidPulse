@@ -334,11 +334,7 @@ export class YouTubeService {
         channelId: item.snippet.channelId || '',
         publishedAt: item.snippet.publishedAt || '',
         thumbnails: item.snippet.thumbnails,
-<<<<<<< codex/add-manual-video-addition-endpoint
-        tags: item.snippet.tags || undefined,
-=======
         tags: item.snippet.tags ?? [],
->>>>>>> main
       };
 
       cache.set(cacheKey, result);
