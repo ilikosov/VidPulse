@@ -1,0 +1,18 @@
+{
+  "channelId": "UC1111111111111111111111",
+  "channelTitle": "E2E Mock Channel",
+  "thumbnailUrl": "https://example.com/thumb.jpg",
+  "uploadsPlaylistId": "UU1111111111111111111111",
+  "videos": [
+    {
+      "videoId": "vid_e2e_001",
+      "title": "240101 IVE - Baddie @MBC",
+      "publishedAt": "2026-04-01T12:00:00.000Z"
+    },
+    {
+      "videoId": "vid_e2e_002",
+      "title": "240102 AESPA - Drama @SBS",
+      "publishedAt": "2026-04-02T12:00:00.000Z"
+    }
+  ]
+}
