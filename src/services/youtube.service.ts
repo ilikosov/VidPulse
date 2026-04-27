@@ -334,7 +334,7 @@ export class YouTubeService {
         channelId: item.snippet.channelId || '',
         publishedAt: item.snippet.publishedAt || '',
         thumbnails: item.snippet.thumbnails,
-        tags: item.snippet.tags,
+        tags: item.snippet.tags ?? [],
       };
 
       cache.set(cacheKey, result);
