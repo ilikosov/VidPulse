@@ -3,6 +3,7 @@ import knex from '../db';
 import { parseTitle } from '../services/parser/parser.service';
 import * as fs from 'fs';
 import * as path from 'path';
+import { youtubeService } from '../services/youtube.service';
 
 const router = Router();
 
@@ -19,6 +20,30 @@ function validateVideoIds(body: unknown): BatchValidationResult {
   }
 
   return { valid: true, videoIds };
+}
+
+function extractVideoIdFromUrl(url: string): string | null {
+  const trimmed = url.trim();
+  const directIdMatch = trimmed.match(/^[a-zA-Z0-9_-]{11}$/);
+  if (directIdMatch) {
+    return directIdMatch[0];
+  }
+
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -201,6 +226,69 @@ router.post('/batch/complete', async (req: Request, res: Response) => {
     failed: validation.videoIds.length - succeeded,
     errors,
   });
+});
+
+/**
+ * POST /api/videos/add - Add a single video by YouTube URL
+ * Body: { url: string }
+ */
+router.post('/add', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.body as { url?: string };
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    const videoId = extractVideoIdFromUrl(url);
+    if (!videoId) {
+      return res.status(400).json({ error: 'Invalid YouTube video URL' });
+    }
+
+    const existingVideo = await knex('videos').where('youtube_id', videoId).first();
+    if (existingVideo) {
+      return res.status(409).json({ error: 'Video already exists' });
+    }
+
+    const details = await youtubeService.getVideoDetails(videoId);
+    const { metadata, needsReview } = await parseTitle(details.title, details.publishedAt, details.tags);
+
+    const insertData: Record<string, any> = {
+      youtube_id: videoId,
+      original_title: details.title,
+      url: url.trim(),
+      published_at: details.publishedAt || null,
+      status: needsReview ? 'needs_review' : 'new',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (metadata.perf_date) {
+      const dateStr = metadata.perf_date;
+      insertData.perf_date = new Date(
+        `20${dateStr.slice(0, 2)}-${dateStr.slice(2, 4)}-${dateStr.slice(4, 6)}`,
+      ).toISOString();
+    }
+    if (metadata.group_name !== undefined) insertData.group_name = metadata.group_name || null;
+    if (metadata.artist_name !== undefined) insertData.artist_name = metadata.artist_name || null;
+    if (metadata.song_title !== undefined) insertData.song_title = metadata.song_title || null;
+    if (metadata.event !== undefined) insertData.event = metadata.event || null;
+    if (metadata.camera_type !== undefined) insertData.camera_type = metadata.camera_type || null;
+
+    const [createdVideo] = await knex('videos').insert(insertData).returning('*');
+
+    return res.status(201).json(createdVideo);
+  } catch (error: any) {
+    console.error('Error adding manual video:', error);
+
+    if (error?.message?.includes('Video not found')) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    if (error?.code === 'SQLITE_CONSTRAINT' || error?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return res.status(409).json({ error: 'Video already exists' });
+    }
+
+    return res.status(500).json({ error: 'Failed to add video' });
+  }
 });
 
 /**

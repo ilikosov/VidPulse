@@ -51,6 +51,34 @@ export interface BatchResult {
   errors?: BatchResultError[];
 }
 
+export interface Channel {
+  id: number;
+  youtube_id: string;
+  title: string;
+  thumbnail_url?: string | null;
+  is_favorite?: boolean;
+  added_at: string;
+  last_checked_at?: string | null;
+}
+
+export interface Playlist {
+  id: number;
+  youtube_id: string;
+  title: string;
+  added_at: string;
+  last_checked_at?: string | null;
+}
+
+export interface ChannelsResponse {
+  channels: Channel[];
+  pagination: Pagination;
+}
+
+export interface PlaylistsResponse {
+  playlists: Playlist[];
+  pagination: Pagination;
+}
+
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
@@ -65,7 +93,12 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
     throw new Error(error.error || `HTTP ${response.status}`);
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export async function getVideos(filters?: {
@@ -130,5 +163,46 @@ export async function reparseBatch(videoIds: number[]): Promise<{ updated: numbe
   return fetchApi<{ updated: number }>('/parser/reparse-batch', {
     method: 'POST',
     body: JSON.stringify({ videoIds }),
+  });
+}
+
+export async function getChannels(page = 1, limit = 50): Promise<ChannelsResponse> {
+  return fetchApi<ChannelsResponse>(`/channels?page=${page}&limit=${limit}`);
+}
+
+export async function addChannel(url: string): Promise<Channel> {
+  return fetchApi<Channel>('/channels', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  });
+}
+
+export async function deleteChannel(id: number, removeVideos = false): Promise<void> {
+  await fetchApi<unknown>(`/channels/${id}?removeVideos=${removeVideos}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getPlaylists(page = 1, limit = 50): Promise<PlaylistsResponse> {
+  return fetchApi<PlaylistsResponse>(`/playlists?page=${page}&limit=${limit}`);
+}
+
+export async function addPlaylist(url: string): Promise<Playlist> {
+  return fetchApi<Playlist>('/playlists', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  });
+}
+
+export async function deletePlaylist(id: number, removeVideos = false): Promise<void> {
+  await fetchApi<unknown>(`/playlists/${id}?removeVideos=${removeVideos}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function addVideo(url: string): Promise<Video> {
+  return fetchApi<Video>('/videos/add', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
   });
 }

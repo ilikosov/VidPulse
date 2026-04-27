@@ -3,18 +3,25 @@ import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import ReviewQueue from './components/ReviewQueue';
 import VideoCard from './components/VideoCard';
 import VideoTable from './components/VideoTable';
+import AddVideoPage from './pages/AddVideoPage';
+import ChannelsPage from './pages/ChannelsPage';
+import PlaylistsPage from './pages/PlaylistsPage';
 
 const { Header, Content } = Layout;
 
 const menuItems = [
   { key: '/videos', label: <Link to="/videos">Videos</Link> },
   { key: '/review', label: <Link to="/review">Review Queue</Link> },
-  { key: 'dashboard', label: <span style={{ color: '#aaa' }}>Dashboard (coming soon)</span>, disabled: true },
+  { key: '/channels', label: <Link to="/channels">Channels</Link> },
+  { key: '/playlists', label: <Link to="/playlists">Playlists</Link> },
+  { key: '/add-video', label: <Link to="/add-video">Add Video</Link> },
 ];
 
 function App() {
   const location = useLocation();
-  const selectedKey = location.pathname.startsWith('/review') ? '/review' : '/videos';
+  const selectedKey = menuItems.some((item) => item.key === location.pathname)
+    ? location.pathname
+    : '/videos';
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -31,13 +38,16 @@ function App() {
         <Typography.Title level={4} style={{ margin: 0, color: '#eb2f96' }}>
           K-pop Archive Manager
         </Typography.Title>
-        <Menu mode="horizontal" selectedKeys={[selectedKey]} items={menuItems} style={{ minWidth: 360 }} />
+        <Menu mode="horizontal" selectedKeys={[selectedKey]} items={menuItems} style={{ minWidth: 640 }} />
       </Header>
       <Content style={{ padding: 24 }}>
         <Routes>
           <Route path="/videos" element={<VideoTable />} />
           <Route path="/videos/:id" element={<VideoCard />} />
           <Route path="/review" element={<ReviewQueue />} />
+          <Route path="/channels" element={<ChannelsPage />} />
+          <Route path="/playlists" element={<PlaylistsPage />} />
+          <Route path="/add-video" element={<AddVideoPage />} />
           <Route path="*" element={<VideoTable />} />
         </Routes>
       </Content>
