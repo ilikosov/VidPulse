@@ -1,0 +1,120 @@
+{
+  "channelUrl": "https://www.youtube.com/@TestChannel",
+  "channelId": "UCtestchannel123456789012",
+  "channelTitle": "Test Channel (Fixture)",
+  "thumbnailUrl": "https://example.com/channel-thumb.jpg",
+  "uploadsPlaylistId": "UUtestchannel123456789012",
+  "channelsList": {
+    "items": [
+      {
+        "id": "UCtestchannel123456789012",
+        "snippet": {
+          "title": "Test Channel (Fixture)",
+          "thumbnails": {
+            "high": {
+              "url": "https://example.com/channel-thumb.jpg"
+            }
+          }
+        },
+        "contentDetails": {
+          "relatedPlaylists": {
+            "uploads": "UUtestchannel123456789012"
+          }
+        }
+      }
+    ]
+  },
+  "playlistItemsList": {
+    "items": [
+      {
+        "snippet": {
+          "title": "Short Public Clip",
+          "publishedAt": "2026-04-20T10:00:00.000Z",
+          "resourceId": {
+            "videoId": "vid_short_public"
+          }
+        }
+      },
+      {
+        "snippet": {
+          "title": "Long Public Performance",
+          "publishedAt": "2026-04-19T10:00:00.000Z",
+          "resourceId": {
+            "videoId": "vid_long_public"
+          }
+        }
+      },
+      {
+        "snippet": {
+          "title": "Short Private Teaser",
+          "publishedAt": "2026-04-18T10:00:00.000Z",
+          "resourceId": {
+            "videoId": "vid_short_private"
+          }
+        }
+      }
+    ]
+  },
+  "videosList": {
+    "vid_short_public": {
+      "id": "vid_short_public",
+      "snippet": {
+        "title": "Short Public Clip",
+        "channelId": "UCtestchannel123456789012",
+        "publishedAt": "2026-04-20T10:00:00.000Z",
+        "tags": ["shorts", "dance"],
+        "thumbnails": {
+          "default": {
+            "url": "https://example.com/short-public.jpg"
+          }
+        }
+      },
+      "contentDetails": {
+        "duration": "PT0M45S"
+      },
+      "status": {
+        "privacyStatus": "public"
+      }
+    },
+    "vid_long_public": {
+      "id": "vid_long_public",
+      "snippet": {
+        "title": "Long Public Performance",
+        "channelId": "UCtestchannel123456789012",
+        "publishedAt": "2026-04-19T10:00:00.000Z",
+        "tags": ["fullcam", "stage"],
+        "thumbnails": {
+          "default": {
+            "url": "https://example.com/long-public.jpg"
+          }
+        }
+      },
+      "contentDetails": {
+        "duration": "PT25M30S"
+      },
+      "status": {
+        "privacyStatus": "public"
+      }
+    },
+    "vid_short_private": {
+      "id": "vid_short_private",
+      "snippet": {
+        "title": "Short Private Teaser",
+        "channelId": "UCtestchannel123456789012",
+        "publishedAt": "2026-04-18T10:00:00.000Z",
+        "tags": ["private", "teaser"],
+        "thumbnails": {
+          "default": {
+            "url": "https://example.com/short-private.jpg"
+          }
+        }
+      },
+      "contentDetails": {
+        "duration": "PT0M30S"
+      },
+      "status": {
+        "privacyStatus": "private"
+      }
+    }
+  }
+}

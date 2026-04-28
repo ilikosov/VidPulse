@@ -14,6 +14,7 @@ import {
   type Video,
 } from '../api';
 import { getTagColor } from '../utils/tagColors';
+import { formatDuration } from '../utils/formatDuration';
 
 const statusOptions = [
   { value: '', label: 'All' },
@@ -97,6 +98,13 @@ function VideoTable() {
       ),
     },
     { title: 'Original Title', dataIndex: 'original_title', key: 'original_title', ellipsis: true },
+    {
+      title: 'Duration',
+      dataIndex: 'duration_seconds',
+      key: 'duration_seconds',
+      width: 110,
+      render: (value: number | null | undefined) => formatDuration(value),
+    },
     {
       title: 'Group',
       dataIndex: 'group_name',
