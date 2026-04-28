@@ -14,6 +14,7 @@ export const e2eDb = knex({
 export async function resetDatabase() {
   await e2eDb('training_data').del();
   await e2eDb('status_history').del();
+  await e2eDb('video_tags').del();
   await e2eDb('videos').del();
   await e2eDb('channels').del();
   await e2eDb('playlists').del();

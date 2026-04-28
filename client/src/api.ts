@@ -19,6 +19,7 @@ export interface Video {
   playlist_title?: string;
   channel_youtube_id?: string;
   published_at?: string;
+  duration_seconds?: number | null;
   tags?: VideoTag[];
 }
 

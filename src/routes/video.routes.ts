@@ -120,6 +120,7 @@ router.get('/', async (req: Request, res: Response) => {
         'videos.song_title',
         'videos.event',
         'videos.camera_type',
+        'videos.duration_seconds',
         'videos.status',
         'videos.created_at',
         'videos.updated_at',

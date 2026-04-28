@@ -5,7 +5,7 @@ import { e2eDb, resetDatabase } from './helpers/db';
 import { ReviewPage } from './pages/ReviewPage';
 import { VideosPage } from './pages/VideosPage';
 
-const mockChannelId = 'UC1111111111111111111111';
+const mockChannelId = 'UCtestchannel123456789012';
 const downloadsRoot = path.resolve(__dirname, '../../downloads');
 
 test.beforeEach(async () => {
@@ -31,13 +31,13 @@ test('adds a channel and syncs mocked videos', async ({ page, request }) => {
 
   expect(payload.videos.length).toBeGreaterThanOrEqual(2);
   expect(payload.videos.map((video: { youtube_id: string }) => video.youtube_id)).toEqual(
-    expect.arrayContaining(['vid_e2e_001', 'vid_e2e_002']),
+    expect.arrayContaining(['vid_short_public', 'vid_long_public', 'vid_short_private']),
   );
 
   const videosPage = new VideosPage(page);
   await videosPage.goto();
-  await videosPage.expectVideoVisible('240101 IVE - Baddie @MBC');
-  await videosPage.expectVideoVisible('240102 AESPA - Drama @SBS');
+  await videosPage.expectVideoVisible('Short Public Clip');
+  await videosPage.expectVideoVisible('Long Public Performance');
 });
 
 test('manual metadata editing from review queue updates status to new', async ({ page, request }) => {

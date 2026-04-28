@@ -6,7 +6,7 @@ const repoRoot = __dirname;
 export default defineConfig({
   testDir: path.join(repoRoot, 'tests/e2e'),
   timeout: 30_000,
-  testMatch: '**/*.e2e.ts',
+  testMatch: ['**/*.e2e.ts', '**/*.spec.ts'],
   expect: {
     timeout: 10_000,
   },

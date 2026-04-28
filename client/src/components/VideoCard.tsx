@@ -23,6 +23,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { addTagToVideo, getVideo, removeTagFromVideo, updateMetadata, type Video } from '../api';
 import AutocompleteInput from './AutocompleteInput';
 import { getTagColor } from '../utils/tagColors';
+import { formatDuration } from '../utils/formatDuration';
 
 interface EditForm {
   perf_date: string;
@@ -217,6 +218,7 @@ function VideoCard() {
           <Col xs={24} md={16}>
             <Descriptions bordered column={1} size="small">
               <Descriptions.Item label="Published Date">{formatDateDisplay(video.published_at)}</Descriptions.Item>
+              <Descriptions.Item label="Duration">{formatDuration(video.duration_seconds)}</Descriptions.Item>
               <Descriptions.Item label="Channel">{video.channel_title || '-'}</Descriptions.Item>
               <Descriptions.Item label="Playlist">{video.playlist_title || '-'}</Descriptions.Item>
             </Descriptions>
