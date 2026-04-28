@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Image, Input, Modal, Select, Space, Spin, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Form, Image, Input, Modal, Select, Space, Spin, Table, Tag, Tooltip, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { useEffect, useState } from 'react';
@@ -176,6 +176,25 @@ function VideoTable() {
     }
   };
 
+
+  const handleBatchPresetTag = async (tagName: 'short' | 'private') => {
+    if (selectedRowKeys.length === 0) {
+      return;
+    }
+
+    setBatchLoading(true);
+    try {
+      const result = await batchAddTags(selectedRowKeys, tagName);
+      const label = tagName === 'short' ? 'Mark as Shorts' : 'Mark as Private';
+      message.success(`${label}: ${result.succeeded}/${result.processed} succeeded`);
+      await fetchVideos(pagination.page, statusFilter);
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Batch tag operation failed');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
   const handleBatchTagSubmit = async () => {
     if (!batchTagName.trim()) {
       message.error('Please enter a tag name');
@@ -255,6 +274,26 @@ function VideoTable() {
           >
             Re-parse Selected
           </Button>
+          <Tooltip title="Add the 'short' tag to all selected videos">
+            <Button
+              onClick={() => void handleBatchPresetTag('short')}
+              loading={batchLoading}
+              disabled={batchLoading}
+              style={{ borderColor: '#52c41a', color: '#389e0d' }}
+            >
+              Mark as Shorts
+            </Button>
+          </Tooltip>
+          <Tooltip title="Add the 'private' tag to all selected videos">
+            <Button
+              onClick={() => void handleBatchPresetTag('private')}
+              loading={batchLoading}
+              disabled={batchLoading}
+              style={{ borderColor: '#fa8c16', color: '#d46b08' }}
+            >
+              Mark as Private
+            </Button>
+          </Tooltip>
           <Button
             onClick={() => setBatchTagModal({ open: true, mode: 'add' })}
             loading={batchLoading}

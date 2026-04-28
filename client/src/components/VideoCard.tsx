@@ -13,6 +13,7 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from 'antd';
@@ -67,6 +68,7 @@ function VideoCard() {
   const [saving, setSaving] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [tagLoading, setTagLoading] = useState(false);
+  const [presetTagLoading, setPresetTagLoading] = useState<'short' | 'private' | null>(null);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
 
   const fetchVideo = async () => {
@@ -97,6 +99,21 @@ function VideoCard() {
       message.error(err instanceof Error ? err.message : 'Failed to add tag');
     } finally {
       setTagLoading(false);
+    }
+  };
+
+
+  const handleAddPresetTag = async (tagName: 'short' | 'private') => {
+    if (!video) return;
+    setPresetTagLoading(tagName);
+    try {
+      await addTagToVideo(video.id, tagName);
+      message.success(`Tag "${tagName}" added`);
+      await fetchVideo();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : `Failed to add ${tagName} tag`);
+    } finally {
+      setPresetTagLoading(null);
     }
   };
 
@@ -199,6 +216,31 @@ function VideoCard() {
                 ) : (
                   <Typography.Text type="secondary">No tags yet</Typography.Text>
                 )}
+              </Space>
+
+              <Space wrap>
+                <Tooltip title="Add the 'short' tag to this video">
+                  <Button
+                    size="small"
+                    style={{ borderColor: '#52c41a', color: '#389e0d' }}
+                    onClick={() => void handleAddPresetTag('short')}
+                    loading={presetTagLoading === 'short'}
+                    disabled={presetTagLoading !== null}
+                  >
+                    Shorts
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Add the 'private' tag to this video">
+                  <Button
+                    size="small"
+                    style={{ borderColor: '#fa8c16', color: '#d46b08' }}
+                    onClick={() => void handleAddPresetTag('private')}
+                    loading={presetTagLoading === 'private'}
+                    disabled={presetTagLoading !== null}
+                  >
+                    Private
+                  </Button>
+                </Tooltip>
               </Space>
 
               <Space.Compact style={{ width: '100%' }}>

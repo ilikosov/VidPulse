@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.raw(`
     INSERT INTO tags (name)
-    VALUES ('short'), ('длинное видео'), ('игнорировать видео');
+    VALUES ('short'), ('длинное видео'), ('игнорировать видео'), ('private');
   `);
 }
 
