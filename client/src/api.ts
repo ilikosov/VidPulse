@@ -195,10 +195,14 @@ export async function getVideoTags(videoId: number | string): Promise<VideoTag[]
   return fetchApi<VideoTag[]>(`/videos/${videoId}/tags`);
 }
 
-export async function addTagToVideo(videoId: number | string, tagName: string): Promise<VideoTag> {
+export async function addTagToVideo(
+  videoId: number | string,
+  tagName: string,
+  confirm = false,
+): Promise<VideoTag> {
   return fetchApi<VideoTag>(`/videos/${videoId}/tags`, {
     method: 'POST',
-    body: JSON.stringify({ name: tagName }),
+    body: JSON.stringify({ name: tagName, confirm }),
   });
 }
 
@@ -208,8 +212,12 @@ export async function removeTagFromVideo(videoId: number | string, tagId: number
   });
 }
 
-export async function batchAddTags(videoIds: number[], tagName: string): Promise<BatchResult> {
-  const payload: BatchTagRequest = { videoIds, tagName };
+export async function batchAddTags(
+  videoIds: number[],
+  tagName: string,
+  confirm = false,
+): Promise<BatchResult> {
+  const payload: BatchTagRequest & { confirm?: boolean } = { videoIds, tagName, confirm };
   return fetchApi<BatchResult>('/videos/batch/tags', {
     method: 'POST',
     body: JSON.stringify(payload),

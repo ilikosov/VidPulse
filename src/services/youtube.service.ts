@@ -58,6 +58,22 @@ function isQuotaExceededError(error: any): boolean {
   return status === 403 && reason === 'quotaExceeded';
 }
 
+function parseDurationToSeconds(duration?: string): number | undefined {
+  if (!duration) {
+    return undefined;
+  }
+
+  const match = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+  if (!match) {
+    return undefined;
+  }
+
+  const hours = Number(match[1] || 0);
+  const minutes = Number(match[2] || 0);
+  const seconds = Number(match[3] || 0);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
 export class YouTubeService {
   private async logYouTubeCall(
     method: string,
@@ -471,8 +487,9 @@ export class YouTubeService {
         'videos.list',
         {
           id: [videoId],
-          part: ['snippet'],
-          fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))',
+          part: ['snippet', 'contentDetails', 'status'],
+          fields:
+            'items(snippet(title,channelId,publishedAt,thumbnails,tags),contentDetails(duration),status(privacyStatus))',
         },
         true,
       );
@@ -483,8 +500,9 @@ export class YouTubeService {
       const params = {
         key: apiKey!,
         id: [videoId],
-        part: ['snippet'],
-        fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))',
+        part: ['snippet', 'contentDetails', 'status'],
+        fields:
+          'items(snippet(title,channelId,publishedAt,thumbnails,tags),contentDetails(duration),status(privacyStatus))',
       };
       const response = await this.executeYouTubeCall('videos.list', params, () =>
         youtube.videos.list(params),
@@ -501,6 +519,8 @@ export class YouTubeService {
         publishedAt: item.snippet.publishedAt || '',
         thumbnails: item.snippet.thumbnails,
         tags: item.snippet.tags ?? [],
+        durationSeconds: parseDurationToSeconds(item.contentDetails?.duration),
+        privacyStatus: item.status?.privacyStatus,
       };
 
       cache.set(cacheKey, result);
@@ -511,8 +531,9 @@ export class YouTubeService {
           'videos.list',
           {
             id: [videoId],
-            part: ['snippet'],
-            fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))',
+            part: ['snippet', 'contentDetails', 'status'],
+            fields:
+              'items(snippet(title,channelId,publishedAt,thumbnails,tags),contentDetails(duration),status(privacyStatus))',
           },
           error,
         );

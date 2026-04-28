@@ -8,6 +8,7 @@ import {
   Flex,
   Form,
   Input,
+  Modal,
   Row,
   Select,
   Space,
@@ -70,6 +71,8 @@ function VideoCard() {
   const [tagLoading, setTagLoading] = useState(false);
   const [presetTagLoading, setPresetTagLoading] = useState<'short' | 'private' | null>(null);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const requiresManualTagConfirmation = (tagName: string) =>
+    ['short', 'private'].includes(tagName.trim().toLowerCase());
 
   const fetchVideo = async () => {
     if (!id) return;
@@ -89,9 +92,25 @@ function VideoCard() {
 
   const handleAddTag = async () => {
     if (!video || !newTagName.trim()) return;
+    const tagName = newTagName.trim();
+    if (requiresManualTagConfirmation(tagName)) {
+      Modal.confirm({
+        title: `Add "${tagName}" tag?`,
+        content: `This tag affects filtering and workflow. Do you want to continue?`,
+        okText: 'Yes, add tag',
+        cancelText: 'Cancel',
+        onOk: () => handleAddTagConfirmed(tagName, true),
+      });
+      return;
+    }
+    await handleAddTagConfirmed(tagName, false);
+  };
+
+  const handleAddTagConfirmed = async (tagName: string, confirm: boolean) => {
+    if (!video) return;
     setTagLoading(true);
     try {
-      await addTagToVideo(video.id, newTagName);
+      await addTagToVideo(video.id, tagName, confirm);
       message.success('Tag added');
       setNewTagName('');
       await fetchVideo();
@@ -105,16 +124,24 @@ function VideoCard() {
 
   const handleAddPresetTag = async (tagName: 'short' | 'private') => {
     if (!video) return;
-    setPresetTagLoading(tagName);
-    try {
-      await addTagToVideo(video.id, tagName);
-      message.success(`Tag "${tagName}" added`);
-      await fetchVideo();
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : `Failed to add ${tagName} tag`);
-    } finally {
-      setPresetTagLoading(null);
-    }
+    Modal.confirm({
+      title: `Add "${tagName}" tag?`,
+      content: `This tag affects filtering and workflow. Do you want to continue?`,
+      okText: 'Yes, add tag',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        setPresetTagLoading(tagName);
+        try {
+          await addTagToVideo(video.id, tagName, true);
+          message.success(`Tag "${tagName}" added`);
+          await fetchVideo();
+        } catch (err) {
+          message.error(err instanceof Error ? err.message : `Failed to add ${tagName} tag`);
+        } finally {
+          setPresetTagLoading(null);
+        }
+      },
+    });
   };
 
   const handleRemoveTag = async (tagId: number) => {

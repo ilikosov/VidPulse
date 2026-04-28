@@ -12,6 +12,8 @@ export interface VideoDetails {
   publishedAt: string;
   thumbnails: any;
   tags?: string[];
+  durationSeconds?: number;
+  privacyStatus?: string;
 }
 
 export interface ChannelInfo {
