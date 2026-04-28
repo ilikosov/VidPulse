@@ -9,6 +9,7 @@ import { logEvent } from '../services/eventLog.service';
 const router = Router();
 
 type BatchValidationResult = { valid: true; videoIds: number[] } | { valid: false; error: string };
+type TagValidationResult = { valid: true; tagName: string } | { valid: false; error: string };
 
 function validateVideoIds(body: unknown): BatchValidationResult {
   const videoIds = (body as { videoIds?: unknown })?.videoIds;
@@ -21,6 +22,46 @@ function validateVideoIds(body: unknown): BatchValidationResult {
   }
 
   return { valid: true, videoIds };
+}
+
+function validateTagName(value: unknown): TagValidationResult {
+  if (typeof value !== 'string') {
+    return { valid: false, error: 'tagName must be a string' };
+  }
+  const tagName = value.trim();
+  if (!tagName) {
+    return { valid: false, error: 'tagName cannot be empty' };
+  }
+  if (tagName.length > 100) {
+    return { valid: false, error: 'tagName must be 100 characters or less' };
+  }
+  return { valid: true, tagName };
+}
+
+async function findOrCreateTagId(tagName: string): Promise<number> {
+  const existingTag = await knex('tags').whereRaw('LOWER(name) = LOWER(?)', [tagName]).first();
+  if (existingTag) {
+    return existingTag.id;
+  }
+  const insertResult = await knex('tags').insert({ name: tagName }).returning('id');
+  const inserted = Array.isArray(insertResult) ? insertResult[0] : insertResult;
+  return typeof inserted === 'object' ? inserted.id : inserted;
+}
+
+async function getVideoTagsMap(videoIds: number[]) {
+  const rows = await knex('video_tags')
+    .join('tags', 'video_tags.tag_id', 'tags.id')
+    .select('video_tags.video_id', 'tags.id', 'tags.name')
+    .whereIn('video_tags.video_id', videoIds)
+    .orderBy('tags.name', 'asc');
+
+  const tagsByVideo = new Map<number, Array<{ id: number; name: string }>>();
+  for (const row of rows) {
+    const tags = tagsByVideo.get(row.video_id) ?? [];
+    tags.push({ id: row.id, name: row.name });
+    tagsByVideo.set(row.video_id, tags);
+  }
+  return tagsByVideo;
 }
 
 function extractVideoIdFromUrl(url: string): string | null {
@@ -87,6 +128,12 @@ router.get('/', async (req: Request, res: Response) => {
     query = query.orderBy('videos.created_at', 'desc');
 
     const videos = await query.limit(limit).offset(offset);
+    const videoIds = videos.map((video) => video.id);
+    const tagsByVideo = videoIds.length > 0 ? await getVideoTagsMap(videoIds) : new Map();
+    const videosWithTags = videos.map((video) => ({
+      ...video,
+      tags: tagsByVideo.get(video.id) ?? [],
+    }));
 
     const totalQuery = knex('videos');
     if (status) {
@@ -96,7 +143,7 @@ router.get('/', async (req: Request, res: Response) => {
     const totalCount = parseInt(total?.count as string) || 0;
 
     res.json({
-      videos,
+      videos: videosWithTags,
       pagination: {
         page,
         limit,
@@ -241,6 +288,106 @@ router.post('/batch/complete', async (req: Request, res: Response) => {
   });
 });
 
+router.post('/batch/tags', async (req: Request, res: Response) => {
+  const validation = validateVideoIds(req.body);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const tagValidation = validateTagName((req.body as { tagName?: unknown }).tagName);
+  if (!tagValidation.valid) {
+    return res.status(400).json({ error: tagValidation.error });
+  }
+
+  try {
+    const tagId = await findOrCreateTagId(tagValidation.tagName);
+    const errors: Array<{ videoId: number; error: string }> = [];
+    let succeeded = 0;
+
+    for (const videoId of validation.videoIds) {
+      try {
+        const video = await knex('videos').where('id', videoId).first();
+        if (!video) {
+          errors.push({ videoId, error: 'Video not found' });
+          continue;
+        }
+
+        await knex('video_tags')
+          .insert({ video_id: videoId, tag_id: tagId })
+          .onConflict(['video_id', 'tag_id'])
+          .ignore();
+        succeeded += 1;
+      } catch (error) {
+        console.error(`Error adding tag for video ${videoId}:`, error);
+        errors.push({ videoId, error: 'Failed to add tag to video' });
+      }
+    }
+
+    return res.json({
+      processed: validation.videoIds.length,
+      succeeded,
+      failed: validation.videoIds.length - succeeded,
+      errors,
+    });
+  } catch (error) {
+    console.error('Error processing batch tag add:', error);
+    return res.status(500).json({ error: 'Failed to process batch tag add' });
+  }
+});
+
+router.delete('/batch/tags', async (req: Request, res: Response) => {
+  const validation = validateVideoIds(req.body);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const tagValidation = validateTagName((req.body as { tagName?: unknown }).tagName);
+  if (!tagValidation.valid) {
+    return res.status(400).json({ error: tagValidation.error });
+  }
+
+  try {
+    const tag = await knex('tags').whereRaw('LOWER(name) = LOWER(?)', [tagValidation.tagName]).first();
+    if (!tag) {
+      return res.json({
+        processed: validation.videoIds.length,
+        succeeded: validation.videoIds.length,
+        failed: 0,
+        errors: [],
+      });
+    }
+
+    const errors: Array<{ videoId: number; error: string }> = [];
+    let succeeded = 0;
+
+    for (const videoId of validation.videoIds) {
+      try {
+        const video = await knex('videos').where('id', videoId).first();
+        if (!video) {
+          errors.push({ videoId, error: 'Video not found' });
+          continue;
+        }
+
+        await knex('video_tags').where({ video_id: videoId, tag_id: tag.id }).del();
+        succeeded += 1;
+      } catch (error) {
+        console.error(`Error removing tag for video ${videoId}:`, error);
+        errors.push({ videoId, error: 'Failed to remove tag from video' });
+      }
+    }
+
+    return res.json({
+      processed: validation.videoIds.length,
+      succeeded,
+      failed: validation.videoIds.length - succeeded,
+      errors,
+    });
+  } catch (error) {
+    console.error('Error processing batch tag delete:', error);
+    return res.status(500).json({ error: 'Failed to process batch tag delete' });
+  }
+});
+
 /**
  * POST /api/videos/add - Add a single video by YouTube URL
  * Body: { url: string }
@@ -333,10 +480,97 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Video not found' });
     }
 
-    res.json(video);
+    const tags = await knex('video_tags')
+      .join('tags', 'video_tags.tag_id', 'tags.id')
+      .select('tags.id', 'tags.name')
+      .where('video_tags.video_id', video.id)
+      .orderBy('tags.name', 'asc');
+
+    res.json({
+      ...video,
+      tags,
+    });
   } catch (error) {
     console.error('Error fetching video:', error);
     res.status(500).json({ error: 'Failed to fetch video' });
+  }
+});
+
+router.get('/:id/tags', async (req: Request, res: Response) => {
+  const videoId = Number(req.params.id);
+  if (!Number.isInteger(videoId) || videoId <= 0) {
+    return res.status(400).json({ error: 'Invalid video id' });
+  }
+
+  try {
+    const video = await knex('videos').where('id', videoId).first();
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    const tags = await knex('video_tags')
+      .join('tags', 'video_tags.tag_id', 'tags.id')
+      .select('tags.id', 'tags.name')
+      .where('video_tags.video_id', videoId)
+      .orderBy('tags.name', 'asc');
+
+    return res.json(tags);
+  } catch (error) {
+    console.error(`Error fetching tags for video ${videoId}:`, error);
+    return res.status(500).json({ error: 'Failed to fetch tags' });
+  }
+});
+
+router.post('/:id/tags', async (req: Request, res: Response) => {
+  const videoId = Number(req.params.id);
+  if (!Number.isInteger(videoId) || videoId <= 0) {
+    return res.status(400).json({ error: 'Invalid video id' });
+  }
+
+  const tagValidation = validateTagName((req.body as { name?: unknown }).name);
+  if (!tagValidation.valid) {
+    return res.status(400).json({ error: tagValidation.error.replace('tagName', 'name') });
+  }
+
+  try {
+    const video = await knex('videos').where('id', videoId).first();
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    const tagId = await findOrCreateTagId(tagValidation.tagName);
+    await knex('video_tags').insert({ video_id: videoId, tag_id: tagId }).onConflict(['video_id', 'tag_id']).ignore();
+
+    const tag = await knex('tags').select('id', 'name').where('id', tagId).first();
+    return res.status(201).json(tag);
+  } catch (error) {
+    console.error(`Error adding tag to video ${videoId}:`, error);
+    return res.status(500).json({ error: 'Failed to add tag' });
+  }
+});
+
+router.delete('/:id/tags/:tagId', async (req: Request, res: Response) => {
+  const videoId = Number(req.params.id);
+  const tagId = Number(req.params.tagId);
+
+  if (!Number.isInteger(videoId) || videoId <= 0) {
+    return res.status(400).json({ error: 'Invalid video id' });
+  }
+  if (!Number.isInteger(tagId) || tagId <= 0) {
+    return res.status(400).json({ error: 'Invalid tag id' });
+  }
+
+  try {
+    const video = await knex('videos').where('id', videoId).first();
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    await knex('video_tags').where({ video_id: videoId, tag_id: tagId }).del();
+    return res.status(204).send();
+  } catch (error) {
+    console.error(`Error removing tag ${tagId} from video ${videoId}:`, error);
+    return res.status(500).json({ error: 'Failed to remove tag' });
   }
 });
 

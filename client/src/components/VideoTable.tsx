@@ -1,16 +1,19 @@
-import { Alert, Button, Image, Select, Space, Spin, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Form, Image, Input, Modal, Select, Space, Spin, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   batchComplete,
+  batchAddTags,
   batchConfirmDownload,
+  batchRemoveTags,
   getVideos,
   reparseBatch,
   type Pagination,
   type Video,
 } from '../api';
+import { getTagColor } from '../utils/tagColors';
 
 const statusOptions = [
   { value: '', label: 'All' },
@@ -46,6 +49,12 @@ function VideoTable() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
+  const [batchTagModal, setBatchTagModal] = useState<{ open: boolean; mode: 'add' | 'remove' }>({
+    open: false,
+    mode: 'add',
+  });
+  const [batchTagName, setBatchTagName] = useState('');
+  const [allTags, setAllTags] = useState<string[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -58,6 +67,9 @@ function VideoTable() {
     try {
       const response = await getVideos({ status: status || undefined, page, limit: 20 });
       setVideos(response.videos);
+      const tagSet = new Set<string>();
+      response.videos.forEach((video) => video.tags?.forEach((tag) => tagSet.add(tag.name)));
+      setAllTags(Array.from(tagSet).sort((a, b) => a.localeCompare(b)));
       setPagination(response.pagination);
       setSelectedRowKeys([]);
     } catch (err) {
@@ -102,6 +114,24 @@ function VideoTable() {
       render: (v: string | null) => v || '-',
     },
     {
+      title: 'Tags',
+      dataIndex: 'tags',
+      key: 'tags',
+      width: 280,
+      render: (tags?: Array<{ id: number; name: string }>) =>
+        tags && tags.length > 0 ? (
+          <Space size={[4, 4]} wrap>
+            {tags.map((tag) => (
+              <Tag key={tag.id} color={getTagColor(tag.name)}>
+                {tag.name}
+              </Tag>
+            ))}
+          </Space>
+        ) : (
+          <Typography.Text type="secondary">—</Typography.Text>
+        ),
+    },
+    {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
@@ -141,6 +171,36 @@ function VideoTable() {
       await fetchVideos(pagination.page, statusFilter);
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Batch operation failed');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const handleBatchTagSubmit = async () => {
+    if (!batchTagName.trim()) {
+      message.error('Please enter a tag name');
+      return;
+    }
+
+    if (selectedRowKeys.length === 0) {
+      message.error('Please select videos first');
+      return;
+    }
+
+    setBatchLoading(true);
+    try {
+      const result =
+        batchTagModal.mode === 'add'
+          ? await batchAddTags(selectedRowKeys, batchTagName)
+          : await batchRemoveTags(selectedRowKeys, batchTagName);
+      message.success(
+        `${batchTagModal.mode === 'add' ? 'Add Tag' : 'Remove Tag'}: ${result.succeeded}/${result.processed} succeeded`,
+      );
+      setBatchTagModal((prev) => ({ ...prev, open: false }));
+      setBatchTagName('');
+      await fetchVideos(pagination.page, statusFilter);
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Batch tag operation failed');
     } finally {
       setBatchLoading(false);
     }
@@ -195,6 +255,20 @@ function VideoTable() {
           >
             Re-parse Selected
           </Button>
+          <Button
+            onClick={() => setBatchTagModal({ open: true, mode: 'add' })}
+            loading={batchLoading}
+            disabled={batchLoading}
+          >
+            Add Tag to Selected
+          </Button>
+          <Button
+            onClick={() => setBatchTagModal({ open: true, mode: 'remove' })}
+            loading={batchLoading}
+            disabled={batchLoading}
+          >
+            Remove Tag from Selected
+          </Button>
         </Space>
       ) : null}
 
@@ -222,6 +296,44 @@ function VideoTable() {
           }}
         />
       )}
+
+      <Modal
+        title={batchTagModal.mode === 'add' ? 'Add Tag to Selected Videos' : 'Remove Tag from Selected Videos'}
+        open={batchTagModal.open}
+        confirmLoading={batchLoading}
+        onCancel={() => {
+          setBatchTagModal((prev) => ({ ...prev, open: false }));
+          setBatchTagName('');
+        }}
+        onOk={() => void handleBatchTagSubmit()}
+        okText={batchTagModal.mode === 'add' ? 'Add Tag' : 'Remove Tag'}
+      >
+        <Form layout="vertical">
+          <Form.Item label="Tag name" required>
+            <Select
+              showSearch
+              allowClear
+              value={batchTagName || undefined}
+              options={allTags.map((name) => ({ value: name, label: name }))}
+              placeholder="Choose an existing tag or type a new one"
+              onChange={(value) => setBatchTagName(value || '')}
+              onSearch={(value) => setBatchTagName(value)}
+              dropdownRender={(menu) => (
+                <>
+                  {menu}
+                  <div style={{ padding: 8 }}>
+                    <Input
+                      placeholder="Type new tag"
+                      value={batchTagName}
+                      onChange={(event) => setBatchTagName(event.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </Space>
   );
 }

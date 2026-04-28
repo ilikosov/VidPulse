@@ -19,6 +19,12 @@ export interface Video {
   playlist_title?: string;
   channel_youtube_id?: string;
   published_at?: string;
+  tags?: VideoTag[];
+}
+
+export interface VideoTag {
+  id: number;
+  name: string;
 }
 
 export interface Pagination {
@@ -49,6 +55,11 @@ export interface BatchResult {
   succeeded: number;
   failed: number;
   errors?: BatchResultError[];
+}
+
+export interface BatchTagRequest {
+  videoIds: number[];
+  tagName: string;
 }
 
 export interface Channel {
@@ -177,6 +188,39 @@ export async function reparseBatch(videoIds: number[]): Promise<{ updated: numbe
   return fetchApi<{ updated: number }>('/parser/reparse-batch', {
     method: 'POST',
     body: JSON.stringify({ videoIds }),
+  });
+}
+
+export async function getVideoTags(videoId: number | string): Promise<VideoTag[]> {
+  return fetchApi<VideoTag[]>(`/videos/${videoId}/tags`);
+}
+
+export async function addTagToVideo(videoId: number | string, tagName: string): Promise<VideoTag> {
+  return fetchApi<VideoTag>(`/videos/${videoId}/tags`, {
+    method: 'POST',
+    body: JSON.stringify({ name: tagName }),
+  });
+}
+
+export async function removeTagFromVideo(videoId: number | string, tagId: number): Promise<void> {
+  await fetchApi<unknown>(`/videos/${videoId}/tags/${tagId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function batchAddTags(videoIds: number[], tagName: string): Promise<BatchResult> {
+  const payload: BatchTagRequest = { videoIds, tagName };
+  return fetchApi<BatchResult>('/videos/batch/tags', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function batchRemoveTags(videoIds: number[], tagName: string): Promise<BatchResult> {
+  const payload: BatchTagRequest = { videoIds, tagName };
+  return fetchApi<BatchResult>('/videos/batch/tags', {
+    method: 'DELETE',
+    body: JSON.stringify(payload),
   });
 }
 
