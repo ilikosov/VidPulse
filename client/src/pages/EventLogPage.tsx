@@ -16,6 +16,9 @@ const EVENT_TYPES = [
   'video_completed',
   'metadata_updated',
   'error',
+  'youtube_api_call',
+  'youtube_api_error',
+  'youtube_quota_exceeded',
 ];
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -29,6 +32,9 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   video_completed: 'lime',
   metadata_updated: 'magenta',
   error: 'red',
+  youtube_api_call: 'default',
+  youtube_api_error: 'orange',
+  youtube_quota_exceeded: 'red',
 };
 
 function formatMetadata(event: EventLogEntry): string {
