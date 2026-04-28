@@ -9,6 +9,7 @@ import {
   Form,
   Input,
   Row,
+  Select,
   Space,
   Spin,
   Tag,
@@ -17,8 +18,9 @@ import {
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getVideo, updateMetadata, type Video } from '../api';
+import { addTagToVideo, getVideo, removeTagFromVideo, updateMetadata, type Video } from '../api';
 import AutocompleteInput from './AutocompleteInput';
+import { getTagColor } from '../utils/tagColors';
 
 interface EditForm {
   perf_date: string;
@@ -63,6 +65,9 @@ function VideoCard() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [tagLoading, setTagLoading] = useState(false);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
 
   const fetchVideo = async () => {
     if (!id) return;
@@ -72,10 +77,40 @@ function VideoCard() {
       const data = await getVideo(id);
       setVideo(data);
       setForm(toForm(data));
+      setTagSuggestions((data.tags ?? []).map((tag) => tag.name));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch video');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddTag = async () => {
+    if (!video || !newTagName.trim()) return;
+    setTagLoading(true);
+    try {
+      await addTagToVideo(video.id, newTagName);
+      message.success('Tag added');
+      setNewTagName('');
+      await fetchVideo();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Failed to add tag');
+    } finally {
+      setTagLoading(false);
+    }
+  };
+
+  const handleRemoveTag = async (tagId: number) => {
+    if (!video) return;
+    setTagLoading(true);
+    try {
+      await removeTagFromVideo(video.id, tagId);
+      message.success('Tag removed');
+      await fetchVideo();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Failed to remove tag');
+    } finally {
+      setTagLoading(false);
     }
   };
 
@@ -143,6 +178,44 @@ function VideoCard() {
             </Descriptions>
 
             <Divider orientation="left">Metadata</Divider>
+
+            <Divider orientation="left">Tags</Divider>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Space wrap>
+                {(video.tags ?? []).length > 0 ? (
+                  video.tags?.map((tag) => (
+                    <Tag
+                      key={tag.id}
+                      color={getTagColor(tag.name)}
+                      closable
+                      onClose={(event) => {
+                        event.preventDefault();
+                        void handleRemoveTag(tag.id);
+                      }}
+                    >
+                      {tag.name}
+                    </Tag>
+                  ))
+                ) : (
+                  <Typography.Text type="secondary">No tags yet</Typography.Text>
+                )}
+              </Space>
+
+              <Space.Compact style={{ width: '100%' }}>
+                <Select
+                  showSearch
+                  style={{ width: '100%' }}
+                  value={newTagName || undefined}
+                  placeholder="Type a tag name or choose an existing one"
+                  options={tagSuggestions.map((name) => ({ value: name, label: name }))}
+                  onChange={(value) => setNewTagName(value || '')}
+                  onSearch={(value) => setNewTagName(value)}
+                />
+                <Button type="primary" onClick={() => void handleAddTag()} loading={tagLoading}>
+                  Add Tag
+                </Button>
+              </Space.Compact>
+            </Space>
 
             {editing ? (
               <Space direction="vertical" style={{ width: '100%' }}>
