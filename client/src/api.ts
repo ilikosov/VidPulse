@@ -79,6 +79,20 @@ export interface PlaylistsResponse {
   pagination: Pagination;
 }
 
+
+export interface EventLogEntry {
+  id: number;
+  event_type: string;
+  description: string | null;
+  metadata: string | null;
+  created_at: string;
+}
+
+export interface EventsResponse {
+  events: EventLogEntry[];
+  pagination: Pagination;
+}
+
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
@@ -205,4 +219,20 @@ export async function addVideo(url: string): Promise<Video> {
     method: 'POST',
     body: JSON.stringify({ url }),
   });
+}
+
+
+export async function getEvents(params?: {
+  page?: number;
+  limit?: number;
+  event_type?: string;
+}): Promise<EventsResponse> {
+  const searchParams = new URLSearchParams();
+
+  if (params?.page) searchParams.set('page', String(params.page));
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  if (params?.event_type) searchParams.set('event_type', params.event_type);
+
+  const query = searchParams.toString();
+  return fetchApi<EventsResponse>(`/events${query ? `?${query}` : ''}`);
 }

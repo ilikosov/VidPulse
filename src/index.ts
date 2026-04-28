@@ -11,6 +11,7 @@ import syncRoutes from './routes/sync.routes';
 import videoRoutes from './routes/video.routes';
 import dictionaryRoutes from './routes/dictionary.routes';
 import parserRoutes from './routes/parser.routes';
+import eventsRoutes from './routes/events.routes';
 import { runScheduler } from './services/sync.service';
 
 const app = express();
@@ -34,6 +35,7 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/dictionary', dictionaryRoutes);
 app.use('/api/parser', parserRoutes);
+app.use('/api/events', eventsRoutes);
 
 // Start server
 app.listen(PORT, () => {

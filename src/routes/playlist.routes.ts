@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db/';
 import { youtubeService } from '../services/youtube.service';
+import { logEvent } from '../services/eventLog.service';
 
 const router = Router();
 
@@ -66,6 +67,16 @@ router.post('/', async (req: Request, res: Response) => {
         last_checked_at: new Date().toISOString(),
       })
       .returning('*');
+
+    await logEvent(
+      'playlist_added',
+      `Added playlist ${playlistDetails.title} (${playlistId})`,
+      {
+        youtube_id: playlistId,
+        title: playlistDetails.title,
+        playlist_id: newPlaylist.id,
+      },
+    );
 
     // Fetch all playlist items
     const videos = await youtubeService.fetchPlaylistItems(playlistId);
