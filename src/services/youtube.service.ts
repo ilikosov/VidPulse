@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import { LRUCache } from 'lru-cache';
 import type { VideoInfo, VideoDetails } from '../models/youtube.types';
+import { logEvent } from './eventLog.service';
 
 const youtube = google.youtube('v3');
 const apiKey = process.env.YOUTUBE_API_KEY;
@@ -19,7 +20,105 @@ function getCacheKey(methodName: string, args: any[]): string {
   return `${methodName}:${JSON.stringify(args)}`;
 }
 
+function sanitizeParams(params: Record<string, unknown>): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(params)) {
+    if (key === 'key') {
+      continue;
+    }
+
+    if (key === 'id' && Array.isArray(value)) {
+      sanitized[key] = { count: value.length };
+      continue;
+    }
+
+    if (Array.isArray(value) && value.length > 10) {
+      sanitized[key] = { count: value.length };
+      continue;
+    }
+
+    sanitized[key] = value;
+  }
+
+  return sanitized;
+}
+
+function getErrorCode(error: any): number | string | undefined {
+  return error?.code ?? error?.status ?? error?.response?.status;
+}
+
+function isQuotaExceededError(error: any): boolean {
+  const status = error?.response?.status ?? error?.code ?? error?.status;
+  const reason =
+    error?.errors?.[0]?.reason ??
+    error?.response?.data?.error?.errors?.[0]?.reason ??
+    error?.response?.data?.error?.status;
+
+  return status === 403 && reason === 'quotaExceeded';
+}
+
 export class YouTubeService {
+  private async logYouTubeCall(
+    method: string,
+    params: Record<string, unknown>,
+    cacheHit: boolean,
+  ): Promise<void> {
+    if (process.env.LOG_YOUTUBE_API_CALLS !== 'true') {
+      return;
+    }
+
+    await logEvent('youtube_api_call', `YouTube API call: ${method}`, {
+      method,
+      params: sanitizeParams(params),
+      cacheHit,
+    });
+  }
+
+  private async logYouTubeError(
+    method: string,
+    params: Record<string, unknown>,
+    error: any,
+  ): Promise<void> {
+    const sanitizedParams = sanitizeParams(params);
+    const description = `YouTube API error in ${method}: ${error?.message || 'Unknown error'}`;
+    const errorCode = getErrorCode(error);
+
+    if (isQuotaExceededError(error)) {
+      await logEvent('youtube_quota_exceeded', description, {
+        method,
+        params: sanitizedParams,
+        errorCode,
+        error,
+      });
+      return;
+    }
+
+    await logEvent('youtube_api_error', description, {
+      method,
+      params: sanitizedParams,
+      errorCode,
+    });
+  }
+
+  private async executeYouTubeCall(
+    method: string,
+    params: Record<string, unknown>,
+    call: () => Promise<any>,
+  ): Promise<any> {
+    try {
+      const response = await call();
+      await this.logYouTubeCall(method, params, false);
+      return response;
+    } catch (error) {
+      await this.logYouTubeError(method, params, error);
+      if (error && typeof error === 'object') {
+        (error as any).__youtubeLogged = true;
+      }
+      throw error;
+    }
+  }
+
   /**
    * Extract channel ID from various YouTube URL formats
    * Supports: @username, channel/UC..., /c/name, direct IDs
@@ -28,6 +127,7 @@ export class YouTubeService {
     const cacheKey = getCacheKey('getChannelIdFromUrl', [url]);
     const cached = cache.get(cacheKey);
     if (cached) {
+      await this.logYouTubeCall('getChannelIdFromUrl', { url }, true);
       return cached;
     }
 
@@ -45,11 +145,14 @@ export class YouTubeService {
         const usernameMatch = url.match(/@([a-zA-Z0-9_.-]+)/);
         if (usernameMatch) {
           const username = usernameMatch[1];
-          const response = await youtube.channels.list({
+          const params = {
             key: apiKey!,
             forUsername: username,
             part: ['id'],
-          });
+          };
+          const response = await this.executeYouTubeCall('channels.list', params, () =>
+            youtube.channels.list(params),
+          );
           channelId = response.data.items?.[0]?.id || null;
         }
       }
@@ -67,14 +170,17 @@ export class YouTubeService {
         const cNameMatch = url.match(/\/c\/([a-zA-Z0-9_.-]+)/);
         if (cNameMatch) {
           const customName = cNameMatch[1];
-          //@ts-ignore
-          const response = await youtube.search.list({
+          const params = {
             key: apiKey!,
             q: customName,
             type: 'channel',
             part: ['snippet'],
             maxResults: 1,
-          });
+          };
+          //@ts-ignore
+          const response = await this.executeYouTubeCall('search.list', params, () =>
+            youtube.search.list(params),
+          );
           //@ts-ignore
           channelId = response.data.items?.[0]?.snippet?.channelId || null;
         }
@@ -85,11 +191,14 @@ export class YouTubeService {
         const userMatch = url.match(/\/user\/([a-zA-Z0-9_.-]+)/);
         if (userMatch) {
           const username = userMatch[1];
-          const response = await youtube.channels.list({
+          const params = {
             key: apiKey!,
             forUsername: username,
             part: ['id'],
-          });
+          };
+          const response = await this.executeYouTubeCall('channels.list', params, () =>
+            youtube.channels.list(params),
+          );
           channelId = response.data.items?.[0]?.id || null;
         }
       }
@@ -101,6 +210,9 @@ export class YouTubeService {
       cache.set(cacheKey, channelId);
       return channelId;
     } catch (error) {
+      if (!(error as any)?.__youtubeLogged) {
+        await this.logYouTubeError('getChannelIdFromUrl', { url }, error);
+      }
       console.error('Error getting channel ID from URL:', error);
       throw error;
     }
@@ -112,15 +224,21 @@ export class YouTubeService {
   async fetchChannelVideos(channelId: string, publishedAfter: string): Promise<VideoInfo[]> {
     const cacheKey = getCacheKey('fetchChannelVideos', [channelId, publishedAfter]);
     const cached = cache.get(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      await this.logYouTubeCall('channels.list+playlistItems.list', { channelId, publishedAfter }, true);
+      return cached;
+    }
 
     try {
       // 1. Получаем ID плейлиста загрузок канала
-      const channelResponse = await youtube.channels.list({
+      const channelParams = {
         key: apiKey!,
         id: [channelId],
         part: ['contentDetails'],
-      });
+      };
+      const channelResponse = await this.executeYouTubeCall('channels.list', channelParams, () =>
+        youtube.channels.list(channelParams),
+      );
       const uploadsPlaylistId =
         channelResponse.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
       if (!uploadsPlaylistId) throw new Error('Uploads playlist not found');
@@ -131,13 +249,16 @@ export class YouTubeService {
       const afterDate = new Date(publishedAfter).getTime();
 
       do {
-        const response = await youtube.playlistItems.list({
+        const playlistParams = {
           key: apiKey!,
           playlistId: uploadsPlaylistId,
           part: ['snippet'],
           maxResults: 50,
           pageToken,
-        });
+        };
+        const response = await this.executeYouTubeCall('playlistItems.list', playlistParams, () =>
+          youtube.playlistItems.list(playlistParams),
+        );
 
         const items = response.data.items || [];
         for (const item of items) {
@@ -166,6 +287,9 @@ export class YouTubeService {
       cache.set(cacheKey, videos);
       return videos;
     } catch (error) {
+      if (!(error as any)?.__youtubeLogged) {
+        await this.logYouTubeError('fetchChannelVideos', { channelId, publishedAfter }, error);
+      }
       console.error('Error fetching channel videos:', error);
       throw error;
     }
@@ -177,6 +301,7 @@ export class YouTubeService {
     const cacheKey = getCacheKey('fetchPlaylistItems', [playlistId]);
     const cached = cache.get(cacheKey);
     if (cached) {
+      await this.logYouTubeCall('playlistItems.list', { playlistId }, true);
       return cached;
     }
 
@@ -185,13 +310,16 @@ export class YouTubeService {
       let pageToken: string | undefined;
 
       do {
-        const response = await youtube.playlistItems.list({
+        const params = {
           key: apiKey!,
           playlistId: playlistId,
           part: ['snippet'],
           maxResults: 50,
           pageToken,
-        });
+        };
+        const response = await this.executeYouTubeCall('playlistItems.list', params, () =>
+          youtube.playlistItems.list(params),
+        );
 
         const items = response.data.items || [];
         for (const item of items) {
@@ -210,6 +338,9 @@ export class YouTubeService {
       cache.set(cacheKey, videos);
       return videos;
     } catch (error) {
+      if (!(error as any)?.__youtubeLogged) {
+        await this.logYouTubeError('fetchPlaylistItems', { playlistId }, error);
+      }
       console.error('Error fetching playlist items:', error);
       throw error;
     }
@@ -243,15 +374,19 @@ export class YouTubeService {
     const cacheKey = getCacheKey('getChannelDetails', [channelId]);
     const cached = cache.get(cacheKey);
     if (cached) {
+      await this.logYouTubeCall('channels.list', { id: [channelId], part: ['snippet'] }, true);
       return cached;
     }
 
     try {
-      const response = await youtube.channels.list({
+      const params = {
         key: apiKey!,
         id: [channelId],
         part: ['snippet'],
-      });
+      };
+      const response = await this.executeYouTubeCall('channels.list', params, () =>
+        youtube.channels.list(params),
+      );
 
       const item = response.data.items?.[0];
       if (!item || !item.snippet) {
@@ -267,6 +402,9 @@ export class YouTubeService {
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
+      if (!(error as any)?.__youtubeLogged) {
+        await this.logYouTubeError('channels.list', { id: [channelId], part: ['snippet'] }, error);
+      }
       console.error('Error getting channel details:', error);
       throw error;
     }
@@ -279,15 +417,19 @@ export class YouTubeService {
     const cacheKey = getCacheKey('getPlaylistDetails', [playlistId]);
     const cached = cache.get(cacheKey);
     if (cached) {
+      await this.logYouTubeCall('playlists.list', { id: [playlistId], part: ['snippet'] }, true);
       return cached;
     }
 
     try {
-      const response = await youtube.playlists.list({
+      const params = {
         key: apiKey!,
         id: [playlistId],
         part: ['snippet'],
-      });
+      };
+      const response = await this.executeYouTubeCall('playlists.list', params, () =>
+        youtube.playlists.list(params),
+      );
 
       const item = response.data.items?.[0];
       if (!item || !item.snippet) {
@@ -301,6 +443,9 @@ export class YouTubeService {
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
+      if (!(error as any)?.__youtubeLogged) {
+        await this.logYouTubeError('playlists.list', { id: [playlistId], part: ['snippet'] }, error);
+      }
       console.error('Error getting playlist details:', error);
       throw error;
     }
@@ -313,16 +458,24 @@ export class YouTubeService {
     const cacheKey = getCacheKey('getVideoDetails', [videoId]);
     const cached = cache.get(cacheKey);
     if (cached) {
+      await this.logYouTubeCall(
+        'videos.list',
+        { id: [videoId], part: ['snippet'], fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))' },
+        true,
+      );
       return cached;
     }
 
     try {
-      const response = await youtube.videos.list({
+      const params = {
         key: apiKey!,
         id: [videoId],
         part: ['snippet'],
         fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))',
-      });
+      };
+      const response = await this.executeYouTubeCall('videos.list', params, () =>
+        youtube.videos.list(params),
+      );
 
       const item = response.data.items?.[0];
       if (!item || !item.snippet) {
@@ -340,6 +493,13 @@ export class YouTubeService {
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
+      if (!(error as any)?.__youtubeLogged) {
+        await this.logYouTubeError(
+          'videos.list',
+          { id: [videoId], part: ['snippet'], fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))' },
+          error,
+        );
+      }
       console.error('Error getting video details:', error);
       throw error;
     }
