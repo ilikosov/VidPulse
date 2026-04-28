@@ -1,4 +1,5 @@
 import {
+  Alert,
   Avatar,
   Button,
   Card,
@@ -10,18 +11,32 @@ import {
   Space,
   Table,
   Typography,
+  Upload,
   message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import type { UploadFile } from 'antd/es/upload/interface';
+import { InboxOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { addChannel, deleteChannel, getChannels, type Channel } from '../api';
+import {
+  addChannel,
+  deleteChannel,
+  getChannels,
+  importChannels,
+  type Channel,
+  type ImportChannelsResponse,
+} from '../api';
 
 function ChannelsPage() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [removeVideos, setRemoveVideos] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<UploadFile | null>(null);
+  const [importSummary, setImportSummary] = useState<ImportChannelsResponse | null>(null);
   const [form] = Form.useForm<{ url: string }>();
 
   const fetchChannels = async () => {
@@ -56,6 +71,32 @@ function ChannelsPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const onImportChannels = async () => {
+    if (!selectedFile?.originFileObj) {
+      message.warning('Please select a .txt file to import');
+      return;
+    }
+
+    try {
+      setImporting(true);
+      const summary = await importChannels(selectedFile.originFileObj);
+      setImportSummary(summary);
+      message.success(`Import completed: added ${summary.added}, skipped ${summary.skipped}`);
+      await fetchChannels();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Failed to import channels');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const onCloseImportModal = async () => {
+    setIsImportModalOpen(false);
+    setSelectedFile(null);
+    setImportSummary(null);
+    await fetchChannels();
   };
 
   const onDeleteChannel = async (id: number) => {
@@ -121,6 +162,7 @@ function ChannelsPage() {
             <Checkbox checked={removeVideos} onChange={(e) => setRemoveVideos(e.target.checked)}>
               Delete associated videos
             </Checkbox>
+            <Button onClick={() => setIsImportModalOpen(true)}>Import from File</Button>
             <Button type="primary" onClick={() => setIsModalOpen(true)}>
               Add Channel
             </Button>
@@ -146,6 +188,65 @@ function ChannelsPage() {
             <Input placeholder="https://www.youtube.com/@channelname" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Import Channels from Text File"
+        open={isImportModalOpen}
+        onCancel={() => {
+          if (!importing) {
+            void onCloseImportModal();
+          }
+        }}
+        onOk={() => void onImportChannels()}
+        okText="Start Import"
+        okButtonProps={{ disabled: importing || !selectedFile, loading: importing }}
+        cancelButtonProps={{ disabled: importing }}
+        destroyOnClose
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Upload.Dragger
+            accept=".txt"
+            maxCount={1}
+            beforeUpload={(file) => {
+              setSelectedFile({
+                uid: file.uid,
+                name: file.name,
+                status: 'done',
+                size: file.size,
+                type: file.type,
+                originFileObj: file,
+              });
+              setImportSummary(null);
+              return false;
+            }}
+            onRemove={() => {
+              setSelectedFile(null);
+              setImportSummary(null);
+            }}
+            fileList={selectedFile ? [selectedFile] : []}
+            disabled={importing}
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined />
+            </p>
+            <p className="ant-upload-text">Click or drag a .txt file to this area</p>
+            <p className="ant-upload-hint">One YouTube channel URL per line. Lines starting with # are ignored.</p>
+          </Upload.Dragger>
+
+          {importSummary && (
+            <Alert
+              type={importSummary.errors.length > 0 ? 'warning' : 'success'}
+              message={`Added ${importSummary.added} channels, skipped ${importSummary.skipped}, processed ${importSummary.total} lines.`}
+              description={
+                importSummary.errors.length > 0
+                  ? importSummary.errors.slice(0, 10).map((error, index) => <div key={`${error}-${index}`}>{error}</div>)
+                  : 'No errors reported.'
+              }
+              showIcon
+            />
+          )}
+        </Space>
       </Modal>
     </Card>
   );

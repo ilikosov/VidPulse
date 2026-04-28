@@ -90,6 +90,12 @@ export interface PlaylistsResponse {
   pagination: Pagination;
 }
 
+export interface ImportChannelsResponse {
+  total: number;
+  added: number;
+  skipped: number;
+  errors: string[];
+}
 
 export interface EventLogEntry {
   id: number;
@@ -105,12 +111,15 @@ export interface EventsResponse {
 }
 
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const isFormData = options?.body instanceof FormData;
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers: isFormData
+      ? options?.headers
+      : {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
   });
 
   if (!response.ok) {
@@ -246,6 +255,16 @@ export async function addChannel(url: string): Promise<Channel> {
 export async function deleteChannel(id: number, removeVideos = false): Promise<void> {
   await fetchApi<unknown>(`/channels/${id}?removeVideos=${removeVideos}`, {
     method: 'DELETE',
+  });
+}
+
+export async function importChannels(file: File): Promise<ImportChannelsResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return fetchApi<ImportChannelsResponse>('/channels/import', {
+    method: 'POST',
+    body: formData,
   });
 }
 
