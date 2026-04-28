@@ -179,6 +179,7 @@ export class YouTubeService {
           };
           //@ts-ignore
           const response = await this.executeYouTubeCall('search.list', params, () =>
+            //@ts-ignore
             youtube.search.list(params),
           );
           //@ts-ignore
@@ -225,7 +226,11 @@ export class YouTubeService {
     const cacheKey = getCacheKey('fetchChannelVideos', [channelId, publishedAfter]);
     const cached = cache.get(cacheKey);
     if (cached) {
-      await this.logYouTubeCall('channels.list+playlistItems.list', { channelId, publishedAfter }, true);
+      await this.logYouTubeCall(
+        'channels.list+playlistItems.list',
+        { channelId, publishedAfter },
+        true,
+      );
       return cached;
     }
 
@@ -444,7 +449,11 @@ export class YouTubeService {
       return result;
     } catch (error) {
       if (!(error as any)?.__youtubeLogged) {
-        await this.logYouTubeError('playlists.list', { id: [playlistId], part: ['snippet'] }, error);
+        await this.logYouTubeError(
+          'playlists.list',
+          { id: [playlistId], part: ['snippet'] },
+          error,
+        );
       }
       console.error('Error getting playlist details:', error);
       throw error;
@@ -460,7 +469,11 @@ export class YouTubeService {
     if (cached) {
       await this.logYouTubeCall(
         'videos.list',
-        { id: [videoId], part: ['snippet'], fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))' },
+        {
+          id: [videoId],
+          part: ['snippet'],
+          fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))',
+        },
         true,
       );
       return cached;
@@ -496,7 +509,11 @@ export class YouTubeService {
       if (!(error as any)?.__youtubeLogged) {
         await this.logYouTubeError(
           'videos.list',
-          { id: [videoId], part: ['snippet'], fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))' },
+          {
+            id: [videoId],
+            part: ['snippet'],
+            fields: 'items(snippet(title,channelId,publishedAt,thumbnails,tags))',
+          },
           error,
         );
       }
