@@ -5,11 +5,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
+import { assignAutoTags } from '../services/tag.service';
 
 const router = Router();
 
 type BatchValidationResult = { valid: true; videoIds: number[] } | { valid: false; error: string };
 type TagValidationResult = { valid: true; tagName: string } | { valid: false; error: string };
+const PROTECTED_TAGS = new Set(['short', 'private']);
 
 function validateVideoIds(body: unknown): BatchValidationResult {
   const videoIds = (body as { videoIds?: unknown })?.videoIds;
@@ -62,6 +64,10 @@ async function getVideoTagsMap(videoIds: number[]) {
     tagsByVideo.set(row.video_id, tags);
   }
   return tagsByVideo;
+}
+
+function isConfirmationRequired(tagName: string): boolean {
+  return PROTECTED_TAGS.has(tagName.trim().toLowerCase());
 }
 
 function extractVideoIdFromUrl(url: string): string | null {
@@ -125,6 +131,16 @@ router.get('/', async (req: Request, res: Response) => {
       query = query.where('videos.status', status);
     }
 
+    if (process.env.HIDE_FLAGGED_VIDEOS === 'true') {
+      query = query.whereNotIn('videos.id', function () {
+        this.select('v2.id')
+          .from('videos as v2')
+          .join('video_tags as vt', 'vt.video_id', 'v2.id')
+          .join('tags as t', 't.id', 'vt.tag_id')
+          .whereIn('t.name', ['short', 'private']);
+      });
+    }
+
     query = query.orderBy('videos.created_at', 'desc');
 
     const videos = await query.limit(limit).offset(offset);
@@ -138,6 +154,15 @@ router.get('/', async (req: Request, res: Response) => {
     const totalQuery = knex('videos');
     if (status) {
       totalQuery.where('status', status);
+    }
+    if (process.env.HIDE_FLAGGED_VIDEOS === 'true') {
+      totalQuery.whereNotIn('videos.id', function () {
+        this.select('v2.id')
+          .from('videos as v2')
+          .join('video_tags as vt', 'vt.video_id', 'v2.id')
+          .join('tags as t', 't.id', 'vt.tag_id')
+          .whereIn('t.name', ['short', 'private']);
+      });
     }
     const total = await totalQuery.count('* as count').first();
     const totalCount = parseInt(total?.count as string) || 0;
@@ -298,6 +323,13 @@ router.post('/batch/tags', async (req: Request, res: Response) => {
   if (!tagValidation.valid) {
     return res.status(400).json({ error: tagValidation.error });
   }
+  const { confirm } = req.body as { confirm?: boolean };
+  if (isConfirmationRequired(tagValidation.tagName) && confirm !== true) {
+    return res.status(400).json({
+      error: `Adding "${tagValidation.tagName}" tag requires confirmation`,
+      requiresConfirmation: true,
+    });
+  }
 
   try {
     const tagId = await findOrCreateTagId(tagValidation.tagName);
@@ -435,6 +467,7 @@ router.post('/add', async (req: Request, res: Response) => {
     if (metadata.camera_type !== undefined) insertData.camera_type = metadata.camera_type || null;
 
     const [createdVideo] = await knex('videos').insert(insertData).returning('*');
+    await assignAutoTags(createdVideo.id, details.durationSeconds, details.privacyStatus);
 
     await logEvent('video_added_manual', `Manual video added: ${createdVideo.original_title}`, {
       video_id: createdVideo.id,
@@ -530,6 +563,13 @@ router.post('/:id/tags', async (req: Request, res: Response) => {
   const tagValidation = validateTagName((req.body as { name?: unknown }).name);
   if (!tagValidation.valid) {
     return res.status(400).json({ error: tagValidation.error.replace('tagName', 'name') });
+  }
+  const { confirm } = req.body as { confirm?: boolean };
+  if (isConfirmationRequired(tagValidation.tagName) && confirm !== true) {
+    return res.status(400).json({
+      error: `Adding "${tagValidation.tagName}" tag requires confirmation`,
+      requiresConfirmation: true,
+    });
   }
 
   try {

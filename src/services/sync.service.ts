@@ -2,6 +2,7 @@ import knex from '../db';
 import { youtubeService } from './youtube.service';
 import { parseTitle } from './parser/parser.service';
 import { logEvent } from './eventLog.service';
+import { assignAutoTags } from './tag.service';
 
 const SYNC_INTERVAL_HOURS = 1;
 
@@ -90,33 +91,37 @@ export async function syncChannels(): Promise<void> {
 
       // Insert new videos in a transaction
       if (videos.length > 0) {
-        await knex.transaction(async (trx) => {
-          for (const video of videos) {
-            const existingVideo = await trx('videos').where('youtube_id', video.videoId).first();
+        for (const video of videos) {
+          const existingVideo = await knex('videos').where('youtube_id', video.videoId).first();
 
-            if (!existingVideo) {
-              const details = await youtubeService.getVideoDetails(video.videoId);
-              // Parse metadata from title
-              const { metadata, status } = await parseVideoMetadata(
-                details.title || video.title,
-                details.publishedAt || video.publishedAt,
-                details.tags,
-              );
+          if (!existingVideo) {
+            const details = await youtubeService.getVideoDetails(video.videoId);
+            // Parse metadata from title
+            const { metadata, status } = await parseVideoMetadata(
+              details.title || video.title,
+              details.publishedAt || video.publishedAt,
+              details.tags,
+            );
 
-              await trx('videos').insert({
+            const insertResult = await knex('videos')
+              .insert({
                 youtube_id: video.videoId,
                 channel_id: channel.id,
                 original_title: details.title || video.title,
                 published_at: details.publishedAt || video.publishedAt,
+                duration_seconds: details.durationSeconds ?? null,
                 status: status,
                 ...metadata,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-              });
-              newVideosTotal += 1;
-            }
+              })
+              .returning('id');
+            const inserted = Array.isArray(insertResult) ? insertResult[0] : insertResult;
+            const newVideoId = typeof inserted === 'object' ? inserted.id : inserted;
+            await assignAutoTags(newVideoId, details.durationSeconds, details.privacyStatus);
+            newVideosTotal += 1;
           }
-        });
+        }
         console.log(`Inserted ${videos.length} new videos for channel ${channel.youtube_id}`);
       } else {
         console.log(`No new videos for channel ${channel.youtube_id}`);
@@ -168,34 +173,38 @@ export async function syncPlaylists(): Promise<void> {
       const newVideos = videos.filter((v) => !existingVideoIds.has(v.videoId));
 
       if (newVideos.length > 0) {
-        await knex.transaction(async (trx) => {
-          for (const video of newVideos) {
-            // Also check if video exists in DB at all (might be from another playlist/channel)
-            const anyExistingVideo = await trx('videos').where('youtube_id', video.videoId).first();
+        for (const video of newVideos) {
+          // Also check if video exists in DB at all (might be from another playlist/channel)
+          const anyExistingVideo = await knex('videos').where('youtube_id', video.videoId).first();
 
-            if (!anyExistingVideo) {
-              const details = await youtubeService.getVideoDetails(video.videoId);
-              // Parse metadata from title
-              const { metadata, status } = await parseVideoMetadata(
-                details.title || video.title,
-                details.publishedAt || video.publishedAt,
-                details.tags,
-              );
+          if (!anyExistingVideo) {
+            const details = await youtubeService.getVideoDetails(video.videoId);
+            // Parse metadata from title
+            const { metadata, status } = await parseVideoMetadata(
+              details.title || video.title,
+              details.publishedAt || video.publishedAt,
+              details.tags,
+            );
 
-              await trx('videos').insert({
+            const insertResult = await knex('videos')
+              .insert({
                 youtube_id: video.videoId,
                 playlist_id: playlist.id,
                 original_title: details.title || video.title,
                 published_at: details.publishedAt || video.publishedAt,
+                duration_seconds: details.durationSeconds ?? null,
                 status: status,
                 ...metadata,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-              });
-              newVideosTotal += 1;
-            }
+              })
+              .returning('id');
+            const inserted = Array.isArray(insertResult) ? insertResult[0] : insertResult;
+            const newVideoId = typeof inserted === 'object' ? inserted.id : inserted;
+            await assignAutoTags(newVideoId, details.durationSeconds, details.privacyStatus);
+            newVideosTotal += 1;
           }
-        });
+        }
         console.log(`Inserted ${newVideos.length} new videos for playlist ${playlist.youtube_id}`);
       } else {
         console.log(`No new videos for playlist ${playlist.youtube_id}`);

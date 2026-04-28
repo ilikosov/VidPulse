@@ -56,6 +56,8 @@ function VideoTable() {
   const [batchTagName, setBatchTagName] = useState('');
   const [allTags, setAllTags] = useState<string[]>([]);
   const navigate = useNavigate();
+  const requiresManualTagConfirmation = (tagName: string) =>
+    ['short', 'private'].includes(tagName.trim().toLowerCase());
 
   useEffect(() => {
     void fetchVideos(1, statusFilter);
@@ -182,11 +184,24 @@ function VideoTable() {
       return;
     }
 
+    Modal.confirm({
+      title: `Add "${tagName}" tag to ${selectedRowKeys.length} videos?`,
+      content: 'This tag affects filtering and workflow. Do you want to continue?',
+      okText: 'Yes, add tag',
+      cancelText: 'Cancel',
+      onOk: () => handleBatchTagAdd(tagName, true),
+    });
+  };
+
+  const handleBatchTagAdd = async (tagName: string, confirm: boolean) => {
+    if (selectedRowKeys.length === 0) {
+      return;
+    }
+
     setBatchLoading(true);
     try {
-      const result = await batchAddTags(selectedRowKeys, tagName);
-      const label = tagName === 'short' ? 'Mark as Shorts' : 'Mark as Private';
-      message.success(`${label}: ${result.succeeded}/${result.processed} succeeded`);
+      const result = await batchAddTags(selectedRowKeys, tagName, confirm);
+      message.success(`Add Tag "${tagName}": ${result.succeeded}/${result.processed} succeeded`);
       await fetchVideos(pagination.page, statusFilter);
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Batch tag operation failed');
@@ -208,9 +223,24 @@ function VideoTable() {
 
     setBatchLoading(true);
     try {
+      if (batchTagModal.mode === 'add' && requiresManualTagConfirmation(batchTagName)) {
+        setBatchLoading(false);
+        Modal.confirm({
+          title: `Add "${batchTagName}" tag to ${selectedRowKeys.length} videos?`,
+          content: 'This tag affects filtering and workflow. Do you want to continue?',
+          okText: 'Yes, add tag',
+          cancelText: 'Cancel',
+          onOk: async () => {
+            await handleBatchTagAdd(batchTagName, true);
+            setBatchTagModal((prev) => ({ ...prev, open: false }));
+            setBatchTagName('');
+          },
+        });
+        return;
+      }
       const result =
         batchTagModal.mode === 'add'
-          ? await batchAddTags(selectedRowKeys, batchTagName)
+          ? await batchAddTags(selectedRowKeys, batchTagName, false)
           : await batchRemoveTags(selectedRowKeys, batchTagName);
       message.success(
         `${batchTagModal.mode === 'add' ? 'Add Tag' : 'Remove Tag'}: ${result.succeeded}/${result.processed} succeeded`,
