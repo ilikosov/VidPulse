@@ -1,6 +1,7 @@
 import knex from '../db';
 import { youtubeService } from './youtube.service';
 import { parseTitle } from './parser/parser.service';
+import { logEvent } from './eventLog.service';
 
 const SYNC_INTERVAL_HOURS = 1;
 
@@ -60,6 +61,8 @@ export async function syncChannels(): Promise<void> {
   console.log('Starting channel sync...');
 
   const channels = await knex('channels').select('*');
+  let newVideosTotal = 0;
+  let channelsProcessed = 0;
 
   for (const channel of channels) {
     try {
@@ -110,6 +113,7 @@ export async function syncChannels(): Promise<void> {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               });
+              newVideosTotal += 1;
             }
           }
         });
@@ -120,6 +124,7 @@ export async function syncChannels(): Promise<void> {
 
       // Update last_checked_at
       await knex('channels').where('id', channel.id).update({ last_checked_at: now.toISOString() });
+      channelsProcessed += 1;
     } catch (error) {
       console.error(`Error syncing channel ${channel.youtube_id}:`, error);
       // Continue with next channel even if this one fails
@@ -127,6 +132,13 @@ export async function syncChannels(): Promise<void> {
   }
 
   console.log('Channel sync completed.');
+
+  await logEvent('sync_completed', `Channel sync completed. Processed ${channelsProcessed} channel(s), found ${newVideosTotal} new video(s).`, {
+    syncType: 'channels',
+    channelsProcessed,
+    newVideosTotal,
+    playlistsProcessed: 0,
+  });
 }
 
 /**
@@ -136,6 +148,8 @@ export async function syncPlaylists(): Promise<void> {
   console.log('Starting playlist sync...');
 
   const playlists = await knex('playlists').select('*');
+  let newVideosTotal = 0;
+  let playlistsProcessed = 0;
 
   for (const playlist of playlists) {
     try {
@@ -178,6 +192,7 @@ export async function syncPlaylists(): Promise<void> {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               });
+              newVideosTotal += 1;
             }
           }
         });
@@ -190,6 +205,7 @@ export async function syncPlaylists(): Promise<void> {
       await knex('playlists')
         .where('id', playlist.id)
         .update({ last_checked_at: new Date().toISOString() });
+      playlistsProcessed += 1;
     } catch (error) {
       console.error(`Error syncing playlist ${playlist.youtube_id}:`, error);
       // Continue with next playlist even if this one fails
@@ -197,6 +213,13 @@ export async function syncPlaylists(): Promise<void> {
   }
 
   console.log('Playlist sync completed.');
+
+  await logEvent('sync_completed', `Playlist sync completed. Processed ${playlistsProcessed} playlist(s), found ${newVideosTotal} new video(s).`, {
+    syncType: 'playlists',
+    channelsProcessed: 0,
+    newVideosTotal,
+    playlistsProcessed,
+  });
 }
 
 /**

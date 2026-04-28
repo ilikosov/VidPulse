@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db/';
 import { youtubeService } from '../services/youtube.service';
+import { logEvent } from '../services/eventLog.service';
 
 const router = Router();
 
@@ -75,6 +76,16 @@ router.post('/', async (req: Request, res: Response) => {
         last_checked_at: new Date().toISOString(),
       })
       .returning('*');
+
+    await logEvent(
+      'channel_added',
+      `Added channel ${channelDetails.title} (${channelId})`,
+      {
+        youtube_id: channelId,
+        title: channelDetails.title,
+        channel_id: newChannel.id,
+      },
+    );
 
     // Trigger initial sync - fetch videos from last 30 days
     const thirtyDaysAgo = new Date();

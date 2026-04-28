@@ -4,6 +4,7 @@ import { parseTitle } from '../services/parser/parser.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import { youtubeService } from '../services/youtube.service';
+import { logEvent } from '../services/eventLog.service';
 
 const router = Router();
 
@@ -150,6 +151,12 @@ router.post('/batch/confirm-download', async (req: Request, res: Response) => {
         });
       });
 
+      await logEvent('video_download_confirmed', `Download confirmed for video ${video.youtube_id}`, {
+        video_id: videoId,
+        youtube_id: video.youtube_id,
+        file_path: filePath,
+      });
+
       succeeded += 1;
     } catch (error) {
       console.error(`Error confirming download for video ${videoId}:`, error);
@@ -211,6 +218,12 @@ router.post('/batch/complete', async (req: Request, res: Response) => {
           old_status: video.status,
           new_status: 'completed',
         });
+      });
+
+      await logEvent('video_completed', `Video marked completed: ${video.youtube_id}`, {
+        video_id: videoId,
+        youtube_id: video.youtube_id,
+        old_status: video.status,
       });
 
       succeeded += 1;
@@ -275,6 +288,12 @@ router.post('/add', async (req: Request, res: Response) => {
     if (metadata.camera_type !== undefined) insertData.camera_type = metadata.camera_type || null;
 
     const [createdVideo] = await knex('videos').insert(insertData).returning('*');
+
+    await logEvent('video_added_manual', `Manual video added: ${createdVideo.original_title}`, {
+      video_id: createdVideo.id,
+      youtube_id: createdVideo.youtube_id,
+      status: createdVideo.status,
+    });
 
     return res.status(201).json(createdVideo);
   } catch (error: any) {
@@ -438,6 +457,17 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
       // Fetch and return the updated video
       const updated = await trx('videos').where('id', id).first();
       return updated;
+    });
+
+    const changedFields = Object.keys(updateData).filter(
+      (key) => key !== 'updated_at' && key !== 'status',
+    );
+
+    await logEvent('metadata_updated', `Metadata updated for video ${video.youtube_id}`, {
+      video_id: Number(id),
+      youtube_id: video.youtube_id,
+      changedFields,
+      statusChanged: updateData.status ? { from: video.status, to: updateData.status } : null,
     });
 
     res.json(updatedVideo);
