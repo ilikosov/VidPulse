@@ -201,6 +201,19 @@ export async function reparseBatch(videoIds: number[]): Promise<{ updated: numbe
   });
 }
 
+export async function llmParseVideo(videoId: number | string): Promise<{ updated: number }> {
+  return fetchApi<{ updated: number }>(`/parser/llm-parse/${videoId}`, {
+    method: 'POST',
+  });
+}
+
+export async function llmParseBatch(videoIds: number[]): Promise<{ updated: number }> {
+  return fetchApi<{ updated: number }>('/parser/llm-parse-batch', {
+    method: 'POST',
+    body: JSON.stringify({ videoIds }),
+  });
+}
+
 export async function getVideoTags(videoId: number | string): Promise<VideoTag[]> {
   return fetchApi<VideoTag[]>(`/videos/${videoId}/tags`);
 }
