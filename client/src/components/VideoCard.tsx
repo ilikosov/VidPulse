@@ -20,7 +20,7 @@ import {
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { addTagToVideo, getVideo, removeTagFromVideo, updateMetadata, type Video } from '../api';
+import { addTagToVideo, getVideo, llmParseVideo, removeTagFromVideo, updateMetadata, type Video } from '../api';
 import AutocompleteInput from './AutocompleteInput';
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
@@ -71,6 +71,7 @@ function VideoCard() {
   const [newTagName, setNewTagName] = useState('');
   const [tagLoading, setTagLoading] = useState(false);
   const [presetTagLoading, setPresetTagLoading] = useState<'short' | 'private' | null>(null);
+  const [llmParsing, setLlmParsing] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const requiresManualTagConfirmation = (tagName: string) =>
     ['short', 'private'].includes(tagName.trim().toLowerCase());
@@ -145,6 +146,21 @@ function VideoCard() {
     });
   };
 
+
+
+  const handleLlmParse = async () => {
+    if (!video) return;
+    setLlmParsing(true);
+    try {
+      await llmParseVideo(video.id);
+      message.success('LLM parse completed');
+      await fetchVideo();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Failed LLM parse');
+    } finally {
+      setLlmParsing(false);
+    }
+  };
   const handleRemoveTag = async (tagId: number) => {
     if (!video) return;
     setTagLoading(true);
@@ -364,7 +380,7 @@ function VideoCard() {
 
             <Divider orientation="left">Actions</Divider>
             <Space wrap>
-              <Button disabled>Confirm Download</Button>
+              <Button onClick={() => void handleLlmParse()} loading={llmParsing}>LLM Parse Metadata</Button>
               <Button disabled>Rename File</Button>
               <Button disabled>Mark Complete</Button>
             </Space>

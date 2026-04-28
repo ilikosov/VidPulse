@@ -10,6 +10,7 @@ import {
   batchRemoveTags,
   getVideos,
   reparseBatch,
+  llmParseBatch,
   type Pagination,
   type Video,
 } from '../api';
@@ -160,7 +161,7 @@ function VideoTable() {
     },
   ];
 
-  const handleBatchAction = async (action: 'confirm-download' | 'complete' | 'reparse') => {
+  const handleBatchAction = async (action: 'confirm-download' | 'complete' | 'reparse' | 'llm-reparse') => {
     if (selectedRowKeys.length === 0) {
       return;
     }
@@ -173,9 +174,12 @@ function VideoTable() {
       } else if (action === 'complete') {
         const result = await batchComplete(selectedRowKeys);
         message.success(`Complete: ${result.succeeded}/${result.processed} succeeded`);
-      } else {
+      } else if (action === 'reparse') {
         const result = await reparseBatch(selectedRowKeys);
         message.success(`Re-parse completed for ${result.updated} videos`);
+      } else {
+        const result = await llmParseBatch(selectedRowKeys);
+        message.success(`LLM parse completed for ${result.updated} videos`);
       }
 
       await fetchVideos(pagination.page, statusFilter);
@@ -311,6 +315,13 @@ function VideoTable() {
             disabled={batchLoading}
           >
             Re-parse Selected
+          </Button>
+          <Button
+            onClick={() => void handleBatchAction('llm-reparse')}
+            loading={batchLoading}
+            disabled={batchLoading}
+          >
+            LLM Parse Selected
           </Button>
           <Tooltip title="Add the 'short' tag to all selected videos">
             <Button
