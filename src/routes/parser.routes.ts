@@ -18,11 +18,11 @@ function validateVideoIds(body: unknown): number[] | null {
   return videoIds;
 }
 
-
-
 function normalizePerfDate(perfDate?: string): string | null {
   if (!perfDate || !/^\d{6}$/.test(perfDate)) return null;
-  const date = new Date(`20${perfDate.slice(0, 2)}-${perfDate.slice(2, 4)}-${perfDate.slice(4, 6)}`);
+  const date = new Date(
+    `20${perfDate.slice(0, 2)}-${perfDate.slice(2, 4)}-${perfDate.slice(4, 6)}`,
+  );
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
@@ -40,20 +40,24 @@ router.post('/llm-parse/:id', async (req: Request, res: Response) => {
 
     const metadata = await parseTitleWithLLM(video.original_title);
 
-    await knex('videos').where('id', id).update({
-      perf_date: normalizePerfDate(metadata.perf_date),
-      group_name: metadata.group_name || null,
-      artist_name: metadata.artist_name || null,
-      song_title: metadata.song_title || null,
-      event: metadata.event || null,
-      camera_type: metadata.camera_type || null,
-      updated_at: new Date().toISOString(),
-    });
+    await knex('videos')
+      .where('id', id)
+      .update({
+        perf_date: normalizePerfDate(metadata.perf_date),
+        group_name: metadata.group_name || null,
+        artist_name: metadata.artist_name || null,
+        song_title: metadata.song_title || null,
+        event: metadata.event || null,
+        camera_type: metadata.camera_type || null,
+        updated_at: new Date().toISOString(),
+      });
 
     return res.json({ updated: 1, metadata });
   } catch (error) {
     console.error('Error in LLM parse:', error);
-    return res.status(500).json({ error: error instanceof Error ? error.message : 'Failed LLM parse' });
+    return res
+      .status(500)
+      .json({ error: error instanceof Error ? error.message : 'Failed LLM parse' });
   }
 });
 
@@ -61,7 +65,9 @@ router.post('/llm-parse-batch', async (req: Request, res: Response) => {
   try {
     const videoIds = validateVideoIds(req.body);
     if (!videoIds) {
-      return res.status(400).json({ error: 'videoIds must be a non-empty array of positive integers' });
+      return res
+        .status(400)
+        .json({ error: 'videoIds must be a non-empty array of positive integers' });
     }
 
     const videos = await knex('videos').select('id', 'original_title').whereIn('id', videoIds);
@@ -70,15 +76,17 @@ router.post('/llm-parse-batch', async (req: Request, res: Response) => {
     for (const video of videos) {
       try {
         const metadata = await parseTitleWithLLM(video.original_title);
-        await knex('videos').where('id', video.id).update({
-          perf_date: normalizePerfDate(metadata.perf_date),
-          group_name: metadata.group_name || null,
-          artist_name: metadata.artist_name || null,
-          song_title: metadata.song_title || null,
-          event: metadata.event || null,
-          camera_type: metadata.camera_type || null,
-          updated_at: new Date().toISOString(),
-        });
+        await knex('videos')
+          .where('id', video.id)
+          .update({
+            perf_date: normalizePerfDate(metadata.perf_date),
+            group_name: metadata.group_name || null,
+            artist_name: metadata.artist_name || null,
+            song_title: metadata.song_title || null,
+            event: metadata.event || null,
+            camera_type: metadata.camera_type || null,
+            updated_at: new Date().toISOString(),
+          });
         updated += 1;
       } catch (error) {
         console.error(`Error LLM parsing video ${video.id}:`, error);

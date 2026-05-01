@@ -29,3 +29,7 @@ check_scripts/*
 src/db/dev.sqlite3
 src/db/dev.sqlite3-shm
 src/db/dev.sqlite3-wal
+
+test-results
+dev.test.sqlite3-shm
+dev.test.sqlite3-wal

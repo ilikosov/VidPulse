@@ -1,10 +1,14 @@
+import { L } from 'vitest/dist/chunks/reporters.nr4dxCkA.js';
 import type { ParsedMetadata } from './parser/parser.types';
 
 const SYSTEM_PROMPT =
-  'You are a K-pop metadata extractor. Given a video title, extract performance date (YYMMDD), group name, artist name, song title, event (with @ prefix), and camera type. Return ONLY a JSON object with these fields (omit any that are missing). Use null for missing values.';
+  'You are a K-pop metadata extractor. Given a video title, extract perf_date (YYMMDD), group_name, artist_name, song_title, event (with @ prefix), and camera_type. Return ONLY a JSON object with these fields. Use null for missing values.';
 
 function cleanParsedMetadata(raw: unknown): Partial<ParsedMetadata> {
-  if (!raw || typeof raw !== 'object') return {};
+  if (!raw || typeof raw !== 'object') {
+    console.error('Неверный формат входных данных', typeof raw);
+    return {};
+  }
   const source = raw as Record<string, unknown>;
   const result: Partial<ParsedMetadata> = {};
 
@@ -24,18 +28,21 @@ function cleanParsedMetadata(raw: unknown): Partial<ParsedMetadata> {
 
   return result;
 }
+const t = '';
 
-function safeJsonParse(text: string): unknown {
+function safeJsonParse(input: string): Record<string, any> | null {
+  // Ищем блок ```json ... ``` (флаг s для включения точки, позволяющей находить переносы строк)
+  const match = input.match(/```json\s*([\s\S]*?)\s*```/);
+  if (!match) {
+    console.error('Не найден блок ```json ... ```');
+    return null;
+  }
+  const jsonString = match[1];
   try {
-    return JSON.parse(text);
-  } catch {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    try {
-      return JSON.parse(jsonMatch[0]);
-    } catch {
-      return null;
-    }
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error('Ошибка парсинга JSON:', error);
+    return null;
   }
 }
 
@@ -67,7 +74,7 @@ export async function parseTitleWithLLM(title: string): Promise<Partial<ParsedMe
           { role: 'user', content: title },
         ],
         temperature: 0,
-        max_tokens: 200,
+        max_tokens: 500,
       }),
       signal: controller.signal,
     });
@@ -82,9 +89,15 @@ export async function parseTitleWithLLM(title: string): Promise<Partial<ParsedMe
     };
 
     const content = payload.choices?.[0]?.message?.content;
-    if (!content) return {};
 
+    if (!content) return {};
+    console.log(content, safeJsonParse(content));
     return cleanParsedMetadata(safeJsonParse(content));
+  } catch (err) {
+    if (err instanceof Error) {
+      throw new Error(`LM Studio request failed: ${err.message}`);
+    }
+    throw err;
   } finally {
     clearTimeout(timeout);
   }
