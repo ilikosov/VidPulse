@@ -7,12 +7,12 @@ dotenv.config();
 
 import channelRoutes from './routes/channel.routes';
 import playlistRoutes from './routes/playlist.routes';
-import syncRoutes from './routes/sync.routes';
+import { createSyncRouter } from './routes/sync.routes';
 import videoRoutes from './routes/video.routes';
 import dictionaryRoutes from './routes/dictionary.routes';
 import parserRoutes from './routes/parser.routes';
 import eventsRoutes from './routes/events.routes';
-import { runScheduler } from './services/sync.service';
+import { createAppContainer } from './compositionRoot';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,7 +31,8 @@ app.get('/api/health', (req: Request, res: Response) => {
 // Mount routes
 app.use('/api/channels', channelRoutes);
 app.use('/api/playlists', playlistRoutes);
-app.use('/api/sync', syncRoutes);
+const container = createAppContainer();
+app.use('/api/sync', createSyncRouter(container.syncService));
 app.use('/api/videos', videoRoutes);
 app.use('/api/dictionary', dictionaryRoutes);
 app.use('/api/parser', parserRoutes);
@@ -41,7 +42,7 @@ app.use('/api/events', eventsRoutes);
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   // Start the sync scheduler
-  runScheduler();
+  container.syncService.runScheduler();
 });
 
 export default app;

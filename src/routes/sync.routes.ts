@@ -1,18 +1,19 @@
 import { Router, Request, Response } from 'express';
-import { syncChannels, syncPlaylists } from '../services/sync.service';
+import type { ISyncService } from '../interfaces/services';
+import { createAppContainer } from '../compositionRoot';
 
-const router = Router();
+export function createSyncRouter(syncService: ISyncService): Router {
+  const router = Router();
+  router.post('/trigger', async (_req: Request, res: Response) => {
+    try {
+      await syncService.syncAll();
+      res.json({ message: 'Sync completed successfully' });
+    } catch (error) {
+      console.error('Error during sync:', error);
+      res.status(500).json({ error: 'Sync failed' });
+    }
+  });
+  return router;
+}
 
-// POST /api/sync/trigger - Manually trigger sync for all channels and playlists
-router.post('/trigger', async (req: Request, res: Response) => {
-  try {
-    await syncChannels();
-    await syncPlaylists();
-    res.json({ message: 'Sync completed successfully' });
-  } catch (error) {
-    console.error('Error during sync:', error);
-    res.status(500).json({ error: 'Sync failed' });
-  }
-});
-
-export default router;
+export default createSyncRouter(createAppContainer().syncService);
