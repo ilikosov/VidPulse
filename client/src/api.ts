@@ -6,6 +6,7 @@ export interface Video {
   channel_id: string | null;
   playlist_id: string | null;
   original_title: string;
+  description?: string | null;
   perf_date: string | null;
   group_name: string | null;
   artist_name: string | null;
@@ -21,6 +22,15 @@ export interface Video {
   published_at?: string;
   duration_seconds?: number | null;
   tags?: VideoTag[];
+}
+
+export interface SuggestedMetadata {
+  group_name?: string;
+  artist_name?: string;
+  song_title?: string;
+  event?: string;
+  perf_date?: string;
+  camera_type?: string;
 }
 
 export interface VideoTag {
@@ -170,6 +180,12 @@ export async function updateMetadata(
   return fetchApi<Video>(`/videos/${id}/metadata`, {
     method: 'PUT',
     body: JSON.stringify(data),
+  });
+}
+
+export async function suggestMetadata(videoId: number | string): Promise<SuggestedMetadata> {
+  return fetchApi<SuggestedMetadata>(`/videos/${videoId}/suggest`, {
+    method: 'POST',
   });
 }
 

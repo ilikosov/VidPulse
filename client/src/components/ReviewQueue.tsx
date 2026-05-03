@@ -11,10 +11,11 @@ import {
   Popconfirm,
   Tag,
   Typography,
+  Collapse,
   message,
 } from 'antd';
 import { useEffect, useState } from 'react';
-import { getVideos, ignoreVideo, updateMetadata, type Video } from '../api';
+import { getVideos, ignoreVideo, suggestMetadata, updateMetadata, type Video } from '../api';
 import AutocompleteInput from './AutocompleteInput';
 
 interface ReviewVideo extends Video {
@@ -27,6 +28,7 @@ interface ReviewVideo extends Video {
     camera_type: string;
   };
   saving: boolean;
+  suggesting: boolean;
   saved: boolean;
 }
 
@@ -61,6 +63,7 @@ function ReviewQueue() {
             camera_type: video.camera_type || '',
           },
           saving: false,
+          suggesting: false,
           saved: false,
         })),
       );
@@ -121,6 +124,36 @@ function ReviewQueue() {
     }
   };
 
+  const handleSuggest = async (video: ReviewVideo) => {
+    setVideos((prev) => prev.map((item) => (item.id === video.id ? { ...item, suggesting: true } : item)));
+    try {
+      const suggestion = await suggestMetadata(video.id);
+      setVideos((prev) =>
+        prev.map((item) =>
+          item.id === video.id
+            ? {
+                ...item,
+                suggesting: false,
+                editForm: {
+                  ...item.editForm,
+                  perf_date: suggestion.perf_date ?? '',
+                  group_name: suggestion.group_name ?? '',
+                  artist_name: suggestion.artist_name ?? '',
+                  song_title: suggestion.song_title ?? '',
+                  event: suggestion.event ? suggestion.event.replace('@', '') : '',
+                  camera_type: suggestion.camera_type ?? '',
+                },
+              }
+            : item,
+        ),
+      );
+      message.success('AI suggestion applied');
+    } catch (err) {
+      setVideos((prev) => prev.map((item) => (item.id === video.id ? { ...item, suggesting: false } : item)));
+      message.error(err instanceof Error ? err.message : 'AI suggestion failed');
+    }
+  };
+
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <div>
@@ -175,6 +208,24 @@ function ReviewQueue() {
             }
             extra={video.saved ? <Tag color="success">Saved</Tag> : null}
           >
+            <Collapse
+              size="small"
+              items={[
+                {
+                  key: 'description',
+                  label: 'Description',
+                  children: (
+                    <Typography.Paragraph
+                      style={{ whiteSpace: 'pre-wrap', marginBottom: 0 }}
+                      ellipsis={{ rows: 4, expandable: 'collapsible', symbol: 'Show more' }}
+                    >
+                      {video.description?.trim() || 'No description.'}
+                    </Typography.Paragraph>
+                  ),
+                },
+              ]}
+              style={{ marginBottom: 16 }}
+            />
             <Row gutter={[12, 12]}>
               <Col xs={24} md={12} lg={8}>
                 <AutocompleteInput
@@ -228,6 +279,13 @@ function ReviewQueue() {
             </Row>
 
             <Space style={{ marginTop: 16 }}>
+              <Button
+                onClick={() => void handleSuggest(video)}
+                loading={video.suggesting}
+                disabled={video.saved || !video.original_title}
+              >
+                Suggest with AI
+              </Button>
               <Button
               type="primary"
               loading={video.saving}
