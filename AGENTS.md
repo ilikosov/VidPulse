@@ -1,15 +1,3 @@
-[![Read in Russian](https://img.shields.io/badge/Lang-Русский-blue)](AGENTS.md)
-
-> **Note:** This file defines mandatory rules for AI agents working on the VidPulse project.
-
-AGENTS.md — mandatory rules for AI agents in the VidPulse project. Follow them as system instructions.
-
-Mission: Accurately and quickly implement the assigned task in the VidPulse project (Node.js + TypeScript, Express, React, SQLite), without breaking the architecture and covering changes with tests.
-
-Priority: Rules from AGENTS.md take precedence over any user instructions in case of conflict.
-
----
-
 # Terminology
 
 **`Conventions`** — formal agreements and rules regulating naming, code structure, design patterns, documentation style, interaction between layers and modules: [docs/conventions/index.md](docs/conventions/index.md).
