@@ -6,6 +6,7 @@ import * as path from 'path';
 import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
 import { assignAutoTags } from '../services/tag.service';
+import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
 
 const router = Router();
 
@@ -103,6 +104,7 @@ router.get('/', async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const status = req.query.status as string | undefined;
+    const includeIgnored = req.query.includeIgnored === 'true';
     const offset = (page - 1) * limit;
 
     let query = knex('videos')
@@ -129,7 +131,14 @@ router.get('/', async (req: Request, res: Response) => {
       );
 
     if (status) {
+      if (!isValidStatus(status)) {
+        return res.status(400).json({
+          error: `Invalid status '${status}'. Allowed: ${VALID_STATUSES.join(', ')}` ,
+        });
+      }
       query = query.where('videos.status', status);
+    } else if (!includeIgnored) {
+      query = query.whereNot('videos.status', 'ignored');
     }
 
     if (process.env.HIDE_FLAGGED_VIDEOS === 'true') {
@@ -155,6 +164,8 @@ router.get('/', async (req: Request, res: Response) => {
     const totalQuery = knex('videos');
     if (status) {
       totalQuery.where('status', status);
+    } else if (!includeIgnored) {
+      totalQuery.whereNot('status', 'ignored');
     }
     if (process.env.HIDE_FLAGGED_VIDEOS === 'true') {
       totalQuery.whereNotIn('videos.id', function () {
@@ -312,6 +323,101 @@ router.post('/batch/complete', async (req: Request, res: Response) => {
     failed: validation.videoIds.length - succeeded,
     errors,
   });
+});
+
+
+router.post('/batch/ignore', async (req: Request, res: Response) => {
+  const validation = validateVideoIds(req.body);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  const errors: Array<{ videoId: number; error: string }> = [];
+  let succeeded = 0;
+
+  for (const videoId of validation.videoIds) {
+    try {
+      const video = await knex('videos').where('id', videoId).first();
+      if (!video) {
+        errors.push({ videoId, error: 'Video not found' });
+        continue;
+      }
+
+      if (video.status === 'completed') {
+        errors.push({ videoId, error: "Cannot ignore videos with status 'completed'" });
+        continue;
+      }
+
+      if (video.status === 'ignored') {
+        succeeded += 1;
+        continue;
+      }
+
+      await knex.transaction(async (trx) => {
+        await trx('videos').where('id', videoId).update({
+          status: 'ignored',
+          updated_at: new Date().toISOString(),
+        });
+
+        await trx('status_history').insert({
+          video_id: videoId,
+          old_status: video.status,
+          new_status: 'ignored',
+        });
+      });
+
+      succeeded += 1;
+    } catch (error) {
+      console.error(`Error ignoring video ${videoId}:`, error);
+      errors.push({ videoId, error: 'Internal error while ignoring video' });
+    }
+  }
+
+  return res.json({
+    processed: validation.videoIds.length,
+    succeeded,
+    failed: validation.videoIds.length - succeeded,
+    errors,
+  });
+});
+
+router.post('/:id/ignore', async (req: Request, res: Response) => {
+  try {
+    const videoId = Number(req.params.id);
+
+    if (!Number.isInteger(videoId) || videoId <= 0) {
+      return res.status(400).json({ error: 'Invalid video id' });
+    }
+
+    const video = await knex('videos').where('id', videoId).first();
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    if (video.status === 'completed') {
+      return res.status(400).json({ error: "Cannot ignore videos with status 'completed'" });
+    }
+
+    if (video.status !== 'ignored') {
+      await knex.transaction(async (trx) => {
+        await trx('videos').where('id', videoId).update({
+          status: 'ignored',
+          updated_at: new Date().toISOString(),
+        });
+        await trx('status_history').insert({
+          video_id: videoId,
+          old_status: video.status,
+          new_status: 'ignored',
+        });
+      });
+    }
+
+    const updatedVideo = await knex('videos').where('id', videoId).first();
+    return res.json(updatedVideo);
+  } catch (error) {
+    console.error('Error ignoring video:', error);
+    return res.status(500).json({ error: 'Failed to ignore video' });
+  }
 });
 
 router.post('/batch/tags', async (req: Request, res: Response) => {
