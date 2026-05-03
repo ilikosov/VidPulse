@@ -7,6 +7,7 @@ import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
 import { assignAutoTags } from '../services/tag.service';
 import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
+import { suggestMetadata } from '../services/aiSuggestion.service';
 
 const router = Router();
 
@@ -116,6 +117,7 @@ router.get('/', async (req: Request, res: Response) => {
         'videos.channel_id',
         'videos.playlist_id',
         'videos.original_title',
+        'videos.description',
         'videos.perf_date',
         'videos.group_name',
         'videos.artist_name',
@@ -633,6 +635,29 @@ router.get('/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching video:', error);
     res.status(500).json({ error: 'Failed to fetch video' });
+  }
+});
+
+router.post('/:id/suggest', async (req: Request, res: Response) => {
+  const videoId = Number(req.params.id);
+  if (!Number.isInteger(videoId) || videoId <= 0) {
+    return res.status(400).json({ error: 'Invalid video id' });
+  }
+
+  try {
+    const video = await knex('videos')
+      .select('id', 'original_title', 'description')
+      .where('id', videoId)
+      .first();
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    const suggestion = await suggestMetadata(video.original_title, video.description ?? '');
+    return res.json(suggestion);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'AI suggestion failed';
+    return res.status(502).json({ error: `AI suggestion failed: ${message}` });
   }
 });
 
