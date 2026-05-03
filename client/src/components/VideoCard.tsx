@@ -20,7 +20,7 @@ import {
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { addTagToVideo, getVideo, llmParseVideo, removeTagFromVideo, updateMetadata, type Video } from '../api';
+import { addTagToVideo, getVideo, ignoreVideo, llmParseVideo, removeTagFromVideo, updateMetadata, type Video } from '../api';
 import AutocompleteInput from './AutocompleteInput';
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
@@ -148,6 +148,26 @@ function VideoCard() {
 
 
 
+  const handleIgnore = async () => {
+    if (!video || video.status === 'ignored') return;
+
+    Modal.confirm({
+      title: 'Ignore this video?',
+      content: 'Are you sure you want to ignore this video? It will be hidden from views.',
+      okText: 'Ignore',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          await ignoreVideo(video.id);
+          message.success('Video ignored');
+          await fetchVideo();
+        } catch (err) {
+          message.error(err instanceof Error ? err.message : 'Failed to ignore video');
+        }
+      },
+    });
+  };
+
   const handleLlmParse = async () => {
     if (!video) return;
     setLlmParsing(true);
@@ -216,7 +236,12 @@ function VideoCard() {
           <Typography.Title level={3} style={{ margin: 0 }}>
             {video.original_title}
           </Typography.Title>
-          <Tag color="magenta">{video.status}</Tag>
+          <Space>
+            <Tag color="magenta">{video.status}</Tag>
+            <Button danger onClick={() => void handleIgnore()} disabled={video.status === 'ignored'}>
+              Ignore
+            </Button>
+          </Space>
         </Flex>
         <Divider />
 

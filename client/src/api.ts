@@ -140,11 +140,13 @@ export async function getVideos(filters?: {
   status?: string;
   page?: number;
   limit?: number;
+  includeIgnored?: boolean;
 }): Promise<VideosResponse> {
   const params = new URLSearchParams();
   if (filters?.status) params.set('status', filters.status);
   if (filters?.page) params.set('page', String(filters.page));
   if (filters?.limit) params.set('limit', String(filters.limit));
+  if (filters?.includeIgnored) params.set('includeIgnored', 'true');
 
   const queryString = params.toString();
   return fetchApi<VideosResponse>(`/videos${queryString ? '?' + queryString : ''}`);
@@ -320,4 +322,15 @@ export async function getEvents(params?: {
 
   const query = searchParams.toString();
   return fetchApi<EventsResponse>(`/events${query ? `?${query}` : ''}`);
+}
+
+export async function ignoreVideo(videoId: number | string): Promise<Video> {
+  return fetchApi<Video>(`/videos/${videoId}/ignore`, { method: 'POST' });
+}
+
+export async function batchIgnoreVideos(videoIds: number[]): Promise<BatchResult> {
+  return fetchApi<BatchResult>('/videos/batch/ignore', {
+    method: 'POST',
+    body: JSON.stringify({ videoIds }),
+  });
 }

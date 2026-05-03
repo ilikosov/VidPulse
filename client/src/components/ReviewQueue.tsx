@@ -8,12 +8,13 @@ import {
   Row,
   Space,
   Spin,
+  Popconfirm,
   Tag,
   Typography,
   message,
 } from 'antd';
 import { useEffect, useState } from 'react';
-import { getVideos, updateMetadata, type Video } from '../api';
+import { getVideos, ignoreVideo, updateMetadata, type Video } from '../api';
 import AutocompleteInput from './AutocompleteInput';
 
 interface ReviewVideo extends Video {
@@ -80,6 +81,16 @@ function ReviewQueue() {
         video.id === id ? { ...video, editForm: { ...video.editForm, [key]: value } } : video,
       ),
     );
+  };
+
+  const handleIgnore = async (video: ReviewVideo) => {
+    try {
+      await ignoreVideo(video.id);
+      message.success(`Ignored: ${video.original_title}`);
+      setVideos((prev) => prev.filter((item) => item.id !== video.id));
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Failed to ignore video');
+    }
   };
 
   const handleSave = async (video: ReviewVideo) => {
@@ -216,15 +227,25 @@ function ReviewQueue() {
               </Col>
             </Row>
 
-            <Button
-              style={{ marginTop: 16 }}
+            <Space style={{ marginTop: 16 }}>
+              <Button
               type="primary"
               loading={video.saving}
               disabled={video.saved}
               onClick={() => void handleSave(video)}
-            >
+>
               {video.saved ? 'Saved!' : 'Save & Move to New'}
             </Button>
+            <Popconfirm
+              title="Ignore this video?"
+              description="Are you sure you want to ignore this video? It will be hidden from views."
+              okText="Ignore"
+              cancelText="Cancel"
+              onConfirm={() => void handleIgnore(video)}
+            >
+              <Button danger disabled={video.saved || video.saving}>Ignore</Button>
+            </Popconfirm>
+            </Space>
           </Card>
         ))}
       </Space>
