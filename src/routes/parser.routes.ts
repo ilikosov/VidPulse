@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db';
 import { parseTitle } from '../services/parser/parser.service';
-import { parseTitleWithLLM } from '../services/llm.service';
+import { parseTitleWithLLM } from '../services/ai.service';
 import { youtubeService } from '../services/youtube.service';
 
 const router = Router();
