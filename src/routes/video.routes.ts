@@ -7,7 +7,7 @@ import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
 import { assignAutoTags } from '../services/tag.service';
 import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
-import { suggestMetadata } from '../services/aiSuggestion.service';
+import { suggestMetadata } from '../services/ai.service';
 
 const router = Router();
 
