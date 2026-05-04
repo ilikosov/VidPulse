@@ -26,6 +26,7 @@ import {
   getVideo,
   ignoreVideo,
   llmParseVideo,
+  reparseVideo,
   removeTagFromVideo,
   updateMetadata,
   type Video,
@@ -87,6 +88,7 @@ function VideoCard() {
   const [tagLoading, setTagLoading] = useState(false);
   const [presetTagLoading, setPresetTagLoading] = useState<'short' | 'private' | null>(null);
   const [llmParsing, setLlmParsing] = useState(false);
+  const [reparsing, setReparsing] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
 
   const requiresManualTagConfirmation = (tagName: string) =>
@@ -195,6 +197,20 @@ function VideoCard() {
     }
   };
 
+  const handleReparse = async () => {
+    if (!video) return;
+    setReparsing(true);
+    try {
+      await reparseVideo(video.id);
+      message.success('Reparse completed');
+      await fetchVideo();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Failed to reparse video');
+    } finally {
+      setReparsing(false);
+    }
+  };
+
   const handleRemoveTag = async (tagId: number) => {
     if (!video) return;
     setTagLoading(true);
@@ -275,6 +291,13 @@ function VideoCard() {
             >
               {video.status}
             </Tag>
+            <Button
+              onClick={() => void handleReparse()}
+              loading={reparsing}
+              size="small"
+            >
+              Reparse
+            </Button>
             <Button
               danger
               variant="outlined"

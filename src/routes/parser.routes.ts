@@ -156,6 +156,62 @@ router.post('/reparse-all', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/reparse/:id', async (req: Request, res: Response) => {
+  try {
+    const videoId = Number(req.params.id);
+    if (!Number.isInteger(videoId) || videoId <= 0) {
+      return res.status(400).json({ error: 'Invalid video id' });
+    }
+
+    const video = await knex('videos')
+      .select('id', 'youtube_id', 'original_title', 'published_at', 'status')
+      .where('id', videoId)
+      .first();
+
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    const { metadata, needsReview } = await parseTitle(video.original_title, video.published_at);
+    const nextStatus = needsReview ? 'needs_review' : 'new';
+
+    const updateData: Record<string, string | null> = {
+      perf_date: metadata.perf_date
+        ? new Date(
+            `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
+          ).toISOString()
+        : null,
+      group_name: metadata.group_name || null,
+      artist_name: metadata.artist_name || null,
+      song_title: metadata.song_title || null,
+      event: metadata.event || null,
+      camera_type: metadata.camera_type || null,
+      status: nextStatus,
+    };
+
+    await knex.transaction(async (trx) => {
+      await trx('videos').where('id', video.id).update({
+        ...updateData,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (nextStatus !== video.status) {
+        await trx('status_history').insert({
+          video_id: video.id,
+          old_status: video.status,
+          new_status: nextStatus,
+        });
+      }
+    });
+
+    const updatedVideo = await knex('videos').where('id', video.id).first();
+    return res.json(updatedVideo);
+  } catch (error) {
+    console.error('Error re-parsing single video:', error);
+    return res.status(500).json({ error: 'Failed to re-parse video' });
+  }
+});
+
 router.post('/reparse-batch', async (req: Request, res: Response) => {
   try {
     const videoIds = validateVideoIds(req.body);

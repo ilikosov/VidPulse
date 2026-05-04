@@ -556,18 +556,14 @@ router.post('/add', async (req: Request, res: Response) => {
     }
 
     const details = await youtubeService.getVideoDetails(videoId);
-    const { metadata, needsReview } = await parseTitle(
-      details.title,
-      details.publishedAt,
-      details.tags,
-    );
+    const { metadata } = await parseTitle(details.title, details.publishedAt, details.tags);
 
     const insertData: Record<string, any> = {
       youtube_id: videoId,
       original_title: details.title,
       url: url.trim(),
       published_at: details.publishedAt || null,
-      status: needsReview ? 'needs_review' : 'new',
+      status: 'needs_review',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

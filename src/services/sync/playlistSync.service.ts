@@ -28,7 +28,7 @@ export class PlaylistSyncService implements IPlaylistSyncService {
         for (const item of items.filter((v) => !existing.has(v.videoId))) {
           if (await this.videos.findByYoutubeId(item.videoId)) continue;
           const details = await this.youtube.getVideoDetails(item.videoId);
-          const { metadata, status } = await parseVideoMetadata(
+          const { metadata } = await parseVideoMetadata(
             this.parser,
             details.title || item.title,
             details.publishedAt || item.publishedAt,
@@ -40,7 +40,7 @@ export class PlaylistSyncService implements IPlaylistSyncService {
             original_title: details.title || item.title,
             published_at: details.publishedAt || item.publishedAt,
             duration_seconds: details.durationSeconds ?? null,
-            status,
+            status: 'needs_review',
             ...metadata,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
