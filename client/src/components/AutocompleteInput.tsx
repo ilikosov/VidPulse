@@ -1,6 +1,7 @@
 import { AutoComplete, Input } from 'antd';
 import { useMemo, useRef, useState } from 'react';
 import { getDictionary } from '../api';
+import { useSettings } from '../settingsContext';
 
 type DictType = 'groups' | 'artists' | 'songs' | 'events';
 
@@ -13,6 +14,7 @@ interface Props {
 }
 
 function AutocompleteInput({ value, type, placeholder, label, onChange }: Props) {
+  const { visibleGroupTypes } = useSettings();
   const [options, setOptions] = useState<{ value: string }[]>([]);
   const timer = useRef<number>();
 
@@ -28,7 +30,7 @@ function AutocompleteInput({ value, type, placeholder, label, onChange }: Props)
 
     timer.current = window.setTimeout(async () => {
       try {
-        const response = await getDictionary(type, query);
+        const response = await getDictionary(type, query, type === 'groups' ? visibleGroupTypes : undefined);
         setOptions(response.results.map((result) => ({ value: result })));
       } catch {
         setOptions([]);

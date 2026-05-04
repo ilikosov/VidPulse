@@ -192,9 +192,18 @@ export async function suggestMetadata(videoId: number | string): Promise<Suggest
 export async function getDictionary(
   type: 'groups' | 'artists' | 'songs' | 'events',
   query?: string,
+  groupTypes?: string[],
 ): Promise<DictionaryResponse> {
   const params = new URLSearchParams({ type });
   if (query) params.set('q', query);
+  if (groupTypes?.length && type === 'groups') params.set('typeFilter', groupTypes.join(','));
+  if (type === 'groups') {
+    const sp = new URLSearchParams();
+    if (query) sp.set('q', query);
+    if (groupTypes?.length) sp.set('type', groupTypes.join(','));
+    const data = await fetchApi<{ results: { name: string }[] }>(`/dictionary/groups?${sp.toString()}`);
+    return { results: data.results.map((r) => r.name), type, query: query || '' };
+  }
   return fetchApi<DictionaryResponse>(`/dictionary?${params.toString()}`);
 }
 
@@ -349,4 +358,12 @@ export async function batchIgnoreVideos(videoIds: number[]): Promise<BatchResult
     method: 'POST',
     body: JSON.stringify({ videoIds }),
   });
+}
+
+export async function getSettings(): Promise<Record<string, string>> {
+  return fetchApi<Record<string, string>>('/settings');
+}
+
+export async function saveSetting(key: string, value: string): Promise<{ key: string; value: string }> {
+  return fetchApi<{ key: string; value: string }>('/settings', { method: 'PUT', body: JSON.stringify({ key, value }) });
 }

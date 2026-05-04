@@ -20,6 +20,13 @@ const config: { [key: string]: Knex.Config } = {
     },
   },
 
+  test: {
+    client: 'better-sqlite3',
+    connection: { filename: path.resolve(__dirname, './dev.sqlite3') },
+    useNullAsDefault: true,
+    migrations: { directory: '../../migrations' },
+  },
+
   production: {
     client: 'better-sqlite3',
     connection: {

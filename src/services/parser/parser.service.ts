@@ -34,11 +34,11 @@ export class ParserService {
 
     if (tags?.length && this.dictionaryModule) {
       if (!currentMetadata.group_name && !currentMetadata.artist_name) {
-        currentMetadata.group_name = this.dictionaryModule.searchInTags(tags, 'group') || currentMetadata.group_name;
-        currentMetadata.artist_name = this.dictionaryModule.searchInTags(tags, 'artist') || currentMetadata.artist_name;
+        currentMetadata.group_name = await this.dictionaryModule.searchInTags(tags, 'group') || currentMetadata.group_name;
+        currentMetadata.artist_name = await this.dictionaryModule.searchInTags(tags, 'artist') || currentMetadata.artist_name;
       }
-      currentMetadata.song_title = currentMetadata.song_title || this.dictionaryModule.searchInTags(tags, 'song') || currentMetadata.song_title;
-      currentMetadata.event = currentMetadata.event || this.dictionaryModule.searchInTags(tags, 'event') || currentMetadata.event;
+      currentMetadata.song_title = currentMetadata.song_title || await this.dictionaryModule.searchInTags(tags, 'song') || currentMetadata.song_title;
+      currentMetadata.event = currentMetadata.event || await this.dictionaryModule.searchInTags(tags, 'event') || currentMetadata.event;
     }
 
     const avgConfidence = moduleCount > 0 ? totalConfidence / moduleCount : 0;
