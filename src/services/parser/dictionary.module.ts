@@ -76,14 +76,14 @@ export class DictionaryModule implements ParserModule {
       artistMap[groupName].push(a.name);
     }
     this.dictionary = {
-      groups: groups.map((g) => g.name),
+      groups: groups.map((g: any) => String(g.name)),
       artists: artistMap,
       songs: songs.map((s) => s.title),
       events: events.map((e) => e.name),
       aliases: {},
       cameraTypes: {},
     };
-    return this.dictionary;
+    return this.dictionary!;
   }
 
   async parse(
