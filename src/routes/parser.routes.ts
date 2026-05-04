@@ -38,7 +38,7 @@ router.post('/llm-parse/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Video not found' });
     }
 
-    const metadata = await parseTitleWithLLM(video.original_title);
+    const metadata = await parseTitleWithLLM(video.original_title, video.description);
 
     await knex('videos')
       .where('id', id)
@@ -75,7 +75,7 @@ router.post('/llm-parse-batch', async (req: Request, res: Response) => {
 
     for (const video of videos) {
       try {
-        const metadata = await parseTitleWithLLM(video.original_title);
+        const metadata = await parseTitleWithLLM(video.original_title, video.description);
         await knex('videos')
           .where('id', video.id)
           .update({

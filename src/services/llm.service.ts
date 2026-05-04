@@ -2,7 +2,7 @@ import { L } from 'vitest/dist/chunks/reporters.nr4dxCkA.js';
 import type { ParsedMetadata } from './parser/parser.types';
 
 const SYSTEM_PROMPT =
-  'You are a K-pop metadata extractor. Given a video title, extract perf_date (YYMMDD), group_name, artist_name, song_title, event (with @ prefix), and camera_type. Return ONLY a JSON object with these fields. Use null for missing values.';
+  'You are a K-pop metadata extractor. Given a video title and description, extract perf_date (YYMMDD), group_name, artist_name, song_title, event (with @ prefix), and camera_type. Return ONLY a JSON object with these fields. Use null for missing values.';
 
 function cleanParsedMetadata(raw: unknown): Partial<ParsedMetadata> {
   if (!raw || typeof raw !== 'object') {
@@ -46,7 +46,10 @@ function safeJsonParse(input: string): Record<string, any> | null {
   }
 }
 
-export async function parseTitleWithLLM(title: string): Promise<Partial<ParsedMetadata>> {
+export async function parseTitleWithLLM(
+  title: string,
+  description: string,
+): Promise<Partial<ParsedMetadata>> {
   const endpoint = process.env.LM_STUDIO_URL;
   const model = process.env.LM_STUDIO_MODEL;
   const timeoutMs = Number(process.env.LM_STUDIO_TIMEOUT || '30000');
@@ -72,6 +75,7 @@ export async function parseTitleWithLLM(title: string): Promise<Partial<ParsedMe
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: title },
+          { role: 'user', content: description },
         ],
         temperature: 0,
         max_tokens: 500,
