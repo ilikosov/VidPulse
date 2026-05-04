@@ -240,7 +240,7 @@ function VideoCard() {
   if (!video || !form) return <Alert type="warning" message="Video not found" />;
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 16px' }}>
       <Button
         type="text"
         onClick={() => navigate('/videos')}
