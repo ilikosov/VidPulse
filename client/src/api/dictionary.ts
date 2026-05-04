@@ -9,11 +9,29 @@ const req = async <T,>(path: string, options?: RequestInit): Promise<T> => {
   return res.json();
 };
 
-export interface DictionaryGroup { id: number; name: string; type: string; active: boolean; artists?: Array<{ id: number; name: string; group_id: number }>; }
+export interface DictionaryGroup { id: number; name: string; type: string; active: boolean; artist_count?: number; artists?: Array<{ id: number; name: string; group_id: number }>; }
 export interface DictionaryArtist { id: number; name: string; group_id: number; group_name: string | null; }
-export interface DictionarySong { id: number; title: string; artist: string; }
+export interface DictionarySong { id: number; title: string; artist: string | null; }
+
+
+
+interface ListParams { page: number; limit: number; q?: string; }
+interface GroupsListParams extends ListParams { type?: string; }
+interface ArtistsListParams extends ListParams { group_id?: number; }
+interface PaginatedList<T> { items: T[]; pagination: { page: number; limit: number; total: number; totalPages: number; }; }
+
+const toQuery = (params: object) => {
+  const query = new URLSearchParams();
+  Object.entries(params as Record<string, unknown>).forEach(([k, v]) => { if (v !== undefined && v !== '') query.set(k, String(v)); });
+  const qs = query.toString();
+  return qs ? `?${qs}` : '';
+};
 
 export const dictionaryApi = {
+
+  getGroupsList: async (params: GroupsListParams): Promise<PaginatedList<DictionaryGroup>> => { const rows = await req<DictionaryGroup[]>(`/dictionary/groups/list${toQuery(params)}`); const total = rows.length; return { items: rows, pagination: { page: params.page, limit: params.limit, total, totalPages: Math.ceil(total / params.limit) || 1 } }; },
+  getArtistsList: async (params: ArtistsListParams): Promise<PaginatedList<DictionaryArtist>> => { const rows = await req<DictionaryArtist[]>(`/dictionary/artists/list${toQuery(params)}`); const total = rows.length; return { items: rows, pagination: { page: params.page, limit: params.limit, total, totalPages: Math.ceil(total / params.limit) || 1 } }; },
+  getSongsList: async (params: ListParams): Promise<PaginatedList<DictionarySong>> => { const rows = await req<DictionarySong[]>(`/dictionary/songs/list${toQuery(params)}`); const total = rows.length; return { items: rows, pagination: { page: params.page, limit: params.limit, total, totalPages: Math.ceil(total / params.limit) || 1 } }; },
   getGroups: () => req<any[]>('/dictionary/groups/list'), createGroup: (d: any) => req('/dictionary/groups', { method: 'POST', body: JSON.stringify(d) }), updateGroup: (id: number, d: any) => req(`/dictionary/groups/${id}`, { method: 'PUT', body: JSON.stringify(d) }), deleteGroup: (id: number) => req(`/dictionary/groups/${id}`, { method: 'DELETE' }),
   getArtists: (groupId?: number) => req<any[]>(`/dictionary/artists/list${groupId ? `?group_id=${groupId}` : ''}`), createArtist: (d: any) => req('/dictionary/artists', { method: 'POST', body: JSON.stringify(d) }), updateArtist: (id: number, d: any) => req(`/dictionary/artists/${id}`, { method: 'PUT', body: JSON.stringify(d) }), deleteArtist: (id: number) => req(`/dictionary/artists/${id}`, { method: 'DELETE' }),
   getSongs: () => req<any[]>('/dictionary/songs/list'), createSong: (d: any) => req('/dictionary/songs', { method: 'POST', body: JSON.stringify(d) }), updateSong: (id: number, d: any) => req(`/dictionary/songs/${id}`, { method: 'PUT', body: JSON.stringify(d) }), deleteSong: (id: number) => req(`/dictionary/songs/${id}`, { method: 'DELETE' }),

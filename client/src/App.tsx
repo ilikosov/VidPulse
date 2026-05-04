@@ -12,6 +12,9 @@ import DictionaryManagement from './pages/DictionaryManagement';
 import GroupPage from './pages/GroupPage';
 import ArtistPage from './pages/ArtistPage';
 import SongPage from './pages/SongPage';
+import GroupsListPage from './pages/GroupsListPage';
+import ArtistsListPage from './pages/ArtistsListPage';
+import SongsListPage from './pages/SongsListPage';
 
 const { Header, Content } = Layout;
 
@@ -24,6 +27,9 @@ const menuItems = [
   { key: '/events', label: <Link to="/events">Event Log</Link> },
   { key: '/settings', label: <Link to="/settings">Settings</Link> },
   { key: '/dictionary', label: <Link to="/dictionary">Dictionary</Link> },
+  { key: '/groups', label: <Link to="/groups">Groups</Link> },
+  { key: '/artists', label: <Link to="/artists">Artists</Link> },
+  { key: '/songs', label: <Link to="/songs">Songs</Link> },
 ];
 
 function App() {
@@ -60,8 +66,11 @@ function App() {
           <Route path="/events" element={<EventLogPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/dictionary" element={<DictionaryManagement />} />
+          <Route path="/groups" element={<GroupsListPage />} />
           <Route path="/groups/:id" element={<GroupPage />} />
+          <Route path="/artists" element={<ArtistsListPage />} />
           <Route path="/artists/:id" element={<ArtistPage />} />
+          <Route path="/songs" element={<SongsListPage />} />
           <Route path="/songs/:id" element={<SongPage />} />
           <Route path="*" element={<VideoTable />} />
         </Routes>
