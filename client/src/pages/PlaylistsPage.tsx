@@ -119,7 +119,13 @@ function PlaylistsPage() {
           </Space>
         </Space>
 
-        <Table rowKey="id" loading={loading} columns={columns} dataSource={playlists} pagination={false} />
+        <Table
+          rowKey="id"
+          loading={loading}
+          columns={columns}
+          dataSource={playlists}
+          pagination={false}
+        />
       </Space>
 
       <Modal

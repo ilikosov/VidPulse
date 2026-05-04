@@ -14,7 +14,9 @@ export default function ArtistsListPage() {
   const limit = Number(searchParams.get('limit') ?? 20);
   const q = searchParams.get('q') ?? '';
 
-  useEffect(() => { setSearchDraft(q); }, [q]);
+  useEffect(() => {
+    setSearchDraft(q);
+  }, [q]);
 
   useEffect(() => {
     const load = async () => {
@@ -24,25 +26,65 @@ export default function ArtistsListPage() {
         setItems(data.items);
       } catch (error) {
         message.error(error instanceof Error ? error.message : 'Failed to load artists');
-      } finally { setLoading(false); }
+      } finally {
+        setLoading(false);
+      }
     };
     void load();
   }, [page, limit, q]);
 
-  const columns: ColumnsType<DictionaryArtist> = useMemo(() => [
-    { title: 'Name', dataIndex: 'name', render: (_v, row) => <Link to={`/artists/${row.id}`}>{row.name}</Link> },
-    { title: 'Group', dataIndex: 'group_name', render: (_v, row) => row.group_id ? <Link to={`/groups/${row.group_id}`}>{row.group_name}</Link> : '-' },
-  ], []);
+  const columns: ColumnsType<DictionaryArtist> = useMemo(
+    () => [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        render: (_v, row) => <Link to={`/artists/${row.id}`}>{row.name}</Link>,
+      },
+      {
+        title: 'Group',
+        dataIndex: 'group_name',
+        render: (_v, row) =>
+          row.group_id ? <Link to={`/groups/${row.group_id}`}>{row.group_name}</Link> : '-',
+      },
+    ],
+    [],
+  );
 
   const updateParams = (next: Record<string, string | number | undefined>) => {
     const params = new URLSearchParams(searchParams);
-    Object.entries(next).forEach(([k, v]) => (v === undefined || v === '' ? params.delete(k) : params.set(k, String(v))));
+    Object.entries(next).forEach(([k, v]) =>
+      v === undefined || v === '' ? params.delete(k) : params.set(k, String(v)),
+    );
     setSearchParams(params);
   };
 
-  return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    <Typography.Title level={3} style={{ margin: 0 }}>Artists</Typography.Title>
-    <Input.Search placeholder="Search by artist" value={searchDraft} onChange={(e) => setSearchDraft(e.target.value)} onSearch={() => updateParams({ q: searchDraft, page: 1 })} allowClear style={{ width: 260 }} />
-    <Table rowKey="id" loading={loading} columns={columns} dataSource={items} locale={{ emptyText: <Empty description="No artists found" /> }} pagination={{ current: page, pageSize: limit, total: items.length, showSizeChanger: true, onChange: (nextPage, nextLimit) => updateParams({ page: nextPage, limit: nextLimit }) }} />
-  </Space>;
+  return (
+    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Typography.Title level={3} style={{ margin: 0 }}>
+        Artists
+      </Typography.Title>
+      <Input.Search
+        placeholder="Search by artist"
+        value={searchDraft}
+        onChange={(e) => setSearchDraft(e.target.value)}
+        onSearch={() => updateParams({ q: searchDraft, page: 1 })}
+        allowClear
+        style={{ width: 260 }}
+      />
+      <Table
+        rowKey="id"
+        loading={loading}
+        columns={columns}
+        dataSource={items}
+        locale={{ emptyText: <Empty description="No artists found" /> }}
+        pagination={{
+          current: page,
+          pageSize: limit,
+          total: items.length,
+          showSizeChanger: true,
+          onChange: (nextPage, nextLimit) => updateParams({ page: nextPage, limit: nextLimit }),
+        }}
+      />
+    </Space>
+  );
 }

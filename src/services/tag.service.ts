@@ -17,7 +17,10 @@ async function findOrCreateTagId(tagName: string): Promise<number> {
 
 export async function addTagToVideo(videoId: number, tagName: string): Promise<void> {
   const tagId = await findOrCreateTagId(tagName);
-  await knex('video_tags').insert({ video_id: videoId, tag_id: tagId }).onConflict(['video_id', 'tag_id']).ignore();
+  await knex('video_tags')
+    .insert({ video_id: videoId, tag_id: tagId })
+    .onConflict(['video_id', 'tag_id'])
+    .ignore();
 }
 
 export async function assignAutoTags(

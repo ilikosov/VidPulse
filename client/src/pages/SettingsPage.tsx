@@ -15,7 +15,9 @@ export default function SettingsPage() {
       <Checkbox.Group
         options={OPTIONS}
         value={visibleGroupTypes}
-        onChange={(values) => void setVisibleGroupTypes(values as Array<'male' | 'female' | 'mixed'>)}
+        onChange={(values) =>
+          void setVisibleGroupTypes(values as Array<'male' | 'female' | 'mixed'>)
+        }
       />
     </Card>
   );

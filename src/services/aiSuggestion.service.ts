@@ -19,7 +19,10 @@ Example:
 {"group_name":"IVE","artist_name":"IVE","song_title":"LOVE DIVE","event":"@MCOUNTDOWN","perf_date":"220414","camera_type":"Fancam"}`;
 
 function stripCodeFences(content: string): string {
-  return content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  return content
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
 }
 
 function cleanSuggestedMetadata(raw: unknown): SuggestedMetadata {
@@ -46,12 +49,17 @@ function cleanSuggestedMetadata(raw: unknown): SuggestedMetadata {
   return result;
 }
 
-export async function suggestMetadata(title: string, description: string): Promise<SuggestedMetadata> {
+export async function suggestMetadata(
+  title: string,
+  description: string,
+): Promise<SuggestedMetadata> {
   const endpoint = process.env.LM_STUDIO_API_URL;
   const model = process.env.LM_STUDIO_MODEL;
 
   if (!endpoint || !model) {
-    throw new Error('LM Studio is not configured. Please set LM_STUDIO_API_URL and LM_STUDIO_MODEL.');
+    throw new Error(
+      'LM Studio is not configured. Please set LM_STUDIO_API_URL and LM_STUDIO_MODEL.',
+    );
   }
 
   let response: Response;
@@ -72,7 +80,9 @@ export async function suggestMetadata(title: string, description: string): Promi
       }),
     });
   } catch (error) {
-    throw new Error(`LM Studio is not reachable: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `LM Studio is not reachable: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 
   if (!response.ok) {
@@ -80,7 +90,9 @@ export async function suggestMetadata(title: string, description: string): Promi
     throw new Error(`LM Studio returned ${response.status}: ${body}`);
   }
 
-  const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
   const content = payload.choices?.[0]?.message?.content;
   if (!content) {
     throw new Error('LM Studio response does not contain suggestion content.');
@@ -90,6 +102,8 @@ export async function suggestMetadata(title: string, description: string): Promi
     const parsed = JSON.parse(stripCodeFences(content));
     return cleanSuggestedMetadata(parsed);
   } catch (error) {
-    throw new Error(`Failed to parse LM Studio JSON response: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to parse LM Studio JSON response: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }

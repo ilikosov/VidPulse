@@ -149,7 +149,11 @@ router.post('/', async (req: Request, res: Response) => {
 // POST /api/channels/import - Import channels from a text file
 router.post('/import', (req: Request, res: Response) => {
   upload.single('file')(req, res, async (uploadError: unknown) => {
-    if (uploadError instanceof Error && uploadError.name === 'MulterError' && (uploadError as { code?: string }).code === 'LIMIT_FILE_SIZE') {
+    if (
+      uploadError instanceof Error &&
+      uploadError.name === 'MulterError' &&
+      (uploadError as { code?: string }).code === 'LIMIT_FILE_SIZE'
+    ) {
       return res.status(400).json({ error: 'File size must be 5 MB or less' });
     }
 

@@ -14,32 +14,87 @@ const dictionaryTemplates: Record<TemplateEntity, Record<string, string>> = {
   events: { name: '' },
 };
 
-const createCsvTemplate = (entity: TemplateEntity): string => `${Object.keys(dictionaryTemplates[entity]).join(',')}\n`;
+const createCsvTemplate = (entity: TemplateEntity): string =>
+  `${Object.keys(dictionaryTemplates[entity]).join(',')}\n`;
 
 const parseCsv = (text: string) => {
   const [header, ...lines] = text.split(/\r?\n/).filter(Boolean);
   const cols = header.split(',').map((c) => c.trim());
   return lines.map((line) => {
     const values = line.split(',').map((v) => v.trim());
-    return cols.reduce<Record<string, string>>((acc, col, i) => { acc[col] = values[i] ?? ''; return acc; }, {});
+    return cols.reduce<Record<string, string>>((acc, col, i) => {
+      acc[col] = values[i] ?? '';
+      return acc;
+    }, {});
   });
 };
 
-router.get('/groups/list', async (req, res) => res.json(await dictionaryService.getGroups(req.query.type as string | undefined, req.query.q as string | undefined)));
-router.post('/groups', async (req, res) => { const { name, type, active } = req.body; if (!name || !type) return res.status(400).json({ error: 'name and type are required' }); await dictionaryService.createGroup({ name, type, active }); res.status(201).json({ ok: true }); });
-router.put('/groups/:id', async (req, res) => { await dictionaryService.updateGroup(Number(req.params.id), req.body); res.json({ ok: true }); });
-router.delete('/groups/:id', async (req, res) => { await dictionaryService.deleteGroup(Number(req.params.id)); res.status(204).send(); });
+router.get('/groups/list', async (req, res) =>
+  res.json(
+    await dictionaryService.getGroups(
+      req.query.type as string | undefined,
+      req.query.q as string | undefined,
+    ),
+  ),
+);
+router.post('/groups', async (req, res) => {
+  const { name, type, active } = req.body;
+  if (!name || !type) return res.status(400).json({ error: 'name and type are required' });
+  await dictionaryService.createGroup({ name, type, active });
+  res.status(201).json({ ok: true });
+});
+router.put('/groups/:id', async (req, res) => {
+  await dictionaryService.updateGroup(Number(req.params.id), req.body);
+  res.json({ ok: true });
+});
+router.delete('/groups/:id', async (req, res) => {
+  await dictionaryService.deleteGroup(Number(req.params.id));
+  res.status(204).send();
+});
 
-router.get('/artists/list', async (req, res) => res.json(await dictionaryService.getArtists(req.query.group_id ? Number(req.query.group_id) : undefined, req.query.q as string | undefined)));
-router.post('/artists', async (req, res) => { const { name, group_id } = req.body; if (!name || !group_id) return res.status(400).json({ error: 'name and group_id are required' }); await dictionaryService.createArtist({ name, group_id: Number(group_id) }); res.status(201).json({ ok: true }); });
-router.put('/artists/:id', async (req, res) => { await dictionaryService.updateArtist(Number(req.params.id), { name: req.body.name, group_id: Number(req.body.group_id) }); res.json({ ok: true }); });
-router.delete('/artists/:id', async (req, res) => { await dictionaryService.deleteArtist(Number(req.params.id)); res.status(204).send(); });
+router.get('/artists/list', async (req, res) =>
+  res.json(
+    await dictionaryService.getArtists(
+      req.query.group_id ? Number(req.query.group_id) : undefined,
+      req.query.q as string | undefined,
+    ),
+  ),
+);
+router.post('/artists', async (req, res) => {
+  const { name, group_id } = req.body;
+  if (!name || !group_id) return res.status(400).json({ error: 'name and group_id are required' });
+  await dictionaryService.createArtist({ name, group_id: Number(group_id) });
+  res.status(201).json({ ok: true });
+});
+router.put('/artists/:id', async (req, res) => {
+  await dictionaryService.updateArtist(Number(req.params.id), {
+    name: req.body.name,
+    group_id: Number(req.body.group_id),
+  });
+  res.json({ ok: true });
+});
+router.delete('/artists/:id', async (req, res) => {
+  await dictionaryService.deleteArtist(Number(req.params.id));
+  res.status(204).send();
+});
 
-router.get('/songs/list', async (req, res) => res.json(await dictionaryService.getSongs(req.query.q as string | undefined)));
-router.post('/songs', async (req, res) => { const { title, artist } = req.body; if (!title || !artist) return res.status(400).json({ error: 'title and artist are required' }); await dictionaryService.createSong({ title, artist }); res.status(201).json({ ok: true }); });
-router.put('/songs/:id', async (req, res) => { await dictionaryService.updateSong(Number(req.params.id), req.body); res.json({ ok: true }); });
-router.delete('/songs/:id', async (req, res) => { await dictionaryService.deleteSong(Number(req.params.id)); res.status(204).send(); });
-
+router.get('/songs/list', async (req, res) =>
+  res.json(await dictionaryService.getSongs(req.query.q as string | undefined)),
+);
+router.post('/songs', async (req, res) => {
+  const { title, artist } = req.body;
+  if (!title || !artist) return res.status(400).json({ error: 'title and artist are required' });
+  await dictionaryService.createSong({ title, artist });
+  res.status(201).json({ ok: true });
+});
+router.put('/songs/:id', async (req, res) => {
+  await dictionaryService.updateSong(Number(req.params.id), req.body);
+  res.json({ ok: true });
+});
+router.delete('/songs/:id', async (req, res) => {
+  await dictionaryService.deleteSong(Number(req.params.id));
+  res.status(204).send();
+});
 
 router.get('/groups/:id', async (req, res) => {
   const group = await dictionaryService.getGroupById(Number(req.params.id));
@@ -66,7 +121,9 @@ router.get('/artists/:id/videos', async (req, res) => {
   if (!artist) return res.status(404).json({ error: 'Artist not found' });
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 20;
-  return res.json(await dictionaryService.getVideosByField('artist_name', artist.name, page, limit));
+  return res.json(
+    await dictionaryService.getVideosByField('artist_name', artist.name, page, limit),
+  );
 });
 
 router.get('/songs/:id', async (req, res) => {
@@ -83,22 +140,36 @@ router.get('/songs/:id/videos', async (req, res) => {
   return res.json(await dictionaryService.getVideosByField('song_title', song.title, page, limit));
 });
 
-router.get('/events/list', async (req, res) => res.json(await dictionaryService.getEvents(req.query.q as string | undefined)));
-router.post('/events', async (req, res) => { if (!req.body.name) return res.status(400).json({ error: 'name is required' }); await dictionaryService.createEvent({ name: req.body.name }); res.status(201).json({ ok: true }); });
-router.put('/events/:id', async (req, res) => { await dictionaryService.updateEvent(Number(req.params.id), req.body); res.json({ ok: true }); });
-router.delete('/events/:id', async (req, res) => { await dictionaryService.deleteEvent(Number(req.params.id)); res.status(204).send(); });
+router.get('/events/list', async (req, res) =>
+  res.json(await dictionaryService.getEvents(req.query.q as string | undefined)),
+);
+router.post('/events', async (req, res) => {
+  if (!req.body.name) return res.status(400).json({ error: 'name is required' });
+  await dictionaryService.createEvent({ name: req.body.name });
+  res.status(201).json({ ok: true });
+});
+router.put('/events/:id', async (req, res) => {
+  await dictionaryService.updateEvent(Number(req.params.id), req.body);
+  res.json({ ok: true });
+});
+router.delete('/events/:id', async (req, res) => {
+  await dictionaryService.deleteEvent(Number(req.params.id));
+  res.status(204).send();
+});
 
 router.get('/template/:entity/:format', (req, res) => {
   const entity = req.params.entity as TemplateEntity;
   const format = req.params.format as TemplateFormat;
 
   if (!dictionaryTemplates[entity]) return res.status(400).json({ error: 'unsupported entity' });
-  if (!['csv', 'json'].includes(format)) return res.status(400).json({ error: 'unsupported format' });
+  if (!['csv', 'json'].includes(format))
+    return res.status(400).json({ error: 'unsupported format' });
 
   const filename = `template_${entity}.${format}`;
-  const payload = format === 'csv'
-    ? createCsvTemplate(entity)
-    : `${JSON.stringify([dictionaryTemplates[entity]], null, 2)}\n`;
+  const payload =
+    format === 'csv'
+      ? createCsvTemplate(entity)
+      : `${JSON.stringify([dictionaryTemplates[entity]], null, 2)}\n`;
 
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.type(format === 'csv' ? 'text/csv' : 'application/json');

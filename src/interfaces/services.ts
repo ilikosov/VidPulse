@@ -8,7 +8,11 @@ export interface IYouTubeService {
 }
 
 export interface IEventLogger {
-  logEvent(eventType: string, description?: string, metadata?: Record<string, unknown>): Promise<void>;
+  logEvent(
+    eventType: string,
+    description?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void>;
 }
 
 export interface ITagService {
@@ -16,9 +20,20 @@ export interface ITagService {
 }
 
 export interface IParser {
-  parseTitle(title: string, publishedAt?: string, tags?: string[]): Promise<{ metadata: Partial<ParsedMetadata>; needsReview: boolean }>;
+  parseTitle(
+    title: string,
+    publishedAt?: string,
+    tags?: string[],
+  ): Promise<{ metadata: Partial<ParsedMetadata>; needsReview: boolean }>;
 }
 
-export interface IChannelSyncService { sync(): Promise<void>; }
-export interface IPlaylistSyncService { sync(): Promise<void>; }
-export interface ISyncService { syncAll(): Promise<void>; runScheduler(): void; }
+export interface IChannelSyncService {
+  sync(): Promise<void>;
+}
+export interface IPlaylistSyncService {
+  sync(): Promise<void>;
+}
+export interface ISyncService {
+  syncAll(): Promise<void>;
+  runScheduler(): void;
+}

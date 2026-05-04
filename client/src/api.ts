@@ -201,7 +201,9 @@ export async function getDictionary(
     const sp = new URLSearchParams();
     if (query) sp.set('q', query);
     if (groupTypes?.length) sp.set('type', groupTypes.join(','));
-    const data = await fetchApi<{ results: { name: string }[] }>(`/dictionary/groups?${sp.toString()}`);
+    const data = await fetchApi<{ results: { name: string }[] }>(
+      `/dictionary/groups?${sp.toString()}`,
+    );
     return { results: data.results.map((r) => r.name), type, query: query || '' };
   }
   return fetchApi<DictionaryResponse>(`/dictionary?${params.toString()}`);
@@ -333,7 +335,6 @@ export async function addVideo(url: string): Promise<Video> {
   });
 }
 
-
 export async function getEvents(params?: {
   page?: number;
   limit?: number;
@@ -364,6 +365,12 @@ export async function getSettings(): Promise<Record<string, string>> {
   return fetchApi<Record<string, string>>('/settings');
 }
 
-export async function saveSetting(key: string, value: string): Promise<{ key: string; value: string }> {
-  return fetchApi<{ key: string; value: string }>('/settings', { method: 'PUT', body: JSON.stringify({ key, value }) });
+export async function saveSetting(
+  key: string,
+  value: string,
+): Promise<{ key: string; value: string }> {
+  return fetchApi<{ key: string; value: string }>('/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ key, value }),
+  });
 }

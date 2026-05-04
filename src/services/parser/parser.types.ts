@@ -23,6 +23,6 @@ export interface ParserModule {
    */
   parse(
     title: string,
-    currentMeta: Partial<ParsedMetadata>
+    currentMeta: Partial<ParsedMetadata>,
   ): Promise<{ metadata: Partial<ParsedMetadata>; confidence: number }>;
 }

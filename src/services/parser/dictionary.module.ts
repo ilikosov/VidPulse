@@ -216,7 +216,10 @@ export class DictionaryModule implements ParserModule {
     return { metadata, confidence };
   }
 
-  public async searchInTags(tags: string[], field: 'group' | 'artist' | 'song' | 'event'): Promise<string | null> {
+  public async searchInTags(
+    tags: string[],
+    field: 'group' | 'artist' | 'song' | 'event',
+  ): Promise<string | null> {
     const dictionary = await this.loadDictionary();
     let candidates: string[] = [];
 

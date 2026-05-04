@@ -1,4 +1,20 @@
-import { Alert, Button, Checkbox, Form, Image, Input, Modal, Select, Space, Spin, Table, Tag, Tooltip, Typography, message } from 'antd';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Form,
+  Image,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Spin,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+  message,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { useEffect, useState } from 'react';
@@ -70,7 +86,12 @@ function VideoTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await getVideos({ status: status || undefined, page, limit: 20, includeIgnored });
+      const response = await getVideos({
+        status: status || undefined,
+        page,
+        limit: 20,
+        includeIgnored,
+      });
       setVideos(response.videos);
       const tagSet = new Set<string>();
       response.videos.forEach((video) => video.tags?.forEach((tag) => tagSet.add(tag.name)));
@@ -162,7 +183,9 @@ function VideoTable() {
     },
   ];
 
-  const handleBatchAction = async (action: 'confirm-download' | 'complete' | 'reparse' | 'llm-reparse') => {
+  const handleBatchAction = async (
+    action: 'confirm-download' | 'complete' | 'reparse' | 'llm-reparse',
+  ) => {
     if (selectedRowKeys.length === 0) {
       return;
     }
@@ -190,7 +213,6 @@ function VideoTable() {
       setBatchLoading(false);
     }
   };
-
 
   const handleBatchPresetTag = async (tagName: 'short' | 'private') => {
     if (selectedRowKeys.length === 0) {
@@ -390,7 +412,11 @@ function VideoTable() {
       )}
 
       <Modal
-        title={batchTagModal.mode === 'add' ? 'Add Tag to Selected Videos' : 'Remove Tag from Selected Videos'}
+        title={
+          batchTagModal.mode === 'add'
+            ? 'Add Tag to Selected Videos'
+            : 'Remove Tag from Selected Videos'
+        }
         open={batchTagModal.open}
         confirmLoading={batchLoading}
         onCancel={() => {

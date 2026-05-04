@@ -105,7 +105,9 @@ export class RegexModule implements ParserModule {
           .trim();
         const beforeSongWordCount = beforeSongText.split(/\s+/).filter(Boolean).length;
         const potentialArtist =
-          tokens.length === 2 && beforeSongWordCount <= 1 ? cleanedArtist : tokens[tokens.length - 1];
+          tokens.length === 2 && beforeSongWordCount <= 1
+            ? cleanedArtist
+            : tokens[tokens.length - 1];
         if (!this.isCommonWord(potentialArtist) && potentialArtist.length > 1) {
           metadata.artist_name = this.normalizeName(potentialArtist);
           fieldsExtracted++;
@@ -114,7 +116,9 @@ export class RegexModule implements ParserModule {
 
       // Pattern: GROUP (ARTIST)
       if (!metadata.artist_name) {
-        const groupArtistMatch = title.match(/\b\d{6}\b\s+([A-Za-z가-힣0-9][A-Za-z가-힣0-9\s&]+?)\s+\(([^)]+)\)/i);
+        const groupArtistMatch = title.match(
+          /\b\d{6}\b\s+([A-Za-z가-힣0-9][A-Za-z가-힣0-9\s&]+?)\s+\(([^)]+)\)/i,
+        );
         if (groupArtistMatch?.[2]) {
           metadata.artist_name = this.normalizeName(groupArtistMatch[2].trim());
           fieldsExtracted++;
@@ -139,7 +143,9 @@ export class RegexModule implements ParserModule {
     }
 
     if (!metadata.group_name) {
-      const groupArtistMatch = title.match(/\b\d{6}\b\s+([A-Za-z가-힣0-9][A-Za-z가-힣0-9\s&]+?)\s+\([^)]+\)/i);
+      const groupArtistMatch = title.match(
+        /\b\d{6}\b\s+([A-Za-z가-힣0-9][A-Za-z가-힣0-9\s&]+?)\s+\([^)]+\)/i,
+      );
       if (groupArtistMatch?.[1]) {
         metadata.group_name = this.normalizeName(groupArtistMatch[1].trim());
         fieldsExtracted++;

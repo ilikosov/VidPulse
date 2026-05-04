@@ -115,7 +115,9 @@ function ChannelsPage() {
       dataIndex: 'thumbnail_url',
       key: 'thumbnail_url',
       width: 100,
-      render: (thumbnailUrl?: string | null) => <Avatar src={thumbnailUrl || undefined} shape="square" size={56} />,
+      render: (thumbnailUrl?: string | null) => (
+        <Avatar src={thumbnailUrl || undefined} shape="square" size={56} />
+      ),
     },
     { title: 'Channel Title', dataIndex: 'title', key: 'title' },
     { title: 'YouTube ID', dataIndex: 'youtube_id', key: 'youtube_id' },
@@ -169,7 +171,13 @@ function ChannelsPage() {
           </Space>
         </Space>
 
-        <Table rowKey="id" loading={loading} columns={columns} dataSource={channels} pagination={false} />
+        <Table
+          rowKey="id"
+          loading={loading}
+          columns={columns}
+          dataSource={channels}
+          pagination={false}
+        />
       </Space>
 
       <Modal
@@ -231,7 +239,9 @@ function ChannelsPage() {
               <InboxOutlined />
             </p>
             <p className="ant-upload-text">Click or drag a .txt file to this area</p>
-            <p className="ant-upload-hint">One YouTube channel URL per line. Lines starting with # are ignored.</p>
+            <p className="ant-upload-hint">
+              One YouTube channel URL per line. Lines starting with # are ignored.
+            </p>
           </Upload.Dragger>
 
           {importSummary && (
@@ -240,7 +250,9 @@ function ChannelsPage() {
               message={`Added ${importSummary.added} channels, skipped ${importSummary.skipped}, processed ${importSummary.total} lines.`}
               description={
                 importSummary.errors.length > 0
-                  ? importSummary.errors.slice(0, 10).map((error, index) => <div key={`${error}-${index}`}>{error}</div>)
+                  ? importSummary.errors
+                      .slice(0, 10)
+                      .map((error, index) => <div key={`${error}-${index}`}>{error}</div>)
                   : 'No errors reported.'
               }
               showIcon

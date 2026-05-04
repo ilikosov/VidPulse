@@ -30,7 +30,11 @@ function AutocompleteInput({ value, type, placeholder, label, onChange }: Props)
 
     timer.current = window.setTimeout(async () => {
       try {
-        const response = await getDictionary(type, query, type === 'groups' ? visibleGroupTypes : undefined);
+        const response = await getDictionary(
+          type,
+          query,
+          type === 'groups' ? visibleGroupTypes : undefined,
+        );
         setOptions(response.results.map((result) => ({ value: result })));
       } catch {
         setOptions([]);

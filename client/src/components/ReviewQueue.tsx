@@ -125,7 +125,9 @@ function ReviewQueue() {
   };
 
   const handleSuggest = async (video: ReviewVideo) => {
-    setVideos((prev) => prev.map((item) => (item.id === video.id ? { ...item, suggesting: true } : item)));
+    setVideos((prev) =>
+      prev.map((item) => (item.id === video.id ? { ...item, suggesting: true } : item)),
+    );
     try {
       const suggestion = await suggestMetadata(video.id);
       setVideos((prev) =>
@@ -149,7 +151,9 @@ function ReviewQueue() {
       );
       message.success('AI suggestion applied');
     } catch (err) {
-      setVideos((prev) => prev.map((item) => (item.id === video.id ? { ...item, suggesting: false } : item)));
+      setVideos((prev) =>
+        prev.map((item) => (item.id === video.id ? { ...item, suggesting: false } : item)),
+      );
       message.error(err instanceof Error ? err.message : 'AI suggestion failed');
     }
   };
@@ -287,22 +291,24 @@ function ReviewQueue() {
                 Suggest with AI
               </Button>
               <Button
-              type="primary"
-              loading={video.saving}
-              disabled={video.saved}
-              onClick={() => void handleSave(video)}
->
-              {video.saved ? 'Saved!' : 'Save & Move to New'}
-            </Button>
-            <Popconfirm
-              title="Ignore this video?"
-              description="Are you sure you want to ignore this video? It will be hidden from views."
-              okText="Ignore"
-              cancelText="Cancel"
-              onConfirm={() => void handleIgnore(video)}
-            >
-              <Button danger disabled={video.saved || video.saving}>Ignore</Button>
-            </Popconfirm>
+                type="primary"
+                loading={video.saving}
+                disabled={video.saved}
+                onClick={() => void handleSave(video)}
+              >
+                {video.saved ? 'Saved!' : 'Save & Move to New'}
+              </Button>
+              <Popconfirm
+                title="Ignore this video?"
+                description="Are you sure you want to ignore this video? It will be hidden from views."
+                okText="Ignore"
+                cancelText="Cancel"
+                onConfirm={() => void handleIgnore(video)}
+              >
+                <Button danger disabled={video.saved || video.saving}>
+                  Ignore
+                </Button>
+              </Popconfirm>
             </Space>
           </Card>
         ))}

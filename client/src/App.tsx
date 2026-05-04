@@ -53,7 +53,12 @@ function App() {
         <Typography.Title level={4} style={{ margin: 0, color: '#eb2f96' }}>
           K-pop Archive Manager
         </Typography.Title>
-        <Menu mode="horizontal" selectedKeys={[selectedKey]} items={menuItems} style={{ minWidth: 640 }} />
+        <Menu
+          mode="horizontal"
+          selectedKeys={[selectedKey]}
+          items={menuItems}
+          style={{ minWidth: 640 }}
+        />
       </Header>
       <Content style={{ padding: 24 }}>
         <Routes>

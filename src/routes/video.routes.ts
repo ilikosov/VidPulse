@@ -135,7 +135,7 @@ router.get('/', async (req: Request, res: Response) => {
     if (status) {
       if (!isValidStatus(status)) {
         return res.status(400).json({
-          error: `Invalid status '${status}'. Allowed: ${VALID_STATUSES.join(', ')}` ,
+          error: `Invalid status '${status}'. Allowed: ${VALID_STATUSES.join(', ')}`,
         });
       }
       query = query.where('videos.status', status);
@@ -237,11 +237,15 @@ router.post('/batch/confirm-download', async (req: Request, res: Response) => {
         });
       });
 
-      await logEvent('video_download_confirmed', `Download confirmed for video ${video.youtube_id}`, {
-        video_id: videoId,
-        youtube_id: video.youtube_id,
-        file_path: filePath,
-      });
+      await logEvent(
+        'video_download_confirmed',
+        `Download confirmed for video ${video.youtube_id}`,
+        {
+          video_id: videoId,
+          youtube_id: video.youtube_id,
+          file_path: filePath,
+        },
+      );
 
       succeeded += 1;
     } catch (error) {
@@ -326,7 +330,6 @@ router.post('/batch/complete', async (req: Request, res: Response) => {
     errors,
   });
 });
-
 
 router.post('/batch/ignore', async (req: Request, res: Response) => {
   const validation = validateVideoIds(req.body);
@@ -488,7 +491,9 @@ router.delete('/batch/tags', async (req: Request, res: Response) => {
   }
 
   try {
-    const tag = await knex('tags').whereRaw('LOWER(name) = LOWER(?)', [tagValidation.tagName]).first();
+    const tag = await knex('tags')
+      .whereRaw('LOWER(name) = LOWER(?)', [tagValidation.tagName])
+      .first();
     if (!tag) {
       return res.json({
         processed: validation.videoIds.length,
@@ -551,7 +556,11 @@ router.post('/add', async (req: Request, res: Response) => {
     }
 
     const details = await youtubeService.getVideoDetails(videoId);
-    const { metadata, needsReview } = await parseTitle(details.title, details.publishedAt, details.tags);
+    const { metadata, needsReview } = await parseTitle(
+      details.title,
+      details.publishedAt,
+      details.tags,
+    );
 
     const insertData: Record<string, any> = {
       youtube_id: videoId,
@@ -711,7 +720,10 @@ router.post('/:id/tags', async (req: Request, res: Response) => {
     }
 
     const tagId = await findOrCreateTagId(tagValidation.tagName);
-    await knex('video_tags').insert({ video_id: videoId, tag_id: tagId }).onConflict(['video_id', 'tag_id']).ignore();
+    await knex('video_tags')
+      .insert({ video_id: videoId, tag_id: tagId })
+      .onConflict(['video_id', 'tag_id'])
+      .ignore();
 
     const tag = await knex('tags').select('id', 'name').where('id', tagId).first();
     return res.status(201).json(tag);
