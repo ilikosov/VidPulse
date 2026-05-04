@@ -29,6 +29,52 @@ export class DictionaryService {
     if (q) query.whereILike('g.name', `%${q}%`);
     return query;
   }
+
+  async getGroupById(id: number) {
+    const group = await knex('dictionary_groups').select('id', 'name', 'type', 'active').where({ id }).first();
+    if (!group) return null;
+    const artists = await knex('dictionary_artists').select('id', 'name', 'group_id').where({ group_id: id }).orderBy('name');
+    return { ...group, artists };
+  }
+
+  async getArtistById(id: number) {
+    return knex('dictionary_artists as a')
+      .select('a.id', 'a.name', 'a.group_id', 'g.name as group_name')
+      .leftJoin('dictionary_groups as g', 'g.id', 'a.group_id')
+      .where('a.id', id)
+      .first();
+  }
+
+  async getSongById(id: number) {
+    return knex('dictionary_songs').select('id', 'title', 'artist').where({ id }).first();
+  }
+
+  async getVideosByField(field: 'group_name' | 'artist_name' | 'song_title', value: string, page = 1, limit = 20) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, limit);
+    const offset = (safePage - 1) * safeLimit;
+    const base = knex('videos').where(field, value);
+    const videos = await base.clone()
+      .leftJoin('dictionary_groups as dg', 'videos.group_name', 'dg.name')
+      .leftJoin('dictionary_artists as da', 'videos.artist_name', 'da.name')
+      .leftJoin('dictionary_songs as ds', 'videos.song_title', 'ds.title')
+      .select('videos.*', 'dg.id as group_id', 'da.id as artist_id', 'ds.id as song_id')
+      .orderBy('videos.created_at', 'desc')
+      .limit(safeLimit)
+      .offset(offset);
+    const totalRow = await base.clone().count('* as count').first();
+    const total = Number(totalRow?.count || 0);
+
+    return {
+      videos,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit),
+      },
+    };
+  }
   async createGroup(payload: { name: string; type: DictionaryGroupType; active?: boolean }) { return knex('dictionary_groups').insert({ ...payload, active: payload.active ?? true }); }
   async updateGroup(id: number, payload: { name: string; type: DictionaryGroupType; active?: boolean }) { return knex('dictionary_groups').where({ id }).update(payload); }
   async deleteGroup(id: number) { await knex('dictionary_artists').where({ group_id: id }).delete(); return knex('dictionary_groups').where({ id }).delete(); }
@@ -52,8 +98,6 @@ export class DictionaryService {
   async createEvent(payload: { name: string }) { return knex('dictionary_events').insert(payload); }
   async updateEvent(id: number, payload: { name: string }) { return knex('dictionary_events').where({ id }).update(payload); }
   async deleteEvent(id: number) { return knex('dictionary_events').where({ id }).delete(); }
-
-
 
   async getAllSettings() {
     const rows = await knex('settings').select('key', 'value');

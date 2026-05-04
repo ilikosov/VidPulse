@@ -9,6 +9,9 @@ import PlaylistsPage from './pages/PlaylistsPage';
 import EventLogPage from './pages/EventLogPage';
 import SettingsPage from './pages/SettingsPage';
 import DictionaryManagement from './pages/DictionaryManagement';
+import GroupPage from './pages/GroupPage';
+import ArtistPage from './pages/ArtistPage';
+import SongPage from './pages/SongPage';
 
 const { Header, Content } = Layout;
 
@@ -57,6 +60,9 @@ function App() {
           <Route path="/events" element={<EventLogPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/dictionary" element={<DictionaryManagement />} />
+          <Route path="/groups/:id" element={<GroupPage />} />
+          <Route path="/artists/:id" element={<ArtistPage />} />
+          <Route path="/songs/:id" element={<SongPage />} />
           <Route path="*" element={<VideoTable />} />
         </Routes>
       </Content>
