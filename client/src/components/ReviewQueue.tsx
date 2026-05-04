@@ -15,7 +15,7 @@ import {
   message,
 } from 'antd';
 import { useEffect, useState } from 'react';
-import { getVideos, ignoreVideo, suggestMetadata, updateMetadata, type Video } from '../api';
+import { getVideos, ignoreVideo, reparseVideo, suggestMetadata, updateMetadata, type Video } from '../api';
 import AutocompleteInput from './AutocompleteInput';
 
 interface ReviewVideo extends Video {
@@ -30,6 +30,7 @@ interface ReviewVideo extends Video {
   saving: boolean;
   suggesting: boolean;
   saved: boolean;
+  reparsing: boolean;
 }
 
 function formatDateForEdit(dateString: string | null): string {
@@ -65,6 +66,7 @@ function ReviewQueue() {
           saving: false,
           suggesting: false,
           saved: false,
+          reparsing: false,
         })),
       );
     } catch (err) {
@@ -155,6 +157,20 @@ function ReviewQueue() {
         prev.map((item) => (item.id === video.id ? { ...item, suggesting: false } : item)),
       );
       message.error(err instanceof Error ? err.message : 'AI suggestion failed');
+    }
+  };
+
+  const handleReparse = async (video: ReviewVideo) => {
+    setVideos((prev) => prev.map((item) => (item.id === video.id ? { ...item, reparsing: true } : item)));
+    try {
+      await reparseVideo(video.id);
+      message.success(`Reparsed: ${video.original_title}`);
+      await fetchVideos();
+    } catch (err) {
+      setVideos((prev) =>
+        prev.map((item) => (item.id === video.id ? { ...item, reparsing: false } : item)),
+      );
+      message.error(err instanceof Error ? err.message : 'Failed to reparse video');
     }
   };
 
@@ -286,9 +302,12 @@ function ReviewQueue() {
               <Button
                 onClick={() => void handleSuggest(video)}
                 loading={video.suggesting}
-                disabled={video.saved || !video.original_title}
+                disabled={video.saved || video.reparsing || !video.original_title}
               >
                 Suggest with AI
+              </Button>
+              <Button onClick={() => void handleReparse(video)} loading={video.reparsing} disabled={video.saved}>
+                Reparse
               </Button>
               <Button
                 type="primary"

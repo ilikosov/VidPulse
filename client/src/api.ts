@@ -230,6 +230,12 @@ export async function reparseBatch(videoIds: number[]): Promise<{ updated: numbe
   });
 }
 
+export async function reparseVideo(videoId: number | string): Promise<Video> {
+  return fetchApi<Video>(`/parser/reparse/${videoId}`, {
+    method: 'POST',
+  });
+}
+
 export async function llmParseVideo(videoId: number | string): Promise<{ updated: number }> {
   return fetchApi<{ updated: number }>(`/parser/llm-parse/${videoId}`, {
     method: 'POST',

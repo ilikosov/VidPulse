@@ -37,7 +37,7 @@ export class ChannelSyncService implements IChannelSyncService {
         for (const item of items) {
           if (await this.videos.findByYoutubeId(item.videoId)) continue;
           const details = await this.youtube.getVideoDetails(item.videoId);
-          const { metadata, status } = await parseVideoMetadata(
+          const { metadata } = await parseVideoMetadata(
             this.parser,
             details.title || item.title,
             details.publishedAt || item.publishedAt,
@@ -49,7 +49,7 @@ export class ChannelSyncService implements IChannelSyncService {
             original_title: details.title || item.title,
             published_at: details.publishedAt || item.publishedAt,
             duration_seconds: details.durationSeconds ?? null,
-            status,
+            status: 'needs_review',
             ...metadata,
             created_at: now.toISOString(),
             updated_at: now.toISOString(),
