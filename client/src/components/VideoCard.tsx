@@ -5,6 +5,7 @@ import {
   Col,
   Descriptions,
   Divider,
+  Empty,
   Flex,
   Form,
   Input,
@@ -20,10 +21,20 @@ import {
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { addTagToVideo, getVideo, ignoreVideo, llmParseVideo, removeTagFromVideo, updateMetadata, type Video } from '../api';
+import {
+  addTagToVideo,
+  getVideo,
+  ignoreVideo,
+  llmParseVideo,
+  removeTagFromVideo,
+  updateMetadata,
+  type Video,
+} from '../api';
 import AutocompleteInput from './AutocompleteInput';
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
+
+const { Text, Title } = Typography;
 
 interface EditForm {
   perf_date: string;
@@ -56,7 +67,11 @@ function toForm(video: Video): EditForm {
 
 function formatDateDisplay(dateString: string | null | undefined): string {
   if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
 function VideoCard() {
@@ -73,6 +88,7 @@ function VideoCard() {
   const [presetTagLoading, setPresetTagLoading] = useState<'short' | 'private' | null>(null);
   const [llmParsing, setLlmParsing] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+
   const requiresManualTagConfirmation = (tagName: string) =>
     ['short', 'private'].includes(tagName.trim().toLowerCase());
 
@@ -123,7 +139,6 @@ function VideoCard() {
     }
   };
 
-
   const handleAddPresetTag = async (tagName: 'short' | 'private') => {
     if (!video) return;
     Modal.confirm({
@@ -146,15 +161,13 @@ function VideoCard() {
     });
   };
 
-
-
   const handleIgnore = async () => {
     if (!video || video.status === 'ignored') return;
-
     Modal.confirm({
       title: 'Ignore this video?',
       content: 'Are you sure you want to ignore this video? It will be hidden from views.',
       okText: 'Ignore',
+      okButtonProps: { danger: true },
       cancelText: 'Cancel',
       onOk: async () => {
         try {
@@ -181,6 +194,7 @@ function VideoCard() {
       setLlmParsing(false);
     }
   };
+
   const handleRemoveTag = async (tagId: number) => {
     if (!video) return;
     setTagLoading(true);
@@ -226,195 +240,395 @@ function VideoCard() {
   if (!video || !form) return <Alert type="warning" message="Video not found" />;
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%', maxWidth: 1100, margin: '0 auto' }}>
-      <Button type="link" onClick={() => navigate('/videos')} style={{ paddingLeft: 0 }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
+      <Button
+        type="text"
+        onClick={() => navigate('/videos')}
+        style={{ paddingLeft: 0, marginBottom: 24, color: '#666' }}
+      >
         ← Back to Videos
       </Button>
 
-      <Card>
-        <Flex justify="space-between" align="center" gap={12} wrap>
-          <Typography.Title level={3} style={{ margin: 0 }}>
+      <Card
+        bordered={false}
+        style={{
+          boxShadow: '0 6px 20px rgba(0,0,0,0.06)',
+          borderRadius: 12,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header */}
+        <Flex justify="space-between" align="flex-start" gap={12} wrap style={{ marginBottom: 24 }}>
+          <Title level={3} style={{ margin: 0, fontWeight: 600 }}>
             {video.original_title}
-          </Typography.Title>
+          </Title>
           <Space>
-            <Tag color="magenta">{video.status}</Tag>
-            <Button danger onClick={() => void handleIgnore()} disabled={video.status === 'ignored'}>
+            <Tag
+              color={
+                video.status === 'ignored'
+                  ? 'default'
+                  : video.status === 'processed'
+                    ? 'success'
+                    : 'magenta'
+              }
+              style={{ textTransform: 'capitalize', fontWeight: 500 }}
+            >
+              {video.status}
+            </Tag>
+            <Button
+              danger
+              variant="outlined"
+              onClick={() => void handleIgnore()}
+              disabled={video.status === 'ignored'}
+              size="small"
+            >
               Ignore
             </Button>
           </Space>
         </Flex>
-        <Divider />
 
-        <Row gutter={[24, 24]}>
-          <Col xs={24} md={8}>
-            <img
-              src={`https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`}
-              alt="Thumbnail"
-              style={{ width: '100%', borderRadius: 8 }}
-            />
-            <Button type="link" href={`https://www.youtube.com/watch?v=${video.youtube_id}`} target="_blank">
-              Watch on YouTube
+        <Divider style={{ margin: '0 0 24px 0' }} />
+
+        <Row gutter={[32, 32]}>
+          {/* Left Column - Thumbnail */}
+          <Col xs={24} md={9} lg={8}>
+            <div
+              style={{
+                position: 'relative',
+                borderRadius: 12,
+                overflow: 'hidden',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+              }}
+            >
+              <img
+                src={`https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`}
+                alt="Thumbnail"
+                style={{ width: '100%', display: 'block', aspectRatio: '16/9', objectFit: 'cover' }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.4))',
+                  opacity: 0,
+                  transition: 'opacity 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '0')}
+              >
+                <div
+                  style={{
+                    width: 56,
+                    height: 56,
+                    background: 'rgba(255, 0, 0, 0.9)',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginLeft: 6,
+                  }}
+                >
+                  <span style={{ color: 'white', fontSize: 24, lineHeight: 1 }}>▶</span>
+                </div>
+              </div>
+            </div>
+            <Button
+              type="link"
+              href={`https://www.youtube.com/watch?v=${video.youtube_id}`}
+              target="_blank"
+              style={{ marginTop: 12, padding: 0, fontWeight: 500 }}
+            >
+              Open in YouTube ↗
             </Button>
           </Col>
-          <Col xs={24} md={16}>
-            <Descriptions bordered column={1} size="small">
-              <Descriptions.Item label="Published Date">{formatDateDisplay(video.published_at)}</Descriptions.Item>
-              <Descriptions.Item label="Duration">{formatDuration(video.duration_seconds)}</Descriptions.Item>
+
+          {/* Right Column - Details */}
+          <Col
+            xs={24}
+            md={15}
+            lg={16}
+            style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
+          >
+            {/* Basic Info (Clean, no borders) */}
+            <Descriptions column={{ xs: 1, sm: 2 }} size="small">
+              <Descriptions.Item label="Published">
+                {formatDateDisplay(video.published_at)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Duration">
+                {formatDuration(video.duration_seconds)}
+              </Descriptions.Item>
               <Descriptions.Item label="Channel">{video.channel_title || '-'}</Descriptions.Item>
               <Descriptions.Item label="Playlist">{video.playlist_title || '-'}</Descriptions.Item>
             </Descriptions>
 
-            <Divider orientation="left">Metadata</Divider>
-
-            <Divider orientation="left">Tags</Divider>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Space wrap>
-                {(video.tags ?? []).length > 0 ? (
-                  video.tags?.map((tag) => (
-                    <Tag
-                      key={tag.id}
-                      color={getTagColor(tag.name)}
-                      closable
-                      onClose={(event) => {
-                        event.preventDefault();
-                        void handleRemoveTag(tag.id);
-                      }}
-                    >
-                      {tag.name}
-                    </Tag>
-                  ))
-                ) : (
-                  <Typography.Text type="secondary">No tags yet</Typography.Text>
+            {/* Metadata Block */}
+            <div>
+              <Flex gap={12} justify="flex-end" style={{ marginTop: 8 }}>
+                <Divider
+                  orientation="left"
+                  style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 600, minWidth: 0 }}
+                >
+                  Metadata
+                </Divider>
+                {!editing && (
+                  <Button type="primary" ghost size="small" onClick={() => setEditing(true)}>
+                    Edit Metadata
+                  </Button>
                 )}
-              </Space>
+              </Flex>
 
-              <Space wrap>
-                <Tooltip title="Add the 'short' tag to this video">
-                  <Button
-                    size="small"
-                    style={{ borderColor: '#52c41a', color: '#389e0d' }}
-                    onClick={() => void handleAddPresetTag('short')}
-                    loading={presetTagLoading === 'short'}
-                    disabled={presetTagLoading !== null}
-                  >
-                    Shorts
-                  </Button>
-                </Tooltip>
-                <Tooltip title="Add the 'private' tag to this video">
-                  <Button
-                    size="small"
-                    style={{ borderColor: '#fa8c16', color: '#d46b08' }}
-                    onClick={() => void handleAddPresetTag('private')}
-                    loading={presetTagLoading === 'private'}
-                    disabled={presetTagLoading !== null}
-                  >
-                    Private
-                  </Button>
-                </Tooltip>
-              </Space>
+              {editing ? (
+                <div
+                  style={{
+                    background: '#fafafa',
+                    padding: 24,
+                    borderRadius: 12,
+                    border: '1px solid #f0f0f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 16,
+                  }}
+                >
+                  <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                      <AutocompleteInput
+                        label="Performance Date (YYMMDD)"
+                        type="groups"
+                        placeholder="e.g., 240315"
+                        value={form.perf_date}
+                        onChange={(value) =>
+                          setForm((prev) => (prev ? { ...prev, perf_date: value } : prev))
+                        }
+                      />
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <AutocompleteInput
+                        label="Group Name"
+                        type="groups"
+                        placeholder="Enter group name"
+                        value={form.group_name}
+                        onChange={(value) =>
+                          setForm((prev) => (prev ? { ...prev, group_name: value } : prev))
+                        }
+                      />
+                    </Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                      <AutocompleteInput
+                        label="Artist Name"
+                        type="artists"
+                        placeholder="Enter artist name"
+                        value={form.artist_name}
+                        onChange={(value) =>
+                          setForm((prev) => (prev ? { ...prev, artist_name: value } : prev))
+                        }
+                      />
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <AutocompleteInput
+                        label="Song Title"
+                        type="songs"
+                        placeholder="Enter song title"
+                        value={form.song_title}
+                        onChange={(value) =>
+                          setForm((prev) => (prev ? { ...prev, song_title: value } : prev))
+                        }
+                      />
+                    </Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                      <AutocompleteInput
+                        label="Event"
+                        type="events"
+                        placeholder="Enter event"
+                        value={form.event}
+                        onChange={(value) =>
+                          setForm((prev) => (prev ? { ...prev, event: value } : prev))
+                        }
+                      />
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Form.Item label="Camera Type" style={{ marginBottom: 0 }}>
+                        <Input
+                          placeholder="Enter camera type"
+                          value={form.camera_type}
+                          onChange={(event) =>
+                            setForm((prev) =>
+                              prev ? { ...prev, camera_type: event.target.value } : prev,
+                            )
+                          }
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
 
-              <Space.Compact style={{ width: '100%' }}>
-                <Select
-                  showSearch
-                  style={{ width: '100%' }}
-                  value={newTagName || undefined}
-                  placeholder="Type a tag name or choose an existing one"
-                  options={tagSuggestions.map((name) => ({ value: name, label: name }))}
-                  onChange={(value) => setNewTagName(value || '')}
-                  onSearch={(value) => setNewTagName(value)}
-                />
-                <Button type="primary" onClick={() => void handleAddTag()} loading={tagLoading}>
-                  Add Tag
-                </Button>
-              </Space.Compact>
-            </Space>
+                  <Flex gap={12} justify="flex-end" style={{ marginTop: 8 }}>
+                    <Button
+                      onClick={() => {
+                        setForm(toForm(video));
+                        setEditing(false);
+                      }}
+                      disabled={saving}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="primary" onClick={() => void handleSave()} loading={saving}>
+                      Save Changes
+                    </Button>
+                  </Flex>
+                </div>
+              ) : (
+                <div style={{ position: 'relative' }}>
+                  <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
+                    <Descriptions.Item label="Performance Date">
+                      {formatDateDisplay(video.perf_date)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Group">{video.group_name || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="Artist">{video.artist_name || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="Song">{video.song_title || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="Event">{video.event || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="Camera Type">
+                      {video.camera_type || '-'}
+                    </Descriptions.Item>
+                  </Descriptions>
+                </div>
+              )}
+            </div>
 
-            {editing ? (
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <AutocompleteInput
-                  label="Performance Date (YYMMDD)"
-                  type="groups"
-                  placeholder="e.g., 240315"
-                  value={form.perf_date}
-                  onChange={(value) => setForm((prev) => (prev ? { ...prev, perf_date: value } : prev))}
-                />
-                <AutocompleteInput
-                  label="Group Name"
-                  type="groups"
-                  placeholder="Enter group name"
-                  value={form.group_name}
-                  onChange={(value) => setForm((prev) => (prev ? { ...prev, group_name: value } : prev))}
-                />
-                <AutocompleteInput
-                  label="Artist Name"
-                  type="artists"
-                  placeholder="Enter artist name"
-                  value={form.artist_name}
-                  onChange={(value) => setForm((prev) => (prev ? { ...prev, artist_name: value } : prev))}
-                />
-                <AutocompleteInput
-                  label="Song Title"
-                  type="songs"
-                  placeholder="Enter song title"
-                  value={form.song_title}
-                  onChange={(value) => setForm((prev) => (prev ? { ...prev, song_title: value } : prev))}
-                />
-                <AutocompleteInput
-                  label="Event"
-                  type="events"
-                  placeholder="Enter event"
-                  value={form.event}
-                  onChange={(value) => setForm((prev) => (prev ? { ...prev, event: value } : prev))}
-                />
-                <Form.Item label="Camera Type" style={{ marginBottom: 0 }}>
-                  <Input
-                    value={form.camera_type}
-                    onChange={(event) => setForm((prev) => (prev ? { ...prev, camera_type: event.target.value } : prev))}
-                  />
-                </Form.Item>
-                <Space>
-                  <Button type="primary" onClick={() => void handleSave()} loading={saving}>
-                    Save Changes
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setForm(toForm(video));
-                      setEditing(false);
-                    }}
-                    disabled={saving}
-                  >
-                    Cancel
-                  </Button>
+            {/* Tags Block */}
+            <div>
+              <Divider
+                orientation="left"
+                style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 600 }}
+              >
+                Tags
+              </Divider>
+
+              <div
+                style={{
+                  background: '#fafafa',
+                  padding: 16,
+                  borderRadius: 12,
+                  border: '1px solid #f0f0f0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16,
+                }}
+              >
+                <Space wrap size={[8, 8]}>
+                  {(video.tags ?? []).length > 0 ? (
+                    video.tags?.map((tag) => (
+                      <Tag
+                        key={tag.id}
+                        color={getTagColor(tag.name)}
+                        closable
+                        onClose={(event) => {
+                          event.preventDefault();
+                          void handleRemoveTag(tag.id);
+                        }}
+                        style={{ padding: '4px 12px', borderRadius: 4 }}
+                      >
+                        {tag.name}
+                      </Tag>
+                    ))
+                  ) : (
+                    <Text type="secondary" style={{ fontStyle: 'italic' }}>
+                      No tags added yet
+                    </Text>
+                  )}
                 </Space>
-              </Space>
-            ) : (
-              <>
-                <Descriptions bordered column={2} size="small">
-                  <Descriptions.Item label="Performance Date">{formatDateDisplay(video.perf_date)}</Descriptions.Item>
-                  <Descriptions.Item label="Group">{video.group_name || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Artist">{video.artist_name || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Song">{video.song_title || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Event">{video.event || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Camera Type">{video.camera_type || '-'}</Descriptions.Item>
-                </Descriptions>
-                <Button type="primary" ghost style={{ marginTop: 16 }} onClick={() => setEditing(true)}>
-                  Edit
-                </Button>
-              </>
-            )}
 
-            <Divider orientation="left">Actions</Divider>
-            <Space wrap>
-              <Button onClick={() => void handleLlmParse()} loading={llmParsing}>LLM Parse Metadata</Button>
-              <Button disabled>Rename File</Button>
-              <Button disabled>Mark Complete</Button>
-            </Space>
-            <Divider orientation="left">Preview Images</Divider>
-            <Typography.Text type="secondary">No preview images available yet.</Typography.Text>
+                <Space wrap size={8}>
+                  <Tooltip title="Mark as a Shorts video">
+                    <Button
+                      size="small"
+                      icon={<span style={{ color: '#52c41a' }}>●</span>}
+                      style={{ borderColor: '#b7eb8f', color: '#389e0d', background: '#f6ffed' }}
+                      onClick={() => void handleAddPresetTag('short')}
+                      loading={presetTagLoading === 'short'}
+                      disabled={presetTagLoading !== null}
+                    >
+                      Shorts
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Mark as a Private/Unlisted video">
+                    <Button
+                      size="small"
+                      icon={<span style={{ color: '#fa8c16' }}>●</span>}
+                      style={{ borderColor: '#ffd591', color: '#d46b08', background: '#fff7e6' }}
+                      onClick={() => void handleAddPresetTag('private')}
+                      loading={presetTagLoading === 'private'}
+                      disabled={presetTagLoading !== null}
+                    >
+                      Private
+                    </Button>
+                  </Tooltip>
+                </Space>
+
+                <Space.Compact style={{ width: '100%', maxWidth: 400 }}>
+                  <Select
+                    showSearch
+                    allowClear
+                    style={{ width: '100%' }}
+                    value={newTagName || undefined}
+                    placeholder="Add custom tag..."
+                    options={tagSuggestions.map((name) => ({ value: name, label: name }))}
+                    onChange={(value) => setNewTagName(value || '')}
+                    onSearch={(value) => setNewTagName(value)}
+                  />
+                  <Button type="primary" onClick={() => void handleAddTag()} loading={tagLoading}>
+                    Add
+                  </Button>
+                </Space.Compact>
+              </div>
+            </div>
+
+            {/* Actions Block */}
+            <div>
+              <Divider
+                orientation="left"
+                style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 600 }}
+              >
+                Actions
+              </Divider>
+              <Space wrap>
+                <Button onClick={() => void handleLlmParse()} loading={llmParsing}>
+                  ✨ LLM Parse Metadata
+                </Button>
+                {/* Убраны некрасивые disabled кнопки для чистоты UI. 
+                    Если они нужны, раскомментируйте:
+                <Tooltip title="Coming soon">
+                  <Button disabled style={{ opacity: 0.5 }}>Rename File</Button>
+                </Tooltip>
+                <Tooltip title="Coming soon">
+                  <Button disabled style={{ opacity: 0.5 }}>Mark Complete</Button>
+                </Tooltip>
+                */}
+              </Space>
+            </div>
+
+            {/* Previews Block */}
+            <div>
+              <Divider
+                orientation="left"
+                style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 600 }}
+              >
+                Preview Images
+              </Divider>
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={<Text type="secondary">No preview images generated yet</Text>}
+              />
+            </div>
           </Col>
         </Row>
       </Card>
-    </Space>
+    </div>
   );
 }
 
