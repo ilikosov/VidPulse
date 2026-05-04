@@ -4,6 +4,17 @@ import { dictionaryService } from '../services/dictionary.service';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
+type TemplateEntity = 'groups' | 'artists' | 'songs' | 'events';
+type TemplateFormat = 'csv' | 'json';
+
+const dictionaryTemplates: Record<TemplateEntity, Record<string, string>> = {
+  groups: { name: '', type: 'female' },
+  artists: { name: '', group_name: '' },
+  songs: { title: '', artist: '' },
+  events: { name: '' },
+};
+
+const createCsvTemplate = (entity: TemplateEntity): string => `${Object.keys(dictionaryTemplates[entity]).join(',')}\n`;
 
 const parseCsv = (text: string) => {
   const [header, ...lines] = text.split(/\r?\n/).filter(Boolean);
@@ -33,6 +44,23 @@ router.get('/events/list', async (req, res) => res.json(await dictionaryService.
 router.post('/events', async (req, res) => { if (!req.body.name) return res.status(400).json({ error: 'name is required' }); await dictionaryService.createEvent({ name: req.body.name }); res.status(201).json({ ok: true }); });
 router.put('/events/:id', async (req, res) => { await dictionaryService.updateEvent(Number(req.params.id), req.body); res.json({ ok: true }); });
 router.delete('/events/:id', async (req, res) => { await dictionaryService.deleteEvent(Number(req.params.id)); res.status(204).send(); });
+
+router.get('/template/:entity/:format', (req, res) => {
+  const entity = req.params.entity as TemplateEntity;
+  const format = req.params.format as TemplateFormat;
+
+  if (!dictionaryTemplates[entity]) return res.status(400).json({ error: 'unsupported entity' });
+  if (!['csv', 'json'].includes(format)) return res.status(400).json({ error: 'unsupported format' });
+
+  const filename = `template_${entity}.${format}`;
+  const payload = format === 'csv'
+    ? createCsvTemplate(entity)
+    : `${JSON.stringify([dictionaryTemplates[entity]], null, 2)}\n`;
+
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.type(format === 'csv' ? 'text/csv' : 'application/json');
+  return res.send(payload);
+});
 
 router.post('/import', upload.single('file'), async (req: Request, res: Response) => {
   if (!req.file) return res.status(400).json({ error: 'file is required' });
