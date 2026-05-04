@@ -7,6 +7,7 @@ import AddVideoPage from './pages/AddVideoPage';
 import ChannelsPage from './pages/ChannelsPage';
 import PlaylistsPage from './pages/PlaylistsPage';
 import EventLogPage from './pages/EventLogPage';
+import SettingsPage from './pages/SettingsPage';
 
 const { Header, Content } = Layout;
 
@@ -17,6 +18,7 @@ const menuItems = [
   { key: '/playlists', label: <Link to="/playlists">Playlists</Link> },
   { key: '/add-video', label: <Link to="/add-video">Add Video</Link> },
   { key: '/events', label: <Link to="/events">Event Log</Link> },
+  { key: '/settings', label: <Link to="/settings">Settings</Link> },
 ];
 
 function App() {
@@ -51,6 +53,7 @@ function App() {
           <Route path="/playlists" element={<PlaylistsPage />} />
           <Route path="/add-video" element={<AddVideoPage />} />
           <Route path="/events" element={<EventLogPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<VideoTable />} />
         </Routes>
       </Content>

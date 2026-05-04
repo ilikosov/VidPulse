@@ -12,6 +12,7 @@ import videoRoutes from './routes/video.routes';
 import dictionaryRoutes from './routes/dictionary.routes';
 import parserRoutes from './routes/parser.routes';
 import eventsRoutes from './routes/events.routes';
+import settingsRoutes from './routes/settings.routes';
 import { createAppContainer } from './compositionRoot';
 
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api/videos', videoRoutes);
 app.use('/api/dictionary', dictionaryRoutes);
 app.use('/api/parser', parserRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Start server
 app.listen(PORT, () => {

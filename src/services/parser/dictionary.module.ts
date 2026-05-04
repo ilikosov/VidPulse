@@ -1,7 +1,3 @@
-declare const require: any;
-declare const process: any;
-const fs = require('fs');
-const path = require('path');
 import { ParserModule, ParsedMetadata } from './parser.types';
 
 /**
@@ -56,50 +52,45 @@ interface KpopDictionary {
   aliases: Record<string, string>;
   cameraTypes: Record<string, string>;
 }
+import { dictionaryService } from '../dictionary.service';
 
 /**
  * Dictionary-based parser module for correcting and normalizing metadata
  */
 export class DictionaryModule implements ParserModule {
   private dictionary: KpopDictionary | null = null;
-  private readonly dictionaryPath: string;
+  constructor() {}
 
-  constructor(dictionaryPath?: string) {
-    this.dictionaryPath = dictionaryPath || path.join(process.cwd(), 'data', 'kpop_dict.json');
-  }
-
-  /**
-   * Load the dictionary from file
-   */
-  private loadDictionary(): KpopDictionary {
-    if (this.dictionary) {
-      return this.dictionary;
+  private async loadDictionary(): Promise<KpopDictionary> {
+    if (this.dictionary) return this.dictionary;
+    const [groups, artists, songs, events] = await Promise.all([
+      dictionaryService.getGroups(),
+      dictionaryService.getArtists(),
+      dictionaryService.getSongs(),
+      dictionaryService.getEvents(),
+    ]);
+    const artistMap: Record<string, string[]> = {};
+    for (const a of artists) {
+      const groupName = (a as any).group_name || 'SOLO';
+      if (!artistMap[groupName]) artistMap[groupName] = [];
+      artistMap[groupName].push(a.name);
     }
-
-    try {
-      const content = fs.readFileSync(this.dictionaryPath, 'utf-8');
-      this.dictionary = JSON.parse(content);
-      return this.dictionary!;
-    } catch (error) {
-      console.warn(`Failed to load dictionary from ${this.dictionaryPath}:`, error);
-      // Return empty dictionary as fallback
-      this.dictionary = {
-        groups: [],
-        artists: {},
-        songs: [],
-        events: [],
-        aliases: {},
-        cameraTypes: {},
-      };
-      return this.dictionary;
-    }
+    this.dictionary = {
+      groups: groups.map((g) => g.name),
+      artists: artistMap,
+      songs: songs.map((s) => s.title),
+      events: events.map((e) => e.name),
+      aliases: {},
+      cameraTypes: {},
+    };
+    return this.dictionary;
   }
 
   async parse(
     title: string,
     currentMeta: Partial<ParsedMetadata>,
   ): Promise<{ metadata: Partial<ParsedMetadata>; confidence: number }> {
-    const dictionary = this.loadDictionary();
+    const dictionary = await this.loadDictionary();
     const metadata: Partial<ParsedMetadata> = { ...currentMeta };
     let correctionsMade = 0;
     let fieldsChecked = 0;
@@ -225,8 +216,8 @@ export class DictionaryModule implements ParserModule {
     return { metadata, confidence };
   }
 
-  public searchInTags(tags: string[], field: 'group' | 'artist' | 'song' | 'event'): string | null {
-    const dictionary = this.loadDictionary();
+  public async searchInTags(tags: string[], field: 'group' | 'artist' | 'song' | 'event'): Promise<string | null> {
+    const dictionary = await this.loadDictionary();
     let candidates: string[] = [];
 
     if (field === 'group') {
