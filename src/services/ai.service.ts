@@ -28,7 +28,10 @@ const PARSER_SYSTEM_PROMPT =
   'You are a K-pop metadata extractor. Given a video title and description, extract perf_date (YYMMDD), group_name, artist_name, song_title, event (with @ prefix), and camera_type. Return ONLY a JSON object with these fields. Use null for missing values.';
 
 function stripCodeFences(content: string): string {
-  return content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  return content
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
 }
 
 function cleanSuggestedMetadata(raw: unknown): SuggestedMetadata {
@@ -114,7 +117,7 @@ export class AIService {
           model,
           messages: [{ role: 'user', content: prompt }],
           temperature: 0,
-          max_tokens: 500,
+          max_tokens: 1500,
         }),
         signal: controller.signal,
       });
@@ -125,6 +128,7 @@ export class AIService {
       }
 
       const payload = (await response.json()) as LLMResponsePayload;
+      console.log(payload.choices?.[0]?.message);
       const content = payload.choices?.[0]?.message?.content;
 
       if (!content) {
@@ -139,20 +143,6 @@ export class AIService {
       );
     } finally {
       clearTimeout(timeout);
-    }
-  }
-
-  async suggestMetadata(title: string, description: string): Promise<SuggestedMetadata> {
-    const prompt = `${SUGGESTION_SYSTEM_PROMPT}\n\nTitle: ${title}\n\nDescription:\n${description || '(empty)'}`;
-    const content = await this.callLLM(prompt);
-
-    try {
-      return cleanSuggestedMetadata(parseJsonContent(content));
-    } catch (error) {
-      console.error('AIService suggestMetadata parse failed:', error);
-      throw new Error(
-        `Failed to parse LM Studio JSON response: ${error instanceof Error ? error.message : String(error)}`,
-      );
     }
   }
 
@@ -171,8 +161,5 @@ export class AIService {
 
 const aiService = new AIService();
 
-export const callLLM = (prompt: string) => aiService.callLLM(prompt);
-export const suggestMetadata = (title: string, description: string) =>
-  aiService.suggestMetadata(title, description);
 export const parseTitleWithLLM = (title: string, description: string) =>
   aiService.parseTitleWithLLM(title, description);

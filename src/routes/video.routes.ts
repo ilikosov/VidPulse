@@ -7,7 +7,7 @@ import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
 import { assignAutoTags } from '../services/tag.service';
 import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
-import { suggestMetadata } from '../services/ai.service';
+import { parseTitleWithLLM } from '../services/ai.service';
 
 const router = Router();
 
@@ -658,7 +658,7 @@ router.post('/:id/suggest', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Video not found' });
     }
 
-    const suggestion = await suggestMetadata(video.original_title, video.description ?? '');
+    const suggestion = await parseTitleWithLLM(video.original_title, video.description ?? '');
     return res.json(suggestion);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'AI suggestion failed';
