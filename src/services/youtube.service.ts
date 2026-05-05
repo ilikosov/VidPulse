@@ -235,6 +235,31 @@ export class YouTubeService {
     }
   }
 
+  private async getChannelUploadsPlaylistId(channelId: string): Promise<string> {
+    const cacheKey = getCacheKey('getChannelUploadsPlaylistId', [channelId]);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      await this.logYouTubeCall(
+        'channels.list',
+        { id: [channelId], part: ['contentDetails'] },
+        true,
+      );
+      return cached;
+    }
+
+    const params = { key: apiKey!, id: [channelId], part: ['contentDetails'] };
+    const response = await this.executeYouTubeCall('channels.list', params, () =>
+      youtube.channels.list(params),
+    );
+    const uploadsPlaylistId = response.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+    if (!uploadsPlaylistId) {
+      throw new Error(`Uploads playlist not found for channel ${channelId}`);
+    }
+
+    cache.set(cacheKey, uploadsPlaylistId);
+    return uploadsPlaylistId;
+  }
+
   /**
    * Fetch videos from a channel published after a specific date
    */
@@ -251,20 +276,8 @@ export class YouTubeService {
     }
 
     try {
-      // 1. Получаем ID плейлиста загрузок канала
-      const channelParams = {
-        key: apiKey!,
-        id: [channelId],
-        part: ['contentDetails'],
-      };
-      const channelResponse = await this.executeYouTubeCall('channels.list', channelParams, () =>
-        youtube.channels.list(channelParams),
-      );
-      const uploadsPlaylistId =
-        channelResponse.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
-      if (!uploadsPlaylistId) throw new Error('Uploads playlist not found');
+      const uploadsPlaylistId = await this.getChannelUploadsPlaylistId(channelId);
 
-      // 2. Собираем все видео из этого плейлиста
       const videos: VideoInfo[] = [];
       let pageToken: string | undefined;
       const afterDate = new Date(publishedAfter).getTime();
@@ -315,6 +328,77 @@ export class YouTubeService {
       throw error;
     }
   }
+
+  async fetchChannelVideosOlderThan(
+    channelId: string,
+    publishedBefore: string,
+    maxResults = 50,
+  ): Promise<VideoInfo[]> {
+    const cacheKey = getCacheKey('fetchChannelVideosOlderThan', [
+      channelId,
+      publishedBefore,
+      maxResults,
+    ]);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      await this.logYouTubeCall(
+        'playlistItems.list',
+        { channelId, publishedBefore, maxResults },
+        true,
+      );
+      return cached;
+    }
+
+    try {
+      const uploadsPlaylistId = await this.getChannelUploadsPlaylistId(channelId);
+      const beforeTs = new Date(publishedBefore).getTime();
+      const videos: VideoInfo[] = [];
+      let pageToken: string | undefined;
+
+      do {
+        const params = {
+          key: apiKey!,
+          playlistId: uploadsPlaylistId,
+          part: ['snippet'],
+          maxResults: 50,
+          pageToken,
+        };
+        const response = await this.executeYouTubeCall('playlistItems.list', params, () =>
+          youtube.playlistItems.list(params),
+        );
+
+        const items = response.data.items || [];
+        for (const item of items) {
+          const snippet = item.snippet;
+          const videoId = snippet?.resourceId?.videoId;
+          const publishedAt = snippet?.publishedAt || '';
+          if (!videoId || !publishedAt) continue;
+          if (new Date(publishedAt).getTime() < beforeTs) {
+            videos.push({ videoId, title: snippet?.title || '', publishedAt });
+            if (videos.length >= maxResults) {
+              cache.set(cacheKey, videos);
+              return videos;
+            }
+          }
+        }
+
+        pageToken = response.data.nextPageToken || undefined;
+      } while (pageToken);
+
+      cache.set(cacheKey, videos);
+      return videos;
+    } catch (error) {
+      if (!(error as any)?.__youtubeLogged) {
+        await this.logYouTubeError(
+          'fetchChannelVideosOlderThan',
+          { channelId, publishedBefore, maxResults },
+          error,
+        );
+      }
+      throw error;
+    }
+  }
+
   /**
    * Fetch videos from a playlist with pagination support
    */

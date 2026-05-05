@@ -151,12 +151,14 @@ export async function getVideos(filters?: {
   page?: number;
   limit?: number;
   includeIgnored?: boolean;
+  channel_id?: number;
 }): Promise<VideosResponse> {
   const params = new URLSearchParams();
   if (filters?.status) params.set('status', filters.status);
   if (filters?.page) params.set('page', String(filters.page));
   if (filters?.limit) params.set('limit', String(filters.limit));
   if (filters?.includeIgnored) params.set('includeIgnored', 'true');
+  if (filters?.channel_id) params.set('channel_id', String(filters.channel_id));
 
   const queryString = params.toString();
   return fetchApi<VideosResponse>(`/videos${queryString ? '?' + queryString : ''}`);
@@ -379,4 +381,20 @@ export async function saveSetting(
     method: 'PUT',
     body: JSON.stringify({ key, value }),
   });
+}
+
+export async function getChannel(id: number | string): Promise<Channel & { videoCount: number }> {
+  return fetchApi<Channel & { videoCount: number }>(`/channels/${id}`);
+}
+
+export async function loadMoreChannelVideos(
+  id: number | string,
+  count = 50,
+): Promise<{ loaded: number; total: number; errors: string[] }> {
+  return fetchApi<{ loaded: number; total: number; errors: string[] }>(
+    `/channels/${id}/load-more?count=${count}`,
+    {
+      method: 'POST',
+    },
+  );
 }
