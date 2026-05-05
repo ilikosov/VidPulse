@@ -63,11 +63,12 @@ export class DictionaryModule implements ParserModule {
 
   private async loadDictionary(): Promise<KpopDictionary> {
     if (this.dictionary) return this.dictionary;
-    const [groups, artists, songs, events] = await Promise.all([
+    const [groups, artists, songs, events, aliases] = await Promise.all([
       dictionaryService.getGroups(),
       dictionaryService.getArtists(),
       dictionaryService.getSongs(),
       dictionaryService.getEvents(),
+      dictionaryService.getAllAliases(),
     ]);
     const artistMap: Record<string, string[]> = {};
     for (const a of artists) {
@@ -75,12 +76,17 @@ export class DictionaryModule implements ParserModule {
       if (!artistMap[groupName]) artistMap[groupName] = [];
       artistMap[groupName].push(a.name);
     }
+    const aliasMap: Record<string, string> = {};
+    for (const alias of aliases as any[]) {
+      const resolved = await dictionaryService.resolveAlias(alias.entity_type, alias.alias);
+      if (resolved?.name) aliasMap[String(alias.alias).trim().toLowerCase()] = resolved.name;
+    }
     this.dictionary = {
       groups: groups.map((g: any) => String(g.name)),
       artists: artistMap,
       songs: songs.map((s) => s.title),
       events: events.map((e) => e.name),
-      aliases: {},
+      aliases: aliasMap,
       cameraTypes: {},
     };
     return this.dictionary!;

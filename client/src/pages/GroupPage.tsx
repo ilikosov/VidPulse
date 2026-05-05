@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { Video } from '../api';
 import { dictionaryApi, type DictionaryGroup } from '../api/dictionary';
+import AliasesEditor from '../components/AliasesEditor';
 
 const columns: ColumnsType<Video> = [
   {
@@ -87,6 +88,7 @@ export default function GroupPage() {
           },
         ]}
       />
+      <AliasesEditor entityType="group" entityId={id} />
       <Table
         rowKey="id"
         style={{ marginTop: 16 }}
