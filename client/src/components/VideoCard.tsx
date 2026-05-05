@@ -75,6 +75,16 @@ function formatDateDisplay(dateString: string | null | undefined): string {
   });
 }
 
+const SectionHeader = ({ title, extra }: { title: string; extra?: React.ReactNode }) => (
+  <Flex align="center" gap={16} style={{ marginBottom: 16 }}>
+    <Text strong style={{ fontSize: 14, whiteSpace: 'nowrap' }}>
+      {title}
+    </Text>
+    <div style={{ flex: 1, height: 1, backgroundColor: '#f0f0f0' }} />
+    {extra}
+  </Flex>
+);
+
 function VideoCard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -385,19 +395,16 @@ function VideoCard() {
 
             {/* Metadata Block */}
             <div>
-              <Flex gap={12} justify="flex-end" style={{ marginTop: 8 }}>
-                <Divider
-                  orientation="left"
-                  style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 600, minWidth: 0 }}
-                >
-                  Metadata
-                </Divider>
-                {!editing && (
-                  <Button type="primary" ghost size="small" onClick={() => setEditing(true)}>
-                    Edit Metadata
-                  </Button>
-                )}
-              </Flex>
+              <SectionHeader
+                title="Metadata"
+                extra={
+                  !editing ? (
+                    <Button type="primary" ghost size="small" onClick={() => setEditing(true)}>
+                      Edit Metadata
+                    </Button>
+                  ) : null
+                }
+              />
 
               {editing ? (
                 <div
@@ -406,8 +413,8 @@ function VideoCard() {
                     padding: 24,
                     borderRadius: 12,
                     border: '1px solid #f0f0f0',
-                    display: 'flex',
-                    flexDirection: 'column',
+                    // Grid гарантирует, что вложенные Row/Col не будут схлопываться
+                    display: 'grid',
                     gap: 16,
                   }}
                 >
@@ -435,6 +442,7 @@ function VideoCard() {
                       />
                     </Col>
                   </Row>
+
                   <Row gutter={16}>
                     <Col xs={24} sm={12}>
                       <AutocompleteField
@@ -449,7 +457,6 @@ function VideoCard() {
                     </Col>
                     <Col xs={24} sm={12}>
                       <AutocompleteField
-                        label="Song Title"
                         type="song"
                         placeholder="Enter song title"
                         value={form.song_title}
@@ -459,10 +466,10 @@ function VideoCard() {
                       />
                     </Col>
                   </Row>
+
                   <Row gutter={16}>
                     <Col xs={24} sm={12}>
                       <AutocompleteField
-                        label="Event"
                         type="event"
                         placeholder="Enter event"
                         value={form.event}
@@ -472,7 +479,7 @@ function VideoCard() {
                       />
                     </Col>
                     <Col xs={24} sm={12}>
-                      <Form.Item label="Camera Type" style={{ marginBottom: 0 }}>
+                      <Form.Item label="Camera Type" style={{ marginBottom: 0, width: '100%' }}>
                         <Input
                           placeholder="Enter camera type"
                           value={form.camera_type}
@@ -502,31 +509,24 @@ function VideoCard() {
                   </Flex>
                 </div>
               ) : (
-                <div style={{ position: 'relative' }}>
-                  <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
-                    <Descriptions.Item label="Performance Date">
-                      {formatDateDisplay(video.perf_date)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Group">{video.group_name || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="Artist">{video.artist_name || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="Song">{video.song_title || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="Event">{video.event || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="Camera Type">
-                      {video.camera_type || '-'}
-                    </Descriptions.Item>
-                  </Descriptions>
-                </div>
+                <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
+                  <Descriptions.Item label="Performance Date">
+                    {formatDateDisplay(video.perf_date)}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Group">{video.group_name || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="Artist">{video.artist_name || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="Song">{video.song_title || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="Event">{video.event || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="Camera Type">
+                    {video.camera_type || '-'}
+                  </Descriptions.Item>
+                </Descriptions>
               )}
             </div>
 
             {/* Tags Block */}
             <div>
-              <Divider
-                orientation="left"
-                style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 600 }}
-              >
-                Tags
-              </Divider>
+              <SectionHeader title="Tags" />
 
               <div
                 style={{
@@ -534,8 +534,7 @@ function VideoCard() {
                   padding: 16,
                   borderRadius: 12,
                   border: '1px solid #f0f0f0',
-                  display: 'flex',
-                  flexDirection: 'column',
+                  display: 'grid',
                   gap: 16,
                 }}
               >
@@ -609,36 +608,17 @@ function VideoCard() {
 
             {/* Actions Block */}
             <div>
-              <Divider
-                orientation="left"
-                style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 600 }}
-              >
-                Actions
-              </Divider>
+              <SectionHeader title="Actions" />
               <Space wrap>
                 <Button onClick={() => void handleLlmParse()} loading={llmParsing}>
                   ✨ LLM Parse Metadata
                 </Button>
-                {/* Убраны некрасивые disabled кнопки для чистоты UI. 
-                    Если они нужны, раскомментируйте:
-                <Tooltip title="Coming soon">
-                  <Button disabled style={{ opacity: 0.5 }}>Rename File</Button>
-                </Tooltip>
-                <Tooltip title="Coming soon">
-                  <Button disabled style={{ opacity: 0.5 }}>Mark Complete</Button>
-                </Tooltip>
-                */}
               </Space>
             </div>
 
             {/* Previews Block */}
             <div>
-              <Divider
-                orientation="left"
-                style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 600 }}
-              >
-                Preview Images
-              </Divider>
+              <SectionHeader title="Preview Images" />
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={<Text type="secondary">No preview images generated yet</Text>}
