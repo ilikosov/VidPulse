@@ -20,7 +20,7 @@ function toTypes(raw?: string): DictionaryGroupType[] {
 }
 
 export class DictionaryService {
-  async getGroups(type?: string, q?: string) {
+  async getGroups(type?: string, q?: string, limit = 20) {
     const types = toTypes(type);
     const query = knex('dictionary_groups as g')
       .select('g.id', 'g.name', 'g.type', 'g.active')
@@ -30,7 +30,7 @@ export class DictionaryService {
       .orderBy('g.name');
     if (types.length) query.whereIn('g.type', types);
     if (q) query.whereILike('g.name', `%${q}%`);
-    return query;
+    return query.limit(limit);
   }
 
   async getGroupById(id: number) {
@@ -104,14 +104,14 @@ export class DictionaryService {
     return knex('dictionary_groups').where({ id }).delete();
   }
 
-  async getArtists(groupId?: number, q?: string) {
+  async getArtists(groupId?: number, q?: string, limit = 20) {
     const query = knex('dictionary_artists as a')
       .select('a.id', 'a.name', 'a.group_id', 'g.name as group_name')
       .leftJoin('dictionary_groups as g', 'g.id', 'a.group_id')
       .orderBy('a.name');
     if (groupId) query.where('a.group_id', groupId);
     if (q) query.whereILike('a.name', `%${q}%`);
-    return query;
+    return query.limit(limit);
   }
   async createArtist(payload: { name: string; group_id: number }) {
     return knex('dictionary_artists').insert(payload);
@@ -123,10 +123,10 @@ export class DictionaryService {
     return knex('dictionary_artists').where({ id }).delete();
   }
 
-  async getSongs(q?: string) {
+  async getSongs(q?: string, limit = 20) {
     const query = knex('dictionary_songs').select('id', 'title', 'artist').orderBy('title');
     if (q) query.whereILike('title', `%${q}%`);
-    return query;
+    return query.limit(limit);
   }
   async createSong(payload: { title: string; artist: string }) {
     return knex('dictionary_songs').insert(payload);
@@ -138,10 +138,10 @@ export class DictionaryService {
     return knex('dictionary_songs').where({ id }).delete();
   }
 
-  async getEvents(q?: string) {
+  async getEvents(q?: string, limit = 20) {
     const query = knex('dictionary_events').select('id', 'name').orderBy('name');
     if (q) query.whereILike('name', `%${q}%`);
-    return query;
+    return query.limit(limit);
   }
   async createEvent(payload: { name: string }) {
     return knex('dictionary_events').insert(payload);
