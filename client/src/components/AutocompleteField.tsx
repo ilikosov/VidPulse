@@ -1,4 +1,4 @@
-import { AutoComplete } from 'antd';
+import { AutoComplete, Form } from 'antd';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { dictionaryApi } from '../api/dictionary';
 
@@ -10,11 +10,19 @@ interface AutocompleteFieldProps {
   onChange?: (value: string) => void;
   placeholder?: string;
   style?: CSSProperties;
+  label?: string; // Добавлен пропс label
 }
 
 const DEFAULT_LIMIT = 15;
 
-function AutocompleteField({ type, value, onChange, placeholder, style }: AutocompleteFieldProps) {
+function AutocompleteField({
+  type,
+  value,
+  onChange,
+  placeholder,
+  style,
+  label,
+}: AutocompleteFieldProps) {
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
 
@@ -55,7 +63,8 @@ function AutocompleteField({ type, value, onChange, placeholder, style }: Autoco
     return () => window.clearTimeout(timer);
   }, [fetcher, query, type]);
 
-  return (
+  // Сам элемент инпута вынесен в переменную для удобной обертки
+  const inputElement = (
     <AutoComplete
       value={value}
       options={options}
@@ -64,9 +73,21 @@ function AutocompleteField({ type, value, onChange, placeholder, style }: Autoco
       placeholder={placeholder}
       filterOption={false}
       allowClear
-      style={style}
+      style={{ width: '100%' }}
     />
   );
+
+  // Если label передан, оборачиваем в Form.Item для идеального совпадения с дизайн-системой Ant Design
+  if (label) {
+    return (
+      <Form.Item label={label} style={{ marginBottom: 0, width: '100%', ...style }}>
+        {inputElement}
+      </Form.Item>
+    );
+  }
+
+  // Если label нет — возвращаем просто инпут без лишних оберток
+  return <div style={{ width: '100%', ...style }}>{inputElement}</div>;
 }
 
 export default AutocompleteField;

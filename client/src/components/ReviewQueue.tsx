@@ -258,6 +258,7 @@ function ReviewQueue() {
             <Row gutter={[12, 12]}>
               <Col xs={24} md={12} lg={8}>
                 <AutocompleteField
+                  style={{ width: '100%' }}
                   label="Performance Date (YYMMDD)"
                   type="group"
                   value={video.editForm.perf_date}
@@ -266,6 +267,7 @@ function ReviewQueue() {
               </Col>
               <Col xs={24} md={12} lg={8}>
                 <AutocompleteField
+                  style={{ width: '100%' }}
                   label="Group Name"
                   type="group"
                   value={video.editForm.group_name}
@@ -274,6 +276,7 @@ function ReviewQueue() {
               </Col>
               <Col xs={24} md={12} lg={8}>
                 <AutocompleteField
+                  style={{ width: '100%' }}
                   label="Artist Name"
                   type="artist"
                   value={video.editForm.artist_name}
@@ -282,6 +285,7 @@ function ReviewQueue() {
               </Col>
               <Col xs={24} md={12} lg={8}>
                 <AutocompleteField
+                  style={{ width: '100%' }}
                   label="Song Title"
                   type="song"
                   value={video.editForm.song_title}
@@ -290,6 +294,7 @@ function ReviewQueue() {
               </Col>
               <Col xs={24} md={12} lg={8}>
                 <AutocompleteField
+                  style={{ width: '100%' }}
                   label="Event"
                   type="event"
                   value={video.editForm.event}

@@ -422,6 +422,7 @@ function VideoCard() {
                     <Col xs={24} sm={12}>
                       <AutocompleteField
                         label="Performance Date (YYMMDD)"
+                        style={{ width: '100%' }}
                         type="group"
                         placeholder="e.g., 240315"
                         value={form.perf_date}
@@ -433,6 +434,7 @@ function VideoCard() {
                     <Col xs={24} sm={12}>
                       <AutocompleteField
                         label="Group Name"
+                        style={{ width: '100%' }}
                         type="group"
                         placeholder="Enter group name"
                         value={form.group_name}
