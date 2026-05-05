@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { Video } from '../api';
 import { dictionaryApi, type DictionaryArtist } from '../api/dictionary';
+import AliasesEditor from '../components/AliasesEditor';
 
 const columns: ColumnsType<Video> = [
   {
@@ -84,6 +85,7 @@ export default function ArtistPage() {
           },
         ]}
       />
+      <AliasesEditor entityType="artist" entityId={id} />
       <Table
         rowKey="id"
         style={{ marginTop: 16 }}

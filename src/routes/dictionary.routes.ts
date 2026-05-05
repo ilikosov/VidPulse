@@ -6,6 +6,15 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 type TemplateEntity = 'groups' | 'artists' | 'songs' | 'events';
 type TemplateFormat = 'csv' | 'json';
+type AliasEntityType = 'group' | 'artist' | 'song';
+const aliasEntityMap: Record<string, AliasEntityType> = {
+  group: 'group',
+  groups: 'group',
+  artist: 'artist',
+  artists: 'artist',
+  song: 'song',
+  songs: 'song',
+};
 
 const dictionaryTemplates: Record<TemplateEntity, Record<string, string>> = {
   groups: { name: '', type: 'female' },
@@ -145,6 +154,37 @@ router.get('/songs/:id/videos', async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 20;
   return res.json(await dictionaryService.getVideosByField('song_title', song.title, page, limit));
+});
+
+router.get('/:entityType/:entityId/aliases', async (req, res) => {
+  const entityType = aliasEntityMap[req.params.entityType];
+  const entityId = Number(req.params.entityId);
+  if (!entityType || !entityId) return res.status(400).json({ error: 'Invalid entity parameters' });
+  return res.json(await dictionaryService.getAliases(entityType, entityId));
+});
+
+router.post('/:entityType/:entityId/aliases', async (req, res) => {
+  const entityType = aliasEntityMap[req.params.entityType];
+  const entityId = Number(req.params.entityId);
+  const alias = String(req.body?.alias ?? '').trim();
+  if (!entityType || !entityId) return res.status(400).json({ error: 'Invalid entity parameters' });
+  if (!alias) return res.status(400).json({ error: 'alias is required' });
+  const existing = await dictionaryService.getAliases(entityType, entityId);
+  if (existing.some((item) => item.alias.toLowerCase() === alias.toLowerCase())) {
+    return res.status(409).json({ error: 'Alias already exists' });
+  }
+  const created = await dictionaryService.addAlias(entityType, entityId, alias);
+  return res.status(201).json(created);
+});
+
+router.delete('/:entityType/:entityId/aliases/:aliasId', async (req, res) => {
+  const entityType = aliasEntityMap[req.params.entityType];
+  const entityId = Number(req.params.entityId);
+  const aliasId = Number(req.params.aliasId);
+  if (!entityType || !entityId || !aliasId)
+    return res.status(400).json({ error: 'Invalid entity parameters' });
+  await dictionaryService.removeAlias(entityType, entityId, aliasId);
+  return res.status(204).send();
 });
 
 router.get('/events/list', async (req, res) =>

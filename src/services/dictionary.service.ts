@@ -8,6 +8,7 @@ export interface ImportSummary {
   updated: number;
   errors: string[];
 }
+export type AliasEntityType = 'group' | 'artist' | 'song';
 
 type ImportRecord = Record<string, unknown> & { type?: string };
 
@@ -29,7 +30,15 @@ export class DictionaryService {
       .groupBy('g.id')
       .orderBy('g.name');
     if (types.length) query.whereIn('g.type', types);
-    if (q) query.whereILike('g.name', `%${q}%`);
+    if (q) {
+      query
+        .leftJoin('dictionary_aliases as ga', function joinAlias() {
+          this.on('ga.entity_id', '=', 'g.id').andOnVal('ga.entity_type', 'group');
+        })
+        .where((builder) => {
+          builder.whereILike('g.name', `%${q}%`).orWhereILike('ga.alias', `%${q}%`);
+        });
+    }
     return query.limit(limit);
   }
 
@@ -48,7 +57,7 @@ export class DictionaryService {
 
   async getArtistById(id: number) {
     return knex('dictionary_artists as a')
-      .select('a.id', 'a.name', 'a.group_id', 'g.name as group_name')
+      .distinct('a.id', 'a.name', 'a.group_id', 'g.name as group_name')
       .leftJoin('dictionary_groups as g', 'g.id', 'a.group_id')
       .where('a.id', id)
       .first();
@@ -110,7 +119,15 @@ export class DictionaryService {
       .leftJoin('dictionary_groups as g', 'g.id', 'a.group_id')
       .orderBy('a.name');
     if (groupId) query.where('a.group_id', groupId);
-    if (q) query.whereILike('a.name', `%${q}%`);
+    if (q) {
+      query
+        .leftJoin('dictionary_aliases as aa', function joinAlias() {
+          this.on('aa.entity_id', '=', 'a.id').andOnVal('aa.entity_type', 'artist');
+        })
+        .where((builder) => {
+          builder.whereILike('a.name', `%${q}%`).orWhereILike('aa.alias', `%${q}%`);
+        });
+    }
     return query.limit(limit);
   }
   async createArtist(payload: { name: string; group_id: number }) {
@@ -124,8 +141,18 @@ export class DictionaryService {
   }
 
   async getSongs(q?: string, limit = 20) {
-    const query = knex('dictionary_songs').select('id', 'title', 'artist').orderBy('title');
-    if (q) query.whereILike('title', `%${q}%`);
+    const query = knex('dictionary_songs as s')
+      .distinct('s.id', 's.title', 's.artist')
+      .orderBy('s.title');
+    if (q) {
+      query
+        .leftJoin('dictionary_aliases as sa', function joinAlias() {
+          this.on('sa.entity_id', '=', 's.id').andOnVal('sa.entity_type', 'song');
+        })
+        .where((builder) => {
+          builder.whereILike('s.title', `%${q}%`).orWhereILike('sa.alias', `%${q}%`);
+        });
+    }
     return query.limit(limit);
   }
   async createSong(payload: { title: string; artist: string }) {
@@ -136,6 +163,66 @@ export class DictionaryService {
   }
   async deleteSong(id: number) {
     return knex('dictionary_songs').where({ id }).delete();
+  }
+
+  async getAliases(entityType: AliasEntityType, entityId: number) {
+    return knex('dictionary_aliases')
+      .select('id', 'alias')
+      .where({ entity_type: entityType, entity_id: entityId })
+      .orderBy('alias');
+  }
+
+  async addAlias(entityType: AliasEntityType, entityId: number, alias: string) {
+    const trimmedAlias = alias.trim();
+    const [id] = await knex('dictionary_aliases').insert({
+      entity_type: entityType,
+      entity_id: entityId,
+      alias: trimmedAlias,
+    });
+    return knex('dictionary_aliases').select('id', 'alias').where({ id }).first();
+  }
+
+  async removeAlias(entityType: AliasEntityType, entityId: number, aliasId: number) {
+    return knex('dictionary_aliases')
+      .where({ id: aliasId, entity_type: entityType, entity_id: entityId })
+      .delete();
+  }
+
+  async getAllAliases(entityType?: AliasEntityType) {
+    const query = knex('dictionary_aliases')
+      .select('id', 'entity_type', 'entity_id', 'alias')
+      .orderBy('alias');
+    if (entityType) query.where({ entity_type: entityType });
+    return query;
+  }
+
+  async resolveAlias(entityType: AliasEntityType, name: string) {
+    const normalized = name.trim().toLowerCase();
+    if (!normalized) return null;
+    const aliasRow = await knex('dictionary_aliases')
+      .whereRaw('LOWER(alias) = ?', [normalized])
+      .andWhere({ entity_type: entityType })
+      .first();
+    if (!aliasRow) return null;
+    if (entityType === 'group') {
+      const group = await knex('dictionary_groups')
+        .select('id', 'name')
+        .where({ id: aliasRow.entity_id })
+        .first();
+      return group ? { id: group.id, name: group.name } : null;
+    }
+    if (entityType === 'artist') {
+      const artist = await knex('dictionary_artists')
+        .select('id', 'name')
+        .where({ id: aliasRow.entity_id })
+        .first();
+      return artist ? { id: artist.id, name: artist.name } : null;
+    }
+    const song = await knex('dictionary_songs')
+      .select('id', 'title')
+      .where({ id: aliasRow.entity_id })
+      .first();
+    return song ? { id: song.id, name: song.title } : null;
   }
 
   async getEvents(q?: string, limit = 20) {

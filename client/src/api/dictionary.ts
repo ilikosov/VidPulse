@@ -33,6 +33,11 @@ export interface DictionarySong {
   title: string;
   artist: string | null;
 }
+export type DictionaryAliasEntityType = 'group' | 'artist' | 'song';
+export interface DictionaryAlias {
+  id: number;
+  alias: string;
+}
 
 interface ListParams {
   page?: number;
@@ -115,6 +120,18 @@ export const dictionaryApi = {
   getSong: (id: number | string) => req<DictionarySong>(`/dictionary/songs/${id}`),
   getSongVideos: (id: number | string, page = 1, limit = 20) =>
     req<VideosResponse>(`/dictionary/songs/${id}/videos?page=${page}&limit=${limit}`),
+  getAliases: (entityType: DictionaryAliasEntityType, entityId: number | string) =>
+    req<DictionaryAlias[]>(`/dictionary/${entityType}/${entityId}/aliases`),
+  addAlias: (entityType: DictionaryAliasEntityType, entityId: number | string, alias: string) =>
+    req<DictionaryAlias>(`/dictionary/${entityType}/${entityId}/aliases`, {
+      method: 'POST',
+      body: JSON.stringify({ alias }),
+    }),
+  deleteAlias: (
+    entityType: DictionaryAliasEntityType,
+    entityId: number | string,
+    aliasId: number,
+  ) => req(`/dictionary/${entityType}/${entityId}/aliases/${aliasId}`, { method: 'DELETE' }),
 };
 
 export type { Video };
