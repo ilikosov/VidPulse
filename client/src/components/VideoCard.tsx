@@ -446,7 +446,7 @@ function VideoCard() {
                   <Row gutter={16}>
                     <Col xs={24} sm={12}>
                       <AutocompleteField
-                        label="Artist Name"
+                        style={{ width: '100%' }}
                         type="artist"
                         placeholder="Enter artist name"
                         value={form.artist_name}
@@ -457,6 +457,7 @@ function VideoCard() {
                     </Col>
                     <Col xs={24} sm={12}>
                       <AutocompleteField
+                        style={{ width: '100%' }}
                         type="song"
                         placeholder="Enter song title"
                         value={form.song_title}
@@ -473,6 +474,7 @@ function VideoCard() {
                         type="event"
                         placeholder="Enter event"
                         value={form.event}
+                        style={{ width: '100%' }}
                         onChange={(value) =>
                           setForm((prev) => (prev ? { ...prev, event: value } : prev))
                         }
@@ -481,6 +483,7 @@ function VideoCard() {
                     <Col xs={24} sm={12}>
                       <Form.Item label="Camera Type" style={{ marginBottom: 0, width: '100%' }}>
                         <Input
+                          style={{ width: '100%' }}
                           placeholder="Enter camera type"
                           value={form.camera_type}
                           onChange={(event) =>
@@ -509,7 +512,7 @@ function VideoCard() {
                   </Flex>
                 </div>
               ) : (
-                <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
+                <Descriptions bordered column={2} size="small">
                   <Descriptions.Item label="Performance Date">
                     {formatDateDisplay(video.perf_date)}
                   </Descriptions.Item>
