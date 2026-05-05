@@ -106,6 +106,7 @@ router.get('/', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const status = req.query.status as string | undefined;
     const includeIgnored = req.query.includeIgnored === 'true';
+    const channelId = req.query.channel_id as string | undefined;
     const offset = (page - 1) * limit;
 
     let query = knex('videos')
@@ -131,6 +132,10 @@ router.get('/', async (req: Request, res: Response) => {
         'channels.title as channel_title',
         'playlists.title as playlist_title',
       );
+
+    if (channelId) {
+      query = query.where('videos.channel_id', channelId);
+    }
 
     if (status) {
       if (!isValidStatus(status)) {
@@ -164,6 +169,13 @@ router.get('/', async (req: Request, res: Response) => {
     }));
 
     const totalQuery = knex('videos');
+    if (channelId) {
+      query = query.where('videos.channel_id', channelId);
+    }
+
+    if (channelId) {
+      totalQuery.where('channel_id', channelId);
+    }
     if (status) {
       totalQuery.where('status', status);
     } else if (!includeIgnored) {

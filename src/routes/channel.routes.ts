@@ -3,6 +3,8 @@ import multer from 'multer';
 import knex from '../db/';
 import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
+import { parseTitle } from '../services/parser/parser.service';
+import { assignAutoTags } from '../services/tag.service';
 
 const router = Router();
 
@@ -213,6 +215,114 @@ router.post('/import', (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Failed to import channels' });
     }
   });
+});
+
+// GET /api/channels/:id - Get channel details with video count
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const channel = await knex('channels').where('id', id).first();
+
+    if (!channel) {
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+
+    const total = await knex('videos').where('channel_id', id).count('* as count').first();
+    const videoCount = Number(total?.count || 0);
+
+    return res.json({ ...channel, videoCount });
+  } catch (error) {
+    console.error('Error fetching channel details:', error);
+    return res.status(500).json({ error: 'Failed to fetch channel details' });
+  }
+});
+
+// POST /api/channels/:id/load-more - Load older videos for a channel
+router.post('/:id/load-more', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const countFromQuery = Number(req.query.count);
+    const countFromBody = Number(req.body?.count);
+    const count =
+      Number.isFinite(countFromQuery) && countFromQuery > 0
+        ? countFromQuery
+        : Number.isFinite(countFromBody) && countFromBody > 0
+          ? countFromBody
+          : 50;
+
+    const channel = await knex('channels').where('id', id).first();
+    if (!channel) {
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+
+    const oldest = await knex('videos')
+      .where('channel_id', id)
+      .min('published_at as oldest')
+      .first();
+    const fallbackDate = new Date();
+    fallbackDate.setDate(fallbackDate.getDate() - 30);
+    const publishedBefore = oldest?.oldest
+      ? new Date(oldest.oldest).toISOString()
+      : fallbackDate.toISOString();
+
+    const fetchedVideos = await youtubeService.fetchChannelVideosOlderThan(
+      channel.youtube_id,
+      publishedBefore,
+      count,
+    );
+
+    const errors: string[] = [];
+    let loaded = 0;
+
+    for (const item of fetchedVideos) {
+      try {
+        const exists = await knex('videos').where('youtube_id', item.videoId).first();
+        if (exists) continue;
+
+        const details = await youtubeService.getVideoDetails(item.videoId);
+        const { metadata } = await parseTitle(
+          details.title || item.title,
+          details.publishedAt || item.publishedAt,
+          details.tags,
+        );
+
+        const [createdVideo] = await knex('videos')
+          .insert({
+            youtube_id: item.videoId,
+            channel_id: channel.id,
+            original_title: details.title || item.title,
+            published_at: details.publishedAt || item.publishedAt,
+            duration_seconds: details.durationSeconds ?? null,
+            status: 'needs_review',
+            perf_date: metadata.perf_date
+              ? new Date(
+                  `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
+                ).toISOString()
+              : null,
+            group_name: metadata.group_name || null,
+            artist_name: metadata.artist_name || null,
+            song_title: metadata.song_title || null,
+            event: metadata.event || null,
+            camera_type: metadata.camera_type || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .returning('*');
+
+        await assignAutoTags(createdVideo.id, details.durationSeconds, details.privacyStatus);
+        loaded += 1;
+      } catch (videoError: any) {
+        errors.push(`${item.videoId}: ${videoError?.message ?? 'Unknown error'}`);
+      }
+    }
+
+    return res.json({ loaded, total: fetchedVideos.length, errors });
+  } catch (error: any) {
+    console.error('Error loading older channel videos:', error);
+    return res.status(500).json({
+      error: error?.message || 'Failed to load older videos',
+    });
+  }
 });
 
 // DELETE /api/channels/:id - Delete a channel

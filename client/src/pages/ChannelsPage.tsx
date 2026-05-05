@@ -18,6 +18,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { InboxOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   addChannel,
   deleteChannel,
@@ -38,6 +39,7 @@ function ChannelsPage() {
   const [selectedFile, setSelectedFile] = useState<UploadFile | null>(null);
   const [importSummary, setImportSummary] = useState<ImportChannelsResponse | null>(null);
   const [form] = Form.useForm<{ url: string }>();
+  const navigate = useNavigate();
 
   const fetchChannels = async () => {
     setLoading(true);
@@ -119,7 +121,20 @@ function ChannelsPage() {
         <Avatar src={thumbnailUrl || undefined} shape="square" size={56} />
       ),
     },
-    { title: 'Channel Title', dataIndex: 'title', key: 'title' },
+    {
+      title: 'Channel Title',
+      dataIndex: 'title',
+      key: 'title',
+      render: (_, record) => (
+        <Button
+          type="link"
+          onClick={() => navigate(`/channels/${record.id}`)}
+          style={{ padding: 0 }}
+        >
+          {record.title}
+        </Button>
+      ),
+    },
     { title: 'YouTube ID', dataIndex: 'youtube_id', key: 'youtube_id' },
     {
       title: 'Date Added',

@@ -5,6 +5,7 @@ import VideoCard from './components/VideoCard';
 import VideoTable from './components/VideoTable';
 import AddVideoPage from './pages/AddVideoPage';
 import ChannelsPage from './pages/ChannelsPage';
+import ChannelPage from './pages/ChannelPage';
 import PlaylistsPage from './pages/PlaylistsPage';
 import EventLogPage from './pages/EventLogPage';
 import SettingsPage from './pages/SettingsPage';
@@ -66,6 +67,7 @@ function App() {
           <Route path="/videos/:id" element={<VideoCard />} />
           <Route path="/review" element={<ReviewQueue />} />
           <Route path="/channels" element={<ChannelsPage />} />
+          <Route path="/channels/:id" element={<ChannelPage />} />
           <Route path="/playlists" element={<PlaylistsPage />} />
           <Route path="/add-video" element={<AddVideoPage />} />
           <Route path="/events" element={<EventLogPage />} />
