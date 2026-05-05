@@ -31,7 +31,7 @@ import {
   updateMetadata,
   type Video,
 } from '../api';
-import AutocompleteInput from './AutocompleteInput';
+import AutocompleteField from './AutocompleteField';
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
 
@@ -291,11 +291,7 @@ function VideoCard() {
             >
               {video.status}
             </Tag>
-            <Button
-              onClick={() => void handleReparse()}
-              loading={reparsing}
-              size="small"
-            >
+            <Button onClick={() => void handleReparse()} loading={reparsing} size="small">
               Reparse
             </Button>
             <Button
@@ -417,9 +413,9 @@ function VideoCard() {
                 >
                   <Row gutter={16}>
                     <Col xs={24} sm={12}>
-                      <AutocompleteInput
+                      <AutocompleteField
                         label="Performance Date (YYMMDD)"
-                        type="groups"
+                        type="group"
                         placeholder="e.g., 240315"
                         value={form.perf_date}
                         onChange={(value) =>
@@ -428,9 +424,9 @@ function VideoCard() {
                       />
                     </Col>
                     <Col xs={24} sm={12}>
-                      <AutocompleteInput
+                      <AutocompleteField
                         label="Group Name"
-                        type="groups"
+                        type="group"
                         placeholder="Enter group name"
                         value={form.group_name}
                         onChange={(value) =>
@@ -441,9 +437,9 @@ function VideoCard() {
                   </Row>
                   <Row gutter={16}>
                     <Col xs={24} sm={12}>
-                      <AutocompleteInput
+                      <AutocompleteField
                         label="Artist Name"
-                        type="artists"
+                        type="artist"
                         placeholder="Enter artist name"
                         value={form.artist_name}
                         onChange={(value) =>
@@ -452,9 +448,9 @@ function VideoCard() {
                       />
                     </Col>
                     <Col xs={24} sm={12}>
-                      <AutocompleteInput
+                      <AutocompleteField
                         label="Song Title"
-                        type="songs"
+                        type="song"
                         placeholder="Enter song title"
                         value={form.song_title}
                         onChange={(value) =>
@@ -465,9 +461,9 @@ function VideoCard() {
                   </Row>
                   <Row gutter={16}>
                     <Col xs={24} sm={12}>
-                      <AutocompleteInput
+                      <AutocompleteField
                         label="Event"
-                        type="events"
+                        type="event"
                         placeholder="Enter event"
                         value={form.event}
                         onChange={(value) =>

@@ -34,6 +34,7 @@ router.get('/groups/list', async (req, res) =>
     await dictionaryService.getGroups(
       req.query.type as string | undefined,
       req.query.q as string | undefined,
+      Number(req.query.limit) || 20,
     ),
   ),
 );
@@ -57,6 +58,7 @@ router.get('/artists/list', async (req, res) =>
     await dictionaryService.getArtists(
       req.query.group_id ? Number(req.query.group_id) : undefined,
       req.query.q as string | undefined,
+      Number(req.query.limit) || 20,
     ),
   ),
 );
@@ -79,7 +81,12 @@ router.delete('/artists/:id', async (req, res) => {
 });
 
 router.get('/songs/list', async (req, res) =>
-  res.json(await dictionaryService.getSongs(req.query.q as string | undefined)),
+  res.json(
+    await dictionaryService.getSongs(
+      req.query.q as string | undefined,
+      Number(req.query.limit) || 20,
+    ),
+  ),
 );
 router.post('/songs', async (req, res) => {
   const { title, artist } = req.body;
@@ -141,7 +148,12 @@ router.get('/songs/:id/videos', async (req, res) => {
 });
 
 router.get('/events/list', async (req, res) =>
-  res.json(await dictionaryService.getEvents(req.query.q as string | undefined)),
+  res.json(
+    await dictionaryService.getEvents(
+      req.query.q as string | undefined,
+      Number(req.query.limit) || 20,
+    ),
+  ),
 );
 router.post('/events', async (req, res) => {
   if (!req.body.name) return res.status(400).json({ error: 'name is required' });

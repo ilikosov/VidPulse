@@ -15,8 +15,15 @@ import {
   message,
 } from 'antd';
 import { useEffect, useState } from 'react';
-import { getVideos, ignoreVideo, reparseVideo, suggestMetadata, updateMetadata, type Video } from '../api';
-import AutocompleteInput from './AutocompleteInput';
+import {
+  getVideos,
+  ignoreVideo,
+  reparseVideo,
+  suggestMetadata,
+  updateMetadata,
+  type Video,
+} from '../api';
+import AutocompleteField from './AutocompleteField';
 
 interface ReviewVideo extends Video {
   editForm: {
@@ -161,7 +168,9 @@ function ReviewQueue() {
   };
 
   const handleReparse = async (video: ReviewVideo) => {
-    setVideos((prev) => prev.map((item) => (item.id === video.id ? { ...item, reparsing: true } : item)));
+    setVideos((prev) =>
+      prev.map((item) => (item.id === video.id ? { ...item, reparsing: true } : item)),
+    );
     try {
       await reparseVideo(video.id);
       message.success(`Reparsed: ${video.original_title}`);
@@ -248,41 +257,41 @@ function ReviewQueue() {
             />
             <Row gutter={[12, 12]}>
               <Col xs={24} md={12} lg={8}>
-                <AutocompleteInput
+                <AutocompleteField
                   label="Performance Date (YYMMDD)"
-                  type="groups"
+                  type="group"
                   value={video.editForm.perf_date}
                   onChange={(value) => handleFieldChange(video.id, 'perf_date', value)}
                 />
               </Col>
               <Col xs={24} md={12} lg={8}>
-                <AutocompleteInput
+                <AutocompleteField
                   label="Group Name"
-                  type="groups"
+                  type="group"
                   value={video.editForm.group_name}
                   onChange={(value) => handleFieldChange(video.id, 'group_name', value)}
                 />
               </Col>
               <Col xs={24} md={12} lg={8}>
-                <AutocompleteInput
+                <AutocompleteField
                   label="Artist Name"
-                  type="artists"
+                  type="artist"
                   value={video.editForm.artist_name}
                   onChange={(value) => handleFieldChange(video.id, 'artist_name', value)}
                 />
               </Col>
               <Col xs={24} md={12} lg={8}>
-                <AutocompleteInput
+                <AutocompleteField
                   label="Song Title"
-                  type="songs"
+                  type="song"
                   value={video.editForm.song_title}
                   onChange={(value) => handleFieldChange(video.id, 'song_title', value)}
                 />
               </Col>
               <Col xs={24} md={12} lg={8}>
-                <AutocompleteInput
+                <AutocompleteField
                   label="Event"
-                  type="events"
+                  type="event"
                   value={video.editForm.event}
                   onChange={(value) => handleFieldChange(video.id, 'event', value)}
                 />
@@ -306,7 +315,11 @@ function ReviewQueue() {
               >
                 Suggest with AI
               </Button>
-              <Button onClick={() => void handleReparse(video)} loading={video.reparsing} disabled={video.saved}>
+              <Button
+                onClick={() => void handleReparse(video)}
+                loading={video.reparsing}
+                disabled={video.saved}
+              >
                 Reparse
               </Button>
               <Button
