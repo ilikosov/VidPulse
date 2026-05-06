@@ -76,6 +76,7 @@ async function addChannelByUrl(url: string) {
           original_title: video.title,
           published_at: video.publishedAt,
           status: 'new',
+          description: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
@@ -293,6 +294,7 @@ router.post('/:id/load-more', async (req: Request, res: Response) => {
             original_title: details.title || item.title,
             published_at: details.publishedAt || item.publishedAt,
             duration_seconds: details.durationSeconds ?? null,
+            description: details.description ?? null,
             status: 'needs_review',
             perf_date: metadata.perf_date
               ? new Date(

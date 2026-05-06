@@ -573,7 +573,7 @@ export class YouTubeService {
           id: [videoId],
           part: ['snippet', 'contentDetails', 'status'],
           fields:
-            'items(snippet(title,channelId,publishedAt,thumbnails,tags),contentDetails(duration),status(privacyStatus))',
+            'items(snippet(title,channelId,publishedAt,thumbnails,tags,description),contentDetails(duration),status(privacyStatus))',
         },
         true,
       );
@@ -586,7 +586,7 @@ export class YouTubeService {
         id: [videoId],
         part: ['snippet', 'contentDetails', 'status'],
         fields:
-          'items(snippet(title,channelId,publishedAt,thumbnails,tags),contentDetails(duration),status(privacyStatus))',
+          'items(snippet(title,channelId,publishedAt,thumbnails,tags,description),contentDetails(duration),status(privacyStatus))',
       };
       const response = await this.executeYouTubeCall('videos.list', params, () =>
         youtube.videos.list(params),
@@ -603,6 +603,7 @@ export class YouTubeService {
         publishedAt: item.snippet.publishedAt || '',
         thumbnails: item.snippet.thumbnails,
         tags: item.snippet.tags ?? [],
+        description: item.snippet.description ?? '',
         durationSeconds: parseDurationToSeconds(item.contentDetails?.duration),
         privacyStatus: item.status?.privacyStatus,
       };
@@ -617,7 +618,7 @@ export class YouTubeService {
             id: [videoId],
             part: ['snippet', 'contentDetails', 'status'],
             fields:
-              'items(snippet(title,channelId,publishedAt,thumbnails,tags),contentDetails(duration),status(privacyStatus))',
+              'items(snippet(title,channelId,publishedAt,thumbnails,tags,description),contentDetails(duration),status(privacyStatus))',
           },
           error,
         );

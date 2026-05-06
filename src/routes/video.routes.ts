@@ -576,6 +576,7 @@ router.post('/add', async (req: Request, res: Response) => {
       url: url.trim(),
       published_at: details.publishedAt || null,
       status: 'needs_review',
+      description: details.description ?? null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
