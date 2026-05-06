@@ -12,6 +12,7 @@ export interface VideoDetails {
   publishedAt: string;
   thumbnails: any;
   tags?: string[];
+  description?: string;
   durationSeconds?: number;
   privacyStatus?: string;
 }

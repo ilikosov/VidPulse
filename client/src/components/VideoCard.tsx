@@ -393,6 +393,16 @@ function VideoCard() {
               <Descriptions.Item label="Playlist">{video.playlist_title || '-'}</Descriptions.Item>
             </Descriptions>
 
+            <div>
+              <SectionHeader title="Description" />
+              <Typography.Paragraph
+                style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}
+                ellipsis={{ rows: 4, expandable: true, symbol: 'Show more' }}
+              >
+                {video.description?.trim() || 'No description'}
+              </Typography.Paragraph>
+            </div>
+
             {/* Metadata Block */}
             <div>
               <SectionHeader

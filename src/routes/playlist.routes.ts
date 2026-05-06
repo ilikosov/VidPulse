@@ -110,6 +110,7 @@ router.post('/', async (req: Request, res: Response) => {
             original_title: video.title,
             published_at: video.publishedAt,
             status: needsReview ? 'needs_review' : 'new',
+            description: null,
             ...updateData,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
