@@ -27,6 +27,7 @@ import {
   ignoreVideo,
   llmParseVideo,
   reparseVideo,
+  resyncVideo,
   removeTagFromVideo,
   updateMetadata,
   type Video,
@@ -99,6 +100,7 @@ function VideoCard() {
   const [presetTagLoading, setPresetTagLoading] = useState<'short' | 'private' | null>(null);
   const [llmParsing, setLlmParsing] = useState(false);
   const [reparsing, setReparsing] = useState(false);
+  const [resyncing, setResyncing] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
 
   const requiresManualTagConfirmation = (tagName: string) =>
@@ -221,6 +223,20 @@ function VideoCard() {
     }
   };
 
+  const handleResync = async () => {
+    if (!video) return;
+    setResyncing(true);
+    try {
+      await resyncVideo(video.id);
+      message.success('Resync completed');
+      await fetchVideo();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Failed to resync video');
+    } finally {
+      setResyncing(false);
+    }
+  };
+
   const handleRemoveTag = async (tagId: number) => {
     if (!video) return;
     setTagLoading(true);
@@ -303,6 +319,9 @@ function VideoCard() {
             </Tag>
             <Button onClick={() => void handleReparse()} loading={reparsing} size="small">
               Reparse
+            </Button>
+            <Button onClick={() => void handleResync()} loading={resyncing} size="small">
+              Resync
             </Button>
             <Button
               danger

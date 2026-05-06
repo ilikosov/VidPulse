@@ -238,6 +238,12 @@ export async function reparseVideo(videoId: number | string): Promise<Video> {
   });
 }
 
+export async function resyncVideo(videoId: number | string): Promise<Video> {
+  return fetchApi<Video>(`/videos/${videoId}/resync`, {
+    method: 'POST',
+  });
+}
+
 export async function llmParseVideo(videoId: number | string): Promise<{ updated: number }> {
   return fetchApi<{ updated: number }>(`/parser/llm-parse/${videoId}`, {
     method: 'POST',

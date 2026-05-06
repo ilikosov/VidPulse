@@ -32,6 +32,10 @@ export async function assignAutoTags(
     await addTagToVideo(videoId, 'short');
   }
 
+  if (typeof durationSeconds === 'number' && durationSeconds > 60) {
+    await addTagToVideo(videoId, 'длинное видео');
+  }
+
   if (privacyStatus === 'private') {
     await addTagToVideo(videoId, 'private');
   }
