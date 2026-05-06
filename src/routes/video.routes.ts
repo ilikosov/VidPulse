@@ -679,6 +679,101 @@ router.post('/:id/suggest', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/:id/resync', async (req: Request, res: Response) => {
+  const videoId = Number(req.params.id);
+  if (!Number.isInteger(videoId) || videoId <= 0) {
+    return res.status(400).json({ error: 'Invalid video id' });
+  }
+
+  try {
+    const existingVideo = await knex('videos').where('id', videoId).first();
+    if (!existingVideo) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    let details;
+    try {
+      details = await youtubeService.getVideoDetails(existingVideo.youtube_id);
+    } catch (error) {
+      await knex('videos').where('id', videoId).update({
+        status: 'error',
+        updated_at: new Date().toISOString(),
+      });
+      await logEvent('video_resync_failed', `Failed to resync video ${existingVideo.youtube_id}`, {
+        video_id: videoId,
+        youtube_id: existingVideo.youtube_id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return res.status(502).json({ error: 'Failed to fetch latest YouTube details' });
+    }
+
+    const { metadata, needsReview } = await parseTitle(
+      details.title,
+      details.publishedAt,
+      details.tags,
+    );
+
+    const updatedVideo = await knex.transaction(async (trx) => {
+      const updateData: Record<string, unknown> = {
+        original_title: details.title,
+        description: details.description || null,
+        duration_seconds: details.durationSeconds ?? null,
+        published_at: details.publishedAt || existingVideo.published_at || null,
+        group_name: metadata.group_name || null,
+        artist_name: metadata.artist_name || null,
+        song_title: metadata.song_title || null,
+        event: metadata.event || null,
+        camera_type: metadata.camera_type || null,
+        status: needsReview ? 'needs_review' : 'new',
+        updated_at: new Date().toISOString(),
+      };
+
+      await trx('videos').where('id', videoId).update(updateData);
+
+      const autoTagIds = await trx('tags')
+        .select('id')
+        .whereIn('name', ['short', 'private', 'длинное видео']);
+      if (autoTagIds.length > 0) {
+        await trx('video_tags')
+          .where('video_id', videoId)
+          .whereIn(
+            'tag_id',
+            autoTagIds.map((tag) => tag.id),
+          )
+          .del();
+      }
+
+      await assignAutoTags(videoId, details.durationSeconds, details.privacyStatus);
+
+      if (existingVideo.status !== updateData.status) {
+        await trx('status_history').insert({
+          video_id: videoId,
+          old_status: existingVideo.status,
+          new_status: updateData.status as string,
+        });
+      }
+
+      return trx('videos').where('id', videoId).first();
+    });
+
+    await logEvent('video_resynced', `Video resynced ${existingVideo.youtube_id}`, {
+      video_id: videoId,
+      youtube_id: existingVideo.youtube_id,
+    });
+
+    const tags = await knex('video_tags')
+      .join('tags', 'video_tags.tag_id', 'tags.id')
+      .select('tags.id', 'tags.name')
+      .where('video_tags.video_id', videoId)
+      .orderBy('tags.name', 'asc');
+
+    return res.json({ ...updatedVideo, tags });
+  } catch (error) {
+    console.error(`Error resyncing video ${videoId}:`, error);
+    return res.status(500).json({ error: 'Failed to resync video' });
+  }
+});
+
 router.get('/:id/tags', async (req: Request, res: Response) => {
   const videoId = Number(req.params.id);
   if (!Number.isInteger(videoId) || videoId <= 0) {

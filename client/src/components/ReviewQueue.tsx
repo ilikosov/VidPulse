@@ -19,6 +19,7 @@ import {
   getVideos,
   ignoreVideo,
   reparseVideo,
+  resyncVideo,
   suggestMetadata,
   updateMetadata,
   type Video,
@@ -38,6 +39,7 @@ interface ReviewVideo extends Video {
   suggesting: boolean;
   saved: boolean;
   reparsing: boolean;
+  resyncing: boolean;
 }
 
 function formatDateForEdit(dateString: string | null): string {
@@ -74,6 +76,7 @@ function ReviewQueue() {
           suggesting: false,
           saved: false,
           reparsing: false,
+          resyncing: false,
         })),
       );
     } catch (err) {
@@ -180,6 +183,26 @@ function ReviewQueue() {
         prev.map((item) => (item.id === video.id ? { ...item, reparsing: false } : item)),
       );
       message.error(err instanceof Error ? err.message : 'Failed to reparse video');
+    }
+  };
+
+  const handleResync = async (video: ReviewVideo) => {
+    setVideos((prev) =>
+      prev.map((item) => (item.id === video.id ? { ...item, resyncing: true } : item)),
+    );
+    try {
+      const updated = await resyncVideo(video.id);
+      message.success(`Resynced: ${video.original_title}`);
+      if (updated.status !== 'needs_review') {
+        setVideos((prev) => prev.filter((item) => item.id !== video.id));
+      } else {
+        await fetchVideos();
+      }
+    } catch (err) {
+      setVideos((prev) =>
+        prev.map((item) => (item.id === video.id ? { ...item, resyncing: false } : item)),
+      );
+      message.error(err instanceof Error ? err.message : 'Failed to resync video');
     }
   };
 
@@ -326,6 +349,13 @@ function ReviewQueue() {
                 disabled={video.saved}
               >
                 Reparse
+              </Button>
+              <Button
+                onClick={() => void handleResync(video)}
+                loading={video.resyncing}
+                disabled={video.saved || video.reparsing}
+              >
+                Resync
               </Button>
               <Button
                 type="primary"
