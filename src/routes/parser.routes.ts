@@ -172,7 +172,33 @@ router.post('/reparse/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Video not found' });
     }
 
-    const { metadata, needsReview } = await parseTitle(video.original_title, video.published_at);
+    const reparseLog: {
+      input: {
+        title: string;
+        publishedAt: string | null;
+        tags?: string[];
+        description?: string;
+      };
+      output?: unknown;
+      error?: string;
+    } = {
+      input: {
+        title: video.original_title,
+        publishedAt: video.published_at,
+      },
+    };
+
+    let metadata;
+    let needsReview;
+    try {
+      const parseResult = await parseTitle(video.original_title, video.published_at);
+      metadata = parseResult.metadata;
+      needsReview = parseResult.needsReview;
+      reparseLog.output = parseResult;
+    } catch (error) {
+      reparseLog.error = error instanceof Error ? error.message : 'Unknown parser error';
+      return res.status(500).json({ error: 'Failed to re-parse video', reparseLog });
+    }
     const nextStatus = needsReview ? 'needs_review' : 'new';
 
     const updateData: Record<string, string | null> = {
@@ -190,10 +216,12 @@ router.post('/reparse/:id', async (req: Request, res: Response) => {
     };
 
     await knex.transaction(async (trx) => {
-      await trx('videos').where('id', video.id).update({
-        ...updateData,
-        updated_at: new Date().toISOString(),
-      });
+      await trx('videos')
+        .where('id', video.id)
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString(),
+        });
 
       if (nextStatus !== video.status) {
         await trx('status_history').insert({
@@ -205,7 +233,7 @@ router.post('/reparse/:id', async (req: Request, res: Response) => {
     });
 
     const updatedVideo = await knex('videos').where('id', video.id).first();
-    return res.json(updatedVideo);
+    return res.json({ video: updatedVideo, reparseLog });
   } catch (error) {
     console.error('Error re-parsing single video:', error);
     return res.status(500).json({ error: 'Failed to re-parse video' });

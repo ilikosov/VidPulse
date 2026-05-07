@@ -691,6 +691,27 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Video not found' });
     }
 
+    const resyncLog: {
+      youtubeResponse?: unknown;
+      youtubeError?: string;
+      parseLog: {
+        input: {
+          title: string;
+          publishedAt?: string;
+          tags?: string[];
+          description?: string;
+        };
+        output?: unknown;
+        error?: string;
+      };
+    } = {
+      parseLog: {
+        input: {
+          title: '',
+        },
+      },
+    };
+
     let details;
     try {
       details = await youtubeService.getVideoDetails(existingVideo.youtube_id);
@@ -704,14 +725,38 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
         youtube_id: existingVideo.youtube_id,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      return res.status(502).json({ error: 'Failed to fetch latest YouTube details' });
+      resyncLog.youtubeError = error instanceof Error ? error.message : 'Unknown YouTube error';
+      return res.status(502).json({ error: 'Failed to fetch latest YouTube details', resyncLog });
     }
 
-    const { metadata, needsReview } = await parseTitle(
-      details.title,
-      details.publishedAt,
-      details.tags,
-    );
+    resyncLog.youtubeResponse = {
+      title: details.title,
+      channelId: details.channelId,
+      publishedAt: details.publishedAt,
+      durationSeconds: details.durationSeconds,
+      privacyStatus: details.privacyStatus,
+      tags: details.tags,
+      description: details.description,
+    };
+
+    resyncLog.parseLog.input = {
+      title: details.title,
+      publishedAt: details.publishedAt,
+      tags: details.tags,
+      description: details.description,
+    };
+
+    let metadata;
+    let needsReview;
+    try {
+      const parseResult = await parseTitle(details.title, details.publishedAt, details.tags);
+      metadata = parseResult.metadata;
+      needsReview = parseResult.needsReview;
+      resyncLog.parseLog.output = parseResult;
+    } catch (error) {
+      resyncLog.parseLog.error = error instanceof Error ? error.message : 'Unknown parser error';
+      return res.status(500).json({ error: 'Failed to parse fresh metadata', resyncLog });
+    }
 
     const updatedVideo = await knex.transaction(async (trx) => {
       const updateData: Record<string, unknown> = {
@@ -767,7 +812,7 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
       .where('video_tags.video_id', videoId)
       .orderBy('tags.name', 'asc');
 
-    return res.json({ ...updatedVideo, tags });
+    return res.json({ video: { ...updatedVideo, tags }, resyncLog });
   } catch (error) {
     console.error(`Error resyncing video ${videoId}:`, error);
     return res.status(500).json({ error: 'Failed to resync video' });
