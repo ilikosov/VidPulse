@@ -38,6 +38,31 @@ export interface VideoTag {
   name: string;
 }
 
+export interface ParserLog {
+  input: {
+    title: string;
+    publishedAt?: string | null;
+    tags?: string[];
+    description?: string | null;
+  };
+  output?: unknown;
+  error?: string;
+}
+
+export interface ReparseResponse {
+  video: Video;
+  reparseLog: ParserLog;
+}
+
+export interface ResyncResponse {
+  video: Video;
+  resyncLog: {
+    youtubeResponse?: unknown;
+    youtubeError?: string;
+    parseLog: ParserLog;
+  };
+}
+
 export interface Pagination {
   page: number;
   limit: number;
@@ -232,14 +257,14 @@ export async function reparseBatch(videoIds: number[]): Promise<{ updated: numbe
   });
 }
 
-export async function reparseVideo(videoId: number | string): Promise<Video> {
-  return fetchApi<Video>(`/parser/reparse/${videoId}`, {
+export async function reparseVideo(videoId: number | string): Promise<ReparseResponse> {
+  return fetchApi<ReparseResponse>(`/parser/reparse/${videoId}`, {
     method: 'POST',
   });
 }
 
-export async function resyncVideo(videoId: number | string): Promise<Video> {
-  return fetchApi<Video>(`/videos/${videoId}/resync`, {
+export async function resyncVideo(videoId: number | string): Promise<ResyncResponse> {
+  return fetchApi<ResyncResponse>(`/videos/${videoId}/resync`, {
     method: 'POST',
   });
 }

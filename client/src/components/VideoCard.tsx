@@ -26,6 +26,7 @@ import {
   getVideo,
   ignoreVideo,
   llmParseVideo,
+  type ParserLog,
   reparseVideo,
   resyncVideo,
   removeTagFromVideo,
@@ -35,6 +36,7 @@ import {
 import AutocompleteField from './AutocompleteField';
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
+import OperationLogWidget from './OperationLogWidget';
 
 const { Text, Title } = Typography;
 
@@ -102,6 +104,18 @@ function VideoCard() {
   const [reparsing, setReparsing] = useState(false);
   const [resyncing, setResyncing] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const [operationLog, setOperationLog] = useState<
+    | { type: 'reparse'; log: ParserLog }
+    | {
+        type: 'resync';
+        log: {
+          youtubeResponse?: unknown;
+          youtubeError?: string;
+          parseLog: ParserLog;
+        };
+      }
+    | null
+  >(null);
 
   const requiresManualTagConfirmation = (tagName: string) =>
     ['short', 'private'].includes(tagName.trim().toLowerCase());
@@ -213,7 +227,8 @@ function VideoCard() {
     if (!video) return;
     setReparsing(true);
     try {
-      await reparseVideo(video.id);
+      const response = await reparseVideo(video.id);
+      setOperationLog({ type: 'reparse', log: response.reparseLog });
       message.success('Reparse completed');
       await fetchVideo();
     } catch (err) {
@@ -227,7 +242,8 @@ function VideoCard() {
     if (!video) return;
     setResyncing(true);
     try {
-      await resyncVideo(video.id);
+      const response = await resyncVideo(video.id);
+      setOperationLog({ type: 'resync', log: response.resyncLog });
       message.success('Resync completed');
       await fetchVideo();
     } catch (err) {
@@ -660,6 +676,14 @@ function VideoCard() {
             </div>
           </Col>
         </Row>
+
+        {operationLog ? (
+          <OperationLogWidget
+            type={operationLog.type}
+            log={operationLog.log}
+            onClear={() => setOperationLog(null)}
+          />
+        ) : null}
       </Card>
     </div>
   );
