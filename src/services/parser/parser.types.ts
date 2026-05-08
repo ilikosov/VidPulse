@@ -26,3 +26,80 @@ export interface ParserModule {
     currentMeta: Partial<ParsedMetadata>,
   ): Promise<{ metadata: Partial<ParsedMetadata>; confidence: number }>;
 }
+
+export type CamType =
+  | 'fancam'
+  | 'facecam'
+  | 'focus'
+  | 'choreography'
+  | 'fullcam'
+  | 'towercam'
+  | 'stage_practice'
+  | 'dance_practice'
+  | 'unknown';
+
+export type ReviewStatus = 'auto_accepted' | 'needs_review' | 'rejected';
+
+export type EntityType = 'group' | 'artist' | 'song' | 'event' | 'location' | 'camera_type';
+
+export interface EntityMatch {
+  id: number | string;
+  entityType: EntityType;
+  canonicalName: string;
+  matchedAlias: string;
+  language: 'ko' | 'en' | 'ja' | 'mixed' | 'unknown';
+  confidence: number;
+}
+
+export interface CandidateEntity {
+  rawText: string;
+  entityType: EntityType;
+  confidence: number;
+  status: 'candidate';
+}
+
+export interface ParsedDate {
+  raw: string;
+  isoDate: string | null;
+  yymmdd: string | null;
+  precision: 'day' | 'month' | 'year' | 'unknown';
+  confidence: number;
+}
+
+export interface VideoParserInput {
+  title: string;
+  channelName?: string;
+  description?: string;
+  hashtags?: string[];
+  publishedAt?: string;
+  videoUrl?: string;
+}
+
+export interface ParsedVideoTitle {
+  source: VideoParserInput;
+  classification: {
+    isKpopFancam: boolean;
+    camType: CamType;
+    confidence: number;
+    reasons: string[];
+  };
+  entities: {
+    group: EntityMatch | null;
+    artist: EntityMatch | null;
+    song: EntityMatch | null;
+    event: EntityMatch | null;
+    location: EntityMatch | null;
+    date: ParsedDate | null;
+  };
+  approval: {
+    status: ReviewStatus;
+    reviewReasons: string[];
+  };
+  candidates: {
+    possibleGroups: CandidateEntity[];
+    possibleArtists: CandidateEntity[];
+    possibleSongs: CandidateEntity[];
+    possibleEvents: CandidateEntity[];
+  };
+  normalizedTitle: string;
+}
