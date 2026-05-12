@@ -570,7 +570,7 @@ router.post('/add', async (req: Request, res: Response) => {
     const details = await youtubeService.getVideoDetails(videoId);
     const { metadata } = await parseTitle(details.title, details.publishedAt, details.tags);
 
-    const insertData: Record<string, any> = {
+    const insertData: Record<string, string | number | boolean | null> = {
       youtube_id: videoId,
       original_title: details.title,
       url: url.trim(),
@@ -592,6 +592,8 @@ router.post('/add', async (req: Request, res: Response) => {
     if (metadata.song_title !== undefined) insertData.song_title = metadata.song_title || null;
     if (metadata.event !== undefined) insertData.event = metadata.event || null;
     if (metadata.camera_type !== undefined) insertData.camera_type = metadata.camera_type || null;
+    insertData.is_fancam = metadata.is_fancam ?? null;
+    insertData.fancam_confidence = metadata.fancam_confidence ?? null;
 
     const [createdVideo] = await knex('videos').insert(insertData).returning('*');
     await assignAutoTags(createdVideo.id, details.durationSeconds, details.privacyStatus);
@@ -769,6 +771,8 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
         song_title: metadata.song_title || null,
         event: metadata.event || null,
         camera_type: metadata.camera_type || null,
+        is_fancam: metadata.is_fancam ?? null,
+        fancam_confidence: metadata.fancam_confidence ?? null,
         status: needsReview ? 'needs_review' : 'new',
         updated_at: new Date().toISOString(),
       };
@@ -934,7 +938,7 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
     }
 
     // Build update object with only provided fields
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, string | number | boolean | null> = {};
 
     if (perf_date !== undefined) {
       // Validate perf_date format (YYMMDD)
@@ -1065,7 +1069,7 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
     const { metadata, needsReview } = await parseTitle(video.original_title);
 
     // Build update object
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, string | number | boolean | null> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -1096,6 +1100,9 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
     if (metadata.camera_type !== undefined) {
       updateData.camera_type = metadata.camera_type || null;
     }
+
+    updateData.is_fancam = metadata.is_fancam ?? null;
+    updateData.fancam_confidence = metadata.fancam_confidence ?? null;
 
     // Set status based on parsing result
     const newStatus = needsReview ? 'needs_review' : 'new';

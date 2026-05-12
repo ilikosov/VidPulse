@@ -8,6 +8,8 @@ export interface ParsedMetadata {
   song_title?: string;
   event?: string; // With @ prefix, e.g. @MCOUNTDOWN
   camera_type?: string; // e.g. vertical fancam, 4K, 입덕직캠
+  is_fancam?: boolean;
+  fancam_confidence?: number;
   confidence?: number; // 0-1 confidence score
 }
 
