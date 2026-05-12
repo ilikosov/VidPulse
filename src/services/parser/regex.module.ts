@@ -1,264 +1,180 @@
-import { ParserModule, ParsedMetadata } from './parser.types';
+import { ParsedMetadata, ParserModule } from './parser.types';
 
-/**
- * Regex-based parser module for extracting metadata from K-pop video titles
- */
 export class RegexModule implements ParserModule {
-  // Date pattern: YYMMDD
-  private datePattern = /\b(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))\b/g;
-
-  // Event pattern: @EVENTNAME (e.g., @MCOUNTDOWN, @MUSICCORE)
-  private eventPattern = /@([A-Z0-9가-힣 !]+?)(?=\s+\[|\s+\d{6}\b|\s+(?:4k|fancam|cam)\b|$)/i;
-
-  // Camera type keywords
-  private cameraTypeKeywords = [
-    'vertical fancam',
-    'vertical cam',
-    '4K',
-    '입덕직캠',
-    '직캠',
-    'fancam',
-    'cam',
-    'full cam',
-    'face cam',
-    'center cam',
-  ];
-
-  // Common group name patterns (usually before song or in parentheses)
-  private groupPattern =
-    /(?:^|\[|\()([A-Za-z가 - 힣0-9\s&]+?)(?:\)|\]|\s+-\s+|feat\.|\s*\()\s*(?=\[|\(|@|$)/i;
-
-  // Artist name pattern (often in "(NAME FanCam)")
-  private artistPattern = /\(([^()]+?)\s*(?:fancam|face\s*cam|cam|직캠)\)/i;
-
-  // Song title in matching quote pair
-  private songPattern = /(["'])(.+?)\1(?=\s*(?:\(|@|$))/i;
+  private readonly datePattern = /\b(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))\b/g;
 
   async parse(
     title: string,
     currentMeta: Partial<ParsedMetadata>,
   ): Promise<{ metadata: Partial<ParsedMetadata>; confidence: number }> {
-    const metadata: Partial<ParsedMetadata> = { ...currentMeta };
-    let fieldsExtracted = 0;
-    let fieldsAttempted = 0;
+    const parsed = this.parseTitle(title);
+    const metadata: Partial<ParsedMetadata> = {
+      ...parsed,
+      ...currentMeta,
+    };
 
-    // Extract perf_date (YYMMDD)
-    fieldsAttempted++;
-    if (!metadata.perf_date) {
-      const dateMatches = [...title.matchAll(this.datePattern)];
-      if (dateMatches.length > 0) {
-        metadata.perf_date = dateMatches[dateMatches.length - 1][1];
-        fieldsExtracted++;
-      }
-    } else {
-      fieldsExtracted++;
-    }
-
-    // Extract event (@EVENTNAME)
-    fieldsAttempted++;
-    if (!metadata.event) {
-      const eventMatch = title.match(this.eventPattern);
-      if (eventMatch && eventMatch[1]) {
-        metadata.event = '@' + eventMatch[1].trim().toUpperCase();
-        fieldsExtracted++;
-      }
-    } else {
-      fieldsExtracted++;
-    }
-
-    // Extract camera_type
-    fieldsAttempted++;
-    if (!metadata.camera_type) {
-      const bracketCameraMatch = title.match(/^\[([^\]]+)\]/);
-      if (bracketCameraMatch?.[1]) {
-        const bracketText = bracketCameraMatch[1].trim();
-        if (/(4k|cam|직캠|입덕직캠)/i.test(bracketText)) {
-          metadata.camera_type = bracketText;
-          fieldsExtracted++;
-        }
-      }
-
-      const lowerTitle = title.toLowerCase();
-      if (!metadata.camera_type) {
-        for (const keyword of this.cameraTypeKeywords) {
-          if (lowerTitle.includes(keyword.toLowerCase())) {
-            metadata.camera_type = keyword;
-            fieldsExtracted++;
-            break;
-          }
-        }
-      }
-    } else {
-      fieldsExtracted++;
-    }
-
-    // Extract artist_name (solo fancam)
-    fieldsAttempted++;
-    if (!metadata.artist_name) {
-      const artistMatch = title.match(this.artistPattern);
-      if (artistMatch && artistMatch[1]) {
-        const cleanedArtist = artistMatch[1].trim().replace(/\s+/g, ' ');
-        const tokens = cleanedArtist.split(' ');
-        const beforeSongText = title
-          .replace(/^\[[^\]]+\]\s*/, '')
-          .split(/["']/)[0]
-          .trim();
-        const beforeSongWordCount = beforeSongText.split(/\s+/).filter(Boolean).length;
-        const potentialArtist =
-          tokens.length === 2 && beforeSongWordCount <= 1
-            ? cleanedArtist
-            : tokens[tokens.length - 1];
-        if (!this.isCommonWord(potentialArtist) && potentialArtist.length > 1) {
-          metadata.artist_name = this.normalizeName(potentialArtist);
-          fieldsExtracted++;
-        }
-      }
-
-      // Pattern: GROUP (ARTIST)
-      if (!metadata.artist_name) {
-        const groupArtistMatch = title.match(
-          /\b\d{6}\b\s+([A-Za-z가-힣0-9][A-Za-z가-힣0-9\s&]+?)\s+\(([^)]+)\)/i,
-        );
-        if (groupArtistMatch?.[2]) {
-          metadata.artist_name = this.normalizeName(groupArtistMatch[2].trim());
-          fieldsExtracted++;
-        }
-      }
-    } else {
-      fieldsExtracted++;
-    }
-
-    // Extract group_name
-    fieldsAttempted++;
-    if (!metadata.group_name) {
-      const englishFanCamMatch = title.match(/\(([^()]+?)\s+(?:fancam|face\s*cam|cam)\)/i);
-      if (englishFanCamMatch?.[1]) {
-        const cleaned = englishFanCamMatch[1].trim().replace(/\s+/g, ' ');
-        const parts = cleaned.split(' ');
-        if (parts.length >= 2) {
-          metadata.group_name = this.normalizeName(parts.slice(0, -1).join(' '));
-          fieldsExtracted++;
-        }
-      }
-    }
-
-    if (!metadata.group_name) {
-      const groupArtistMatch = title.match(
-        /\b\d{6}\b\s+([A-Za-z가-힣0-9][A-Za-z가-힣0-9\s&]+?)\s+\([^)]+\)/i,
-      );
-      if (groupArtistMatch?.[1]) {
-        metadata.group_name = this.normalizeName(groupArtistMatch[1].trim());
-        fieldsExtracted++;
-      }
-    }
-
-    if (!metadata.group_name && !metadata.artist_name) {
-      // Try to extract group name from various patterns
-      const groupPatterns = [
-        /\[([A-Za-z가 - 힣0-9&\s]+?)\](?=\s*[-|])/i, // [GROUP] - Song
-        /\(([A-Za-z가 - 힣0-9&\s]+?)\)(?=\s*[-|])/i, // (GROUP) - Song
-        /^([A-Za-z가 - 힣0-9&\s]+?)\s*[-|]/i, // GROUP - Song
-      ];
-
-      for (const pattern of groupPatterns) {
-        const match = title.match(pattern);
-        if (match && match[1]) {
-          const potentialGroup = match[1].trim();
-          if (!this.isCommonWord(potentialGroup) && potentialGroup.length > 1) {
-            metadata.group_name = this.normalizeName(potentialGroup);
-            fieldsExtracted++;
-            break;
-          }
-        }
-      }
-    } else if (metadata.group_name || metadata.artist_name) {
-      fieldsExtracted++;
-    }
-
-    // Extract song_title
-    fieldsAttempted++;
-    if (!metadata.song_title) {
-      const songMatch = title.match(this.songPattern);
-      if (songMatch) {
-        const potentialSong = songMatch[2]?.trim();
-        if (potentialSong && !this.isCommonWord(potentialSong)) {
-          metadata.song_title = this.cleanSongTitle(potentialSong);
-          fieldsExtracted++;
-        }
-      }
-
-      // Alternative: look for text before event/date for unquoted songs
-      if (!metadata.song_title) {
-        const altPattern = /\b\d{6}\b\s+[A-Za-z가-힣0-9\s&]+?(?:\([^)]+\))?\s+([^@]+?)\s+@/i;
-        const altMatch = title.match(altPattern);
-        if (altMatch && altMatch[1]) {
-          let cleaned = altMatch[1].trim().replace(/[\[\]()]/g, '');
-          if (
-            metadata.artist_name &&
-            cleaned.toLowerCase().startsWith(metadata.artist_name.toLowerCase() + ' ')
-          ) {
-            cleaned = cleaned.slice(metadata.artist_name.length).trim();
-          }
-          if (cleaned.length > 1 && !this.isCommonWord(cleaned)) {
-            metadata.song_title = this.cleanSongTitle(cleaned);
-            fieldsExtracted++;
-          }
-        }
-      }
-    } else {
-      fieldsExtracted++;
-    }
-
-    const confidence = fieldsAttempted > 0 ? fieldsExtracted / fieldsAttempted : 0;
-
-    return { metadata, confidence };
+    return { metadata, confidence: this.score(metadata) };
   }
 
-  private isCommonWord(word: string): boolean {
-    const commonWords = [
-      'the',
-      'a',
-      'an',
-      'and',
-      'or',
-      'but',
-      'in',
-      'on',
-      'at',
-      'to',
-      'for',
-      'of',
-      'with',
-      'by',
-      'from',
-      'up',
-      'about',
-      'into',
-      'over',
-      'after',
-      'fancam',
-      'cam',
-      'video',
-      'mv',
-      'teaser',
-      'preview',
-      'highlight',
-      '直캠',
-      '입캠',
+  private parseTitle(title: string): Partial<ParsedMetadata> {
+    const compacted = this.compact(title);
+    const metadata: Partial<ParsedMetadata> = {
+      perf_date: this.extractLastDate(compacted),
+      camera_type: this.extractCameraType(compacted),
+      event: this.extractEvent(compacted),
+      song_title: this.extractSongTitle(compacted),
+    };
+
+    const englishFancamMeta = this.extractFromEnglishFancamParen(compacted);
+    const koreanPrefixMeta = this.extractKoreanPrefix(compacted, metadata.song_title);
+    Object.assign(metadata, englishFancamMeta, koreanPrefixMeta);
+
+    const fancam = this.assessFancam(compacted);
+    metadata.is_fancam = fancam.is_fancam;
+    metadata.fancam_confidence = fancam.fancam_confidence;
+
+    return metadata;
+  }
+
+  private compact(value: string): string {
+    return value.replace(/\s+/g, ' ').trim();
+  }
+
+  private extractLastDate(title: string): string | undefined {
+    const matches = [...title.matchAll(this.datePattern)];
+    return matches.length > 0 ? matches[matches.length - 1][1] : undefined;
+  }
+
+  private extractCameraType(title: string): string | undefined {
+    const cameraPatterns: Array<{ pattern: RegExp; value: string }> = [
+      { pattern: /\b8k\b/i, value: '8K' },
+      { pattern: /\b4k\b/i, value: '4K' },
+      { pattern: /\bface\s?cam\b/i, value: 'FaceCam' },
+      { pattern: /\bfull\s?cam\b/i, value: 'FullCam' },
+      { pattern: /\bchoreography\b/i, value: 'Choreography' },
+      { pattern: /\bfan\s?cam\b/i, value: 'FanCam' },
+      { pattern: /얼빡직캠/, value: '얼빡직캠' },
+      { pattern: /페이스캠/, value: '페이스캠' },
+      { pattern: /직캠/, value: '직캠' },
+      { pattern: /세로/, value: '세로' },
+      { pattern: /가로/, value: '가로' },
     ];
-    return commonWords.includes(word.toLowerCase());
+
+    return cameraPatterns.find(({ pattern }) => pattern.test(title))?.value;
   }
 
-  private normalizeName(name: string): string {
-    // Capitalize first letter of each word for English names
-    return name.replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+  private extractEvent(title: string): string | undefined {
+    const atMatch = title.match(/@\s*([^|\]\[()]+?)(?=\s+\d{6}\b|\s*$|\s+\||\s+방송)/i);
+    if (atMatch?.[1]) {
+      const raw = this.compact(atMatch[1])
+        .replace(/\b\d{6}\b/g, '')
+        .trim();
+      return raw ? `@${/[A-Za-z]/.test(raw) ? raw.toUpperCase() : raw}` : undefined;
+    }
+
+    const pipeMatch = title.match(/\|\s*([A-Za-z]+)\s+\d{6}\s+방송/i);
+    if (pipeMatch?.[1]) {
+      return `@${pipeMatch[1].toUpperCase()}`;
+    }
+
+    return undefined;
   }
 
-  private cleanSongTitle(title: string): string {
-    return title
-      .replace(/[\[\]]/g, '')
-      .replace(/\s+/g, ' ')
-      .replace(/\s*[-|]\s*$/, '')
-      .trim();
+  private extractSongTitle(title: string): string | undefined {
+    const quotePatterns = [
+      /'([^']+)'/,
+      /"([^"]+)"/,
+      /‘([^’]+)’/,
+      /“([^”]+)”/,
+      /「([^」]+)」/,
+      /＜([^＞]+)＞/,
+    ];
+
+    for (const pattern of quotePatterns) {
+      const match = title.match(pattern);
+      if (match?.[1]) {
+        return this.compact(match[1]);
+      }
+    }
+
+    const dashed = title.match(/^\s*([^|\-]+?)\s*-\s*([^|]+?)\s*\|/);
+    if (dashed) {
+      const left = this.compact(dashed[1]);
+      const right = this.compact(dashed[2]);
+      const leftUpper = left.toUpperCase();
+      return /^[A-Z0-9\s&'.-]+$/.test(leftUpper) ? right : left;
+    }
+
+    return undefined;
+  }
+
+  private extractFromEnglishFancamParen(title: string): Partial<ParsedMetadata> {
+    const match = title.match(/\(([A-Za-z0-9&\s'.-]+?)\s+([A-Za-z0-9'.-]+)\s+Fan\s?Cam\)/i);
+    if (!match) {
+      return {};
+    }
+
+    return {
+      group_name: this.compact(match[1]),
+      artist_name: this.compact(match[2]),
+    };
+  }
+
+  private extractKoreanPrefix(title: string, songTitle?: string): Partial<ParsedMetadata> {
+    const source = songTitle ? title.split(songTitle)[0] : title;
+    const koreanParen = source.match(/\b([가-힣A-Za-z0-9]+)\s+([가-힣]+)\s*\([A-Za-z]+\)/);
+    if (koreanParen) {
+      return { group_name: koreanParen[1], artist_name: koreanParen[2] };
+    }
+
+    const koreanCam = source.match(/\b([가-힣A-Za-z0-9]+)\s+([가-힣]+)\s+직캠/);
+    if (koreanCam) {
+      return { group_name: koreanCam[1], artist_name: koreanCam[2] };
+    }
+
+    return {};
+  }
+
+  private assessFancam(title: string): { is_fancam: boolean; fancam_confidence: number } {
+    if (/private\s+video/i.test(title)) {
+      return { is_fancam: false, fancam_confidence: 1 };
+    }
+
+    const negative =
+      /(interview|highlight|하이라이트|teaser|trailer|\bmv\b|shorts?|#shorts|behind|비하인드|리무진서비스)/i;
+    if (negative.test(title)) {
+      return { is_fancam: false, fancam_confidence: 0.95 };
+    }
+
+    const positive =
+      /(fan\s?cam|face\s?cam|직캠|페이스캠|얼빡직캠|focus|포커스|\([^)]+\s+fan\s?cam\))/i;
+    if (positive.test(title)) {
+      return { is_fancam: true, fancam_confidence: 0.95 };
+    }
+
+    return { is_fancam: false, fancam_confidence: 0.3 };
+  }
+
+  private score(metadata: Partial<ParsedMetadata>): number {
+    if (/private\s+video/i.test(metadata.song_title ?? '')) {
+      return 0;
+    }
+    if (metadata.is_fancam === false && metadata.fancam_confidence === 1) {
+      return 0;
+    }
+
+    const weightedFields: Array<{ present: boolean; weight: number }> = [
+      { present: Boolean(metadata.perf_date), weight: 0.2 },
+      { present: Boolean(metadata.event), weight: 0.2 },
+      { present: Boolean(metadata.song_title), weight: 0.2 },
+      { present: Boolean(metadata.camera_type), weight: 0.1 },
+      { present: Boolean(metadata.group_name), weight: 0.1 },
+      { present: Boolean(metadata.artist_name), weight: 0.1 },
+      { present: metadata.is_fancam !== undefined, weight: 0.1 },
+    ];
+
+    const base = weightedFields.reduce((acc, field) => acc + (field.present ? field.weight : 0), 0);
+    const fancamFactor = metadata.fancam_confidence ?? 0.5;
+    return Number(Math.min(1, base * (0.7 + fancamFactor * 0.3)).toFixed(2));
   }
 }

@@ -1,32 +1,22 @@
-import { ParserModule, ParsedMetadata } from './parser.types';
+import { dictionaryService } from '../dictionary.service';
+import { ParsedMetadata, ParserModule } from './parser.types';
 
-/**
- * Simple Levenshtein distance implementation for fuzzy matching
- */
 function levenshteinDistance(str1: string, str2: string): number {
   const m = str1.length;
   const n = str2.length;
-
-  // Create a matrix
   const dp: number[][] = Array(m + 1)
     .fill(null)
     .map(() => Array(n + 1).fill(0));
 
-  // Initialize first column and row
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
 
-  // Fill the matrix
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       if (str1[i - 1] === str2[j - 1]) {
         dp[i][j] = dp[i - 1][j - 1];
       } else {
-        dp[i][j] = Math.min(
-          dp[i - 1][j] + 1, // deletion
-          dp[i][j - 1] + 1, // insertion
-          dp[i - 1][j - 1] + 1, // substitution
-        );
+        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + 1);
       }
     }
   }
@@ -34,9 +24,6 @@ function levenshteinDistance(str1: string, str2: string): number {
   return dp[m][n];
 }
 
-/**
- * Calculate similarity ratio between two strings (0-1)
- */
 function similarity(str1: string, str2: string): number {
   const maxLen = Math.max(str1.length, str2.length);
   if (maxLen === 0) return 1;
@@ -49,20 +36,80 @@ interface KpopDictionary {
   artists: Record<string, string[]>;
   songs: string[];
   events: string[];
-  aliases: Record<string, string>;
+  aliases: {
+    group: Record<string, string>;
+    artist: Record<string, string>;
+    song: Record<string, string>;
+  };
   cameraTypes: Record<string, string>;
 }
-import { dictionaryService } from '../dictionary.service';
 
-/**
- * Dictionary-based parser module for correcting and normalizing metadata
- */
 export class DictionaryModule implements ParserModule {
   private dictionary: KpopDictionary | null = null;
-  constructor() {}
+
+  private readonly cameraTypeMap: Record<string, string> = {
+    직캠: 'FANCAM',
+    fancam: 'FANCAM',
+    'fan cam': 'FANCAM',
+    페이스캠: 'FACECAM',
+    facecam: 'FACECAM',
+    'face cam': 'FACECAM',
+    얼빡직캠: 'CLOSE-UP FANCAM',
+    세로: 'VERTICAL',
+    가로: 'HORIZONTAL',
+    풀캠: 'FULL CAM',
+    fullcam: 'FULL CAM',
+    'full cam': 'FULL CAM',
+    choreography: 'CHOREOGRAPHY',
+    '4k': '4K',
+    '8k': '8K',
+  };
+
+  private readonly eventAliasMap: Record<string, string> = {
+    inkigayo: 'INKIGAYO',
+    'sbs inkigayo': 'SBS INKIGAYO',
+    musicbank: 'MUSIC BANK',
+    'music bank': 'MUSIC BANK',
+    뮤직뱅크: 'MUSIC BANK',
+    musiccore: 'MUSIC CORE',
+    'music core': 'MUSIC CORE',
+    음악중심: 'MUSIC CORE',
+    mcountdown: 'M COUNTDOWN',
+    연세대: 'YONSEI UNIVERSITY',
+    고려대: 'KOREA UNIVERSITY',
+  };
+
+  private normalizeLookup(value: string): string {
+    return value
+      .normalize('NFKC')
+      .toLowerCase()
+      .replace(/[‘’]/g, "'")
+      .replace(/[“”]/g, '"')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private containsTerm(haystack: string, needle: string): boolean {
+    const normalizedHaystack = this.normalizeLookup(haystack);
+    const normalizedNeedle = this.normalizeLookup(needle);
+    if (!normalizedNeedle) {
+      return false;
+    }
+
+    if (/^[a-z0-9\s&'.-]+$/i.test(normalizedNeedle)) {
+      const escaped = normalizedNeedle
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/\s+/g, '\\s+');
+      const regex = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i');
+      return regex.test(normalizedHaystack);
+    }
+
+    return normalizedHaystack.includes(normalizedNeedle);
+  }
 
   private async loadDictionary(): Promise<KpopDictionary> {
     if (this.dictionary) return this.dictionary;
+
     const [groups, artists, songs, events, aliases] = await Promise.all([
       dictionaryService.getGroups(),
       dictionaryService.getArtists(),
@@ -70,26 +117,44 @@ export class DictionaryModule implements ParserModule {
       dictionaryService.getEvents(),
       dictionaryService.getAllAliases(),
     ]);
+
     const artistMap: Record<string, string[]> = {};
     for (const a of artists) {
       const groupName = (a as any).group_name || 'SOLO';
       if (!artistMap[groupName]) artistMap[groupName] = [];
       artistMap[groupName].push(a.name);
     }
-    const aliasMap: Record<string, string> = {};
+
+    const aliasMap: KpopDictionary['aliases'] = { group: {}, artist: {}, song: {} };
     for (const alias of aliases as any[]) {
+      const normalized = this.normalizeLookup(String(alias.alias));
+      if (!normalized) {
+        continue;
+      }
       const resolved = await dictionaryService.resolveAlias(alias.entity_type, alias.alias);
-      if (resolved?.name) aliasMap[String(alias.alias).trim().toLowerCase()] = resolved.name;
+      if (!resolved?.name) {
+        continue;
+      }
+
+      if (alias.entity_type === 'group') {
+        aliasMap.group[normalized] = resolved.name;
+      } else if (alias.entity_type === 'artist') {
+        aliasMap.artist[normalized] = resolved.name;
+      } else if (alias.entity_type === 'song') {
+        aliasMap.song[normalized] = resolved.name;
+      }
     }
+
     this.dictionary = {
       groups: groups.map((g: any) => String(g.name)),
       artists: artistMap,
       songs: songs.map((s) => s.title),
       events: events.map((e) => e.name),
       aliases: aliasMap,
-      cameraTypes: {},
+      cameraTypes: this.cameraTypeMap,
     };
-    return this.dictionary!;
+
+    return this.dictionary;
   }
 
   async parse(
@@ -101,22 +166,20 @@ export class DictionaryModule implements ParserModule {
     let correctionsMade = 0;
     let fieldsChecked = 0;
 
-    // Normalize and correct group_name
     fieldsChecked++;
     if (metadata.group_name) {
       const corrected = this.findBestMatch(
         metadata.group_name,
         dictionary.groups,
-        dictionary.aliases,
+        dictionary.aliases.group,
       );
-      if (corrected && corrected !== metadata.group_name) {
-        metadata.group_name = corrected;
+      if (corrected) {
+        if (corrected !== metadata.group_name) {
+          metadata.group_name = corrected;
+        }
         correctionsMade++;
-      } else if (corrected) {
-        correctionsMade++; // No change needed but field is valid
       }
     } else {
-      // Try to find group name in title using dictionary
       const foundGroup = this.findGroupInTitle(title, dictionary);
       if (foundGroup) {
         metadata.group_name = foundGroup;
@@ -124,23 +187,27 @@ export class DictionaryModule implements ParserModule {
       }
     }
 
-    // Normalize and correct artist_name
     fieldsChecked++;
     if (metadata.artist_name) {
-      // Check against all known artists
       const allArtists = Object.values(dictionary.artists).flat();
-      const corrected = this.findBestMatch(metadata.artist_name, allArtists, dictionary.aliases);
-      if (corrected && corrected !== metadata.artist_name) {
-        metadata.artist_name = corrected;
-        correctionsMade++;
-      } else if (corrected) {
+      const corrected = this.findBestMatch(
+        metadata.artist_name,
+        allArtists,
+        dictionary.aliases.artist,
+      );
+      if (corrected) {
+        if (corrected !== metadata.artist_name) {
+          metadata.artist_name = corrected;
+        }
         correctionsMade++;
       }
-
-      // Also check if artist belongs to a known group
       if (metadata.artist_name && !metadata.group_name) {
-        for (const [group, artists] of Object.entries(dictionary.artists)) {
-          if (artists.some((a) => a.toLowerCase() === metadata.artist_name?.toLowerCase())) {
+        for (const [group, artistsOfGroup] of Object.entries(dictionary.artists)) {
+          if (
+            artistsOfGroup.some(
+              (a) => this.normalizeLookup(a) === this.normalizeLookup(metadata.artist_name!),
+            )
+          ) {
             metadata.group_name = group;
             correctionsMade++;
             break;
@@ -148,33 +215,30 @@ export class DictionaryModule implements ParserModule {
         }
       }
     } else {
-      // Try to find artist name in title
       const foundArtist = this.findArtistInTitle(title, dictionary);
       if (foundArtist) {
         metadata.artist_name = foundArtist.name;
-        if (foundArtist.group) {
+        if (!metadata.group_name && foundArtist.group) {
           metadata.group_name = foundArtist.group;
         }
         correctionsMade++;
       }
     }
 
-    // Normalize and correct song_title
     fieldsChecked++;
     if (metadata.song_title) {
       const corrected = this.findBestMatch(
         metadata.song_title,
         dictionary.songs,
-        dictionary.aliases,
+        dictionary.aliases.song,
       );
-      if (corrected && corrected !== metadata.song_title) {
-        metadata.song_title = corrected;
-        correctionsMade++;
-      } else if (corrected) {
+      if (corrected) {
+        if (corrected !== metadata.song_title) {
+          metadata.song_title = corrected;
+        }
         correctionsMade++;
       }
     } else {
-      // Try to find song title in title using dictionary
       const foundSong = this.findSongInTitle(title, dictionary);
       if (foundSong) {
         metadata.song_title = foundSong;
@@ -182,44 +246,44 @@ export class DictionaryModule implements ParserModule {
       }
     }
 
-    // Normalize event
     fieldsChecked++;
     if (metadata.event) {
       const eventName = metadata.event.replace('@', '');
-      const corrected = this.findBestMatch(eventName, dictionary.events, dictionary.aliases);
-      if (corrected) {
-        metadata.event = '@' + corrected;
+      const corrected = this.findBestMatch(eventName, dictionary.events, {});
+      const aliasEvent = this.eventAliasMap[this.normalizeLookup(eventName)];
+      const canonicalEvent = corrected || aliasEvent;
+      if (canonicalEvent) {
+        metadata.event = '@' + canonicalEvent;
         correctionsMade++;
       }
     }
 
-    // Normalize camera_type
     fieldsChecked++;
     if (metadata.camera_type) {
-      // Keep non-Latin custom tags as-is (e.g., Korean camera tags)
-      if (/[^\x00-\x7F]/.test(metadata.camera_type)) {
-        correctionsMade++;
-      } else {
-        const lowerCameraType = metadata.camera_type.toLowerCase();
-        if (dictionary.cameraTypes[lowerCameraType]) {
-          metadata.camera_type = dictionary.cameraTypes[lowerCameraType];
-          correctionsMade++;
-        } else {
-          // Try to find partial match
-          for (const [key, value] of Object.entries(dictionary.cameraTypes)) {
-            if (lowerCameraType.includes(key) || key.includes(lowerCameraType)) {
-              metadata.camera_type = value;
-              correctionsMade++;
-              break;
-            }
-          }
-        }
+      const normalizedCamera = this.normalizeCameraType(metadata.camera_type);
+      if (normalizedCamera) {
+        metadata.camera_type = normalizedCamera;
       }
+      correctionsMade++;
     }
 
     const confidence = fieldsChecked > 0 ? correctionsMade / fieldsChecked : 0;
-
     return { metadata, confidence };
+  }
+
+  private normalizeCameraType(cameraType: string): string | undefined {
+    const normalized = this.normalizeLookup(cameraType);
+    if (this.cameraTypeMap[normalized]) {
+      return this.cameraTypeMap[normalized];
+    }
+
+    for (const [alias, canonical] of Object.entries(this.cameraTypeMap)) {
+      if (normalized.includes(alias)) {
+        return canonical;
+      }
+    }
+
+    return undefined;
   }
 
   public async searchInTags(
@@ -227,26 +291,29 @@ export class DictionaryModule implements ParserModule {
     field: 'group' | 'artist' | 'song' | 'event',
   ): Promise<string | null> {
     const dictionary = await this.loadDictionary();
+
     let candidates: string[] = [];
+    let aliases: Record<string, string> = {};
 
     if (field === 'group') {
       candidates = dictionary.groups;
+      aliases = dictionary.aliases.group;
     } else if (field === 'artist') {
       candidates = Object.values(dictionary.artists).flat();
+      aliases = dictionary.aliases.artist;
     } else if (field === 'song') {
       candidates = dictionary.songs;
+      aliases = dictionary.aliases.song;
     } else {
       candidates = dictionary.events;
     }
 
     for (const tag of tags) {
-      const normalizedTag = tag.trim();
-      if (!normalizedTag) {
-        continue;
-      }
-
-      const bestMatch = this.findBestMatch(normalizedTag, candidates, dictionary.aliases);
-      if (bestMatch && similarity(normalizedTag.toLowerCase(), bestMatch.toLowerCase()) > 0.8) {
+      const bestMatch = this.findBestMatch(tag, candidates, aliases);
+      if (
+        bestMatch &&
+        similarity(this.normalizeLookup(tag), this.normalizeLookup(bestMatch)) > 0.8
+      ) {
         return bestMatch;
       }
     }
@@ -254,45 +321,38 @@ export class DictionaryModule implements ParserModule {
     return null;
   }
 
-  /**
-   * Find best match for a string in a list of candidates using fuzzy matching
-   */
   private findBestMatch(
     input: string,
     candidates: string[],
     aliases: Record<string, string>,
   ): string | null {
-    const normalizedInput = input.trim().toLowerCase();
+    const normalizedInput = this.normalizeLookup(input);
 
-    // First check aliases
     if (aliases[normalizedInput]) {
       return aliases[normalizedInput];
     }
 
-    // Check exact match (case-insensitive)
-    const exactMatch = candidates.find((c) => c.toLowerCase() === normalizedInput);
-    if (exactMatch) {
-      return exactMatch;
+    const exactCandidate = candidates.find((c) => this.normalizeLookup(c) === normalizedInput);
+    if (exactCandidate) {
+      return exactCandidate;
     }
 
-    // Check contains match
-    const containsMatch = candidates.find((c) => {
-      const candidate = c.toLowerCase();
-      if (candidate.length < 3 || normalizedInput.length < 3) {
-        return false;
+    for (const [alias, canonical] of Object.entries(aliases)) {
+      if (this.containsTerm(input, alias)) {
+        return canonical;
       }
-      return candidate.includes(normalizedInput) || normalizedInput.includes(candidate);
-    });
-    if (containsMatch) {
-      return containsMatch;
     }
 
-    // Fuzzy match with threshold
+    const containsCandidate = candidates.find((candidate) => this.containsTerm(input, candidate));
+    if (containsCandidate) {
+      return containsCandidate;
+    }
+
     let bestMatch: string | null = null;
-    let bestScore = normalizedInput.length <= 4 ? 0.9 : 0.7; // Be stricter for short tokens
+    let bestScore = normalizedInput.length <= 4 ? 0.9 : 0.7;
 
     for (const candidate of candidates) {
-      const score = similarity(normalizedInput, candidate.toLowerCase());
+      const score = similarity(normalizedInput, this.normalizeLookup(candidate));
       if (score > bestScore) {
         bestScore = score;
         bestMatch = candidate;
@@ -302,22 +362,15 @@ export class DictionaryModule implements ParserModule {
     return bestMatch;
   }
 
-  /**
-   * Find a group name in the title using dictionary
-   */
   private findGroupInTitle(title: string, dictionary: KpopDictionary): string | null {
-    const lowerTitle = title.toLowerCase();
-
-    // Check aliases first
-    for (const [alias, canonical] of Object.entries(dictionary.aliases)) {
-      if (dictionary.groups.includes(canonical) && lowerTitle.includes(alias.toLowerCase())) {
+    for (const [alias, canonical] of Object.entries(dictionary.aliases.group)) {
+      if (this.containsTerm(title, alias)) {
         return canonical;
       }
     }
 
-    // Check groups directly
     for (const group of dictionary.groups) {
-      if (lowerTitle.includes(group.toLowerCase())) {
+      if (this.containsTerm(title, group)) {
         return group;
       }
     }
@@ -325,33 +378,29 @@ export class DictionaryModule implements ParserModule {
     return null;
   }
 
-  /**
-   * Find an artist name in the title using dictionary
-   */
   private findArtistInTitle(
     title: string,
     dictionary: KpopDictionary,
   ): { name: string; group?: string } | null {
-    const lowerTitle = title.toLowerCase();
-
-    for (const [group, artists] of Object.entries(dictionary.artists)) {
-      for (const artist of artists) {
-        const artistLower = artist.toLowerCase();
-        const escapedArtist = artistLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        if (new RegExp(`(^|\\W)${escapedArtist}($|\\W)`, 'i').test(lowerTitle)) {
-          return { name: artist, group };
+    for (const [alias, canonical] of Object.entries(dictionary.aliases.artist)) {
+      if (this.containsTerm(title, alias)) {
+        for (const [group, artists] of Object.entries(dictionary.artists)) {
+          if (
+            artists.some(
+              (artist) => this.normalizeLookup(artist) === this.normalizeLookup(canonical),
+            )
+          ) {
+            return { name: canonical, group };
+          }
         }
+        return { name: canonical };
       }
     }
 
-    // Check aliases
-    for (const [alias, canonical] of Object.entries(dictionary.aliases)) {
-      if (lowerTitle.includes(alias.toLowerCase())) {
-        // Check if this alias maps to an artist
-        for (const [group, artists] of Object.entries(dictionary.artists)) {
-          if (artists.includes(canonical)) {
-            return { name: canonical, group };
-          }
+    for (const [group, artists] of Object.entries(dictionary.artists)) {
+      for (const artist of artists) {
+        if (this.containsTerm(title, artist)) {
+          return { name: artist, group };
         }
       }
     }
@@ -359,23 +408,16 @@ export class DictionaryModule implements ParserModule {
     return null;
   }
 
-  /**
-   * Find a song title in the title using dictionary
-   */
   private findSongInTitle(title: string, dictionary: KpopDictionary): string | null {
-    const lowerTitle = title.toLowerCase();
-
-    // Check songs directly
-    for (const song of dictionary.songs) {
-      if (lowerTitle.includes(song.toLowerCase())) {
-        return song;
+    for (const [alias, canonical] of Object.entries(dictionary.aliases.song)) {
+      if (this.containsTerm(title, alias)) {
+        return canonical;
       }
     }
 
-    // Check aliases
-    for (const [alias, canonical] of Object.entries(dictionary.aliases)) {
-      if (dictionary.songs.includes(canonical) && lowerTitle.includes(alias.toLowerCase())) {
-        return canonical;
+    for (const song of dictionary.songs) {
+      if (this.containsTerm(title, song)) {
+        return song;
       }
     }
 

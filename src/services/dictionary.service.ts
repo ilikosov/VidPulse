@@ -315,6 +315,53 @@ export class DictionaryService {
             await knex('dictionary_songs').insert({ title, artist });
             summary.inserted += 1;
           }
+        } else if (kind === 'aliases') {
+          const entityType = String(row.entity_type || '')
+            .trim()
+            .toLowerCase() as AliasEntityType;
+          const entityName = String(row.entity_name || '').trim();
+          const alias = String(row.alias || '').trim();
+          const normalizedAlias = alias.toLowerCase();
+          if (!['group', 'artist', 'song'].includes(entityType) || !entityName || !alias) {
+            throw new Error('Invalid alias payload');
+          }
+
+          let entityId: number | null = null;
+          if (entityType === 'group') {
+            const group = await knex('dictionary_groups')
+              .whereRaw('LOWER(name) = ?', [entityName.toLowerCase()])
+              .first();
+            entityId = group?.id ?? null;
+          } else if (entityType === 'artist') {
+            const artist = await knex('dictionary_artists')
+              .whereRaw('LOWER(name) = ?', [entityName.toLowerCase()])
+              .first();
+            entityId = artist?.id ?? null;
+          } else {
+            const song = await knex('dictionary_songs')
+              .whereRaw('LOWER(title) = ?', [entityName.toLowerCase()])
+              .first();
+            entityId = song?.id ?? null;
+          }
+
+          if (!entityId) {
+            throw new Error('Alias entity not found');
+          }
+
+          const existingAlias = await knex('dictionary_aliases')
+            .where({ entity_type: entityType, entity_id: entityId })
+            .andWhereRaw('LOWER(alias) = ?', [normalizedAlias])
+            .first();
+          if (existingAlias) {
+            summary.updated += 1;
+          } else {
+            await knex('dictionary_aliases').insert({
+              entity_type: entityType,
+              entity_id: entityId,
+              alias,
+            });
+            summary.inserted += 1;
+          }
         } else if (kind === 'events') {
           const name = String(row.name || '').trim();
           if (!name) throw new Error('Invalid event payload');
