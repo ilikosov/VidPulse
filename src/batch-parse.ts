@@ -14,6 +14,8 @@ async function batchParse() {
         song_title: metadata.song_title || null,
         event: metadata.event || null,
         camera_type: metadata.camera_type || null,
+        is_fancam: metadata.is_fancam ?? null,
+        fancam_confidence: metadata.fancam_confidence ?? null,
         status: needsReview ? 'needs_review' : 'new',
       });
   }

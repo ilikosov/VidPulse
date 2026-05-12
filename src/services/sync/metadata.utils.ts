@@ -7,7 +7,7 @@ export async function parseVideoMetadata(
   tags?: string[],
 ) {
   const { metadata, needsReview } = await parser.parseTitle(originalTitle, publishedAt, tags);
-  const updateData: Record<string, any> = {};
+  const updateData: Record<string, string | number | boolean | null> = {};
   if (metadata.perf_date)
     updateData.perf_date = new Date(
       `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
@@ -17,5 +17,7 @@ export async function parseVideoMetadata(
   if (metadata.song_title !== undefined) updateData.song_title = metadata.song_title || null;
   if (metadata.event !== undefined) updateData.event = metadata.event || null;
   if (metadata.camera_type !== undefined) updateData.camera_type = metadata.camera_type || null;
+  updateData.is_fancam = metadata.is_fancam ?? null;
+  updateData.fancam_confidence = metadata.fancam_confidence ?? null;
   return { metadata: updateData, status: needsReview ? 'needs_review' : 'new' };
 }

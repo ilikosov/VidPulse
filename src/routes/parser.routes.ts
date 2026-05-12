@@ -49,6 +49,8 @@ router.post('/llm-parse/:id', async (req: Request, res: Response) => {
         song_title: metadata.song_title || null,
         event: metadata.event || null,
         camera_type: metadata.camera_type || null,
+        is_fancam: metadata.is_fancam ?? null,
+        fancam_confidence: metadata.fancam_confidence ?? null,
         updated_at: new Date().toISOString(),
       });
 
@@ -85,6 +87,8 @@ router.post('/llm-parse-batch', async (req: Request, res: Response) => {
             song_title: metadata.song_title || null,
             event: metadata.event || null,
             camera_type: metadata.camera_type || null,
+            is_fancam: metadata.is_fancam ?? null,
+            fancam_confidence: metadata.fancam_confidence ?? null,
             updated_at: new Date().toISOString(),
           });
         updated += 1;
@@ -122,7 +126,7 @@ router.post('/reparse-all', async (req: Request, res: Response) => {
           details.tags,
         );
 
-        const updateData: Record<string, string | null> = {
+        const updateData: Record<string, string | number | boolean | null> = {
           perf_date: metadata.perf_date
             ? new Date(
                 `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
@@ -133,6 +137,8 @@ router.post('/reparse-all', async (req: Request, res: Response) => {
           song_title: metadata.song_title || null,
           event: metadata.event || null,
           camera_type: metadata.camera_type || null,
+          is_fancam: metadata.is_fancam ?? null,
+          fancam_confidence: metadata.fancam_confidence ?? null,
           status: needsReview ? 'needs_review' : video.status,
         };
 
@@ -201,7 +207,7 @@ router.post('/reparse/:id', async (req: Request, res: Response) => {
     }
     const nextStatus = needsReview ? 'needs_review' : 'new';
 
-    const updateData: Record<string, string | null> = {
+    const updateData: Record<string, string | number | boolean | null> = {
       perf_date: metadata.perf_date
         ? new Date(
             `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
@@ -212,6 +218,8 @@ router.post('/reparse/:id', async (req: Request, res: Response) => {
       song_title: metadata.song_title || null,
       event: metadata.event || null,
       camera_type: metadata.camera_type || null,
+      is_fancam: metadata.is_fancam ?? null,
+      fancam_confidence: metadata.fancam_confidence ?? null,
       status: nextStatus,
     };
 
@@ -265,7 +273,7 @@ router.post('/reparse-batch', async (req: Request, res: Response) => {
         );
         const nextStatus = needsReview ? 'needs_review' : video.status;
 
-        const updateData: Record<string, string | null> = {
+        const updateData: Record<string, string | number | boolean | null> = {
           perf_date: metadata.perf_date
             ? new Date(
                 `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
@@ -276,6 +284,8 @@ router.post('/reparse-batch', async (req: Request, res: Response) => {
           song_title: metadata.song_title || null,
           event: metadata.event || null,
           camera_type: metadata.camera_type || null,
+          is_fancam: metadata.is_fancam ?? null,
+          fancam_confidence: metadata.fancam_confidence ?? null,
           status: nextStatus,
         };
 
