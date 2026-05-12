@@ -9,6 +9,8 @@ export interface ParsedMetadata {
   event?: string; // With @ prefix, e.g. @MCOUNTDOWN
   camera_type?: string; // e.g. vertical fancam, 4K, 입덕직캠
   confidence?: number; // 0-1 confidence score
+  is_fancam?: boolean;
+  fancam_confidence?: number; // 0-1 confidence score for fancam classification
 }
 
 /**
