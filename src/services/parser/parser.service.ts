@@ -4,10 +4,60 @@ import { DictionaryModule } from './dictionary.module';
 
 const MIN_CONFIDENCE_THRESHOLD = 0.5;
 
-function hasRequiredFields(metadata: Partial<ParsedMetadata>): boolean {
-  return (
-    !!(metadata.group_name || metadata.artist_name) && !!metadata.song_title && !!metadata.perf_date
-  );
+function hasUnnormalizedNonEnglish(metadata: Partial<ParsedMetadata>): boolean {
+  const values = [
+    metadata.group_name,
+    metadata.artist_name,
+    metadata.song_title,
+    metadata.event,
+    metadata.camera_type,
+  ].filter((v): v is string => Boolean(v));
+  return values.some((value) => /[가-힣]/.test(value));
+}
+
+function calculateMetadataConfidence(metadata: Partial<ParsedMetadata>): number {
+  let score = 0;
+
+  if (metadata.group_name || metadata.artist_name) score += 0.2;
+  if (metadata.song_title) score += 0.22;
+  if (metadata.perf_date) score += 0.16;
+  if (metadata.event) score += 0.12;
+  if (metadata.camera_type) score += 0.08;
+  if (metadata.is_fancam !== undefined) score += 0.12;
+  if ((metadata.fancam_confidence ?? 0) >= 0.8) score += 0.1;
+
+  return Number(Math.min(1, score).toFixed(2));
+}
+
+function hasRequiredFields(
+  metadata: Partial<ParsedMetadata>,
+  title?: string,
+  publishedAt?: string,
+): boolean {
+  const normalizedTitle = title?.toLowerCase() ?? '';
+  if (normalizedTitle.includes('private video')) {
+    return false;
+  }
+
+  const hasIdentity = Boolean(metadata.group_name || metadata.artist_name);
+  const hasClassifier = Boolean(metadata.group_name || metadata.song_title || metadata.event);
+
+  if (metadata.is_fancam === true) {
+    const hasPerformanceContext = Boolean(metadata.song_title || metadata.event);
+    if (!hasIdentity || !hasPerformanceContext) {
+      return false;
+    }
+  }
+
+  if (metadata.is_fancam === false && !hasClassifier) {
+    return false;
+  }
+
+  if (!metadata.perf_date && !publishedAt && metadata.is_fancam === true) {
+    return false;
+  }
+
+  return true;
 }
 
 export class ParserService {
@@ -17,10 +67,19 @@ export class ParserService {
   ) {}
 
   async parseTitle(title: string, publishedAt?: string, tags?: string[]) {
-    void publishedAt;
+    const normalizedTitle = title.trim().toLowerCase();
+    if (normalizedTitle === 'private video') {
+      return {
+        metadata: {
+          is_fancam: false,
+          fancam_confidence: 1,
+          confidence: 0,
+        },
+        needsReview: true,
+      };
+    }
+
     let currentMetadata: Partial<ParsedMetadata> = {};
-    let totalConfidence = 0;
-    let moduleCount = 0;
 
     for (const module of this.modules) {
       try {
@@ -28,11 +87,10 @@ export class ParserService {
         for (const key of Object.keys(result.metadata) as Array<keyof ParsedMetadata>) {
           if (key === 'confidence') continue;
           const value = result.metadata[key];
-          if (value !== undefined && value !== null && value !== '')
+          if (value !== undefined && value !== null && value !== '') {
             (currentMetadata as any)[key] = value;
+          }
         }
-        totalConfidence += result.confidence;
-        moduleCount++;
       } catch (error) {
         console.warn('Parser module failed:', error);
       }
@@ -55,11 +113,15 @@ export class ParserService {
         currentMetadata.event;
     }
 
-    const avgConfidence = moduleCount > 0 ? totalConfidence / moduleCount : 0;
-    currentMetadata.confidence = avgConfidence;
+    const confidence = calculateMetadataConfidence(currentMetadata);
+    currentMetadata.confidence = confidence;
+
     return {
       metadata: currentMetadata,
-      needsReview: !hasRequiredFields(currentMetadata) || avgConfidence < MIN_CONFIDENCE_THRESHOLD,
+      needsReview:
+        !hasRequiredFields(currentMetadata, title, publishedAt) ||
+        confidence < MIN_CONFIDENCE_THRESHOLD ||
+        hasUnnormalizedNonEnglish(currentMetadata),
     };
   }
 }
@@ -99,3 +161,5 @@ export function validateField(
       return { valid: true, normalizedValue: value };
   }
 }
+
+export { calculateMetadataConfidence };
