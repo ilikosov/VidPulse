@@ -55,6 +55,7 @@ export interface ReparseResponse {
 }
 
 export interface ResyncResponse {
+  status?: string;
   video: Video;
   resyncLog: {
     youtubeResponse?: unknown;
@@ -68,6 +69,8 @@ export interface Pagination {
   limit: number;
   total: number;
   totalPages: number;
+  hasNextPage?: boolean;
+  hasPrevPage?: boolean;
 }
 
 export interface VideosResponse {
@@ -75,6 +78,25 @@ export interface VideosResponse {
   pagination: Pagination;
 }
 
+export interface PaginatedGroupsResponse {
+  items: Array<{ id: number; name: string; type: string; active: boolean; artist_count?: number }>;
+  pagination: Pagination;
+}
+
+export interface PaginatedArtistsResponse {
+  items: Array<{ id: number; name: string; group_id: number; group_name: string | null }>;
+  pagination: Pagination;
+}
+
+export interface PaginatedSongsResponse {
+  items: Array<{ id: number; title: string; artist: string | null }>;
+  pagination: Pagination;
+}
+
+export interface PaginatedEventsResponse {
+  events: EventLogEntry[];
+  pagination: Pagination;
+}
 export interface DictionaryResponse {
   results: string[];
   type: string;

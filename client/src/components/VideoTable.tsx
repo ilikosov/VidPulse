@@ -19,6 +19,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import {
   batchComplete,
   batchAddTags,
@@ -56,7 +57,7 @@ const statusColorMap: Record<string, string> = {
 
 function VideoTable() {
   const [videos, setVideos] = useState<Video[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({
+  const [pagination, setPaginationState] = useState<Pagination>({
     page: 1,
     limit: 20,
     total: 0,
@@ -65,8 +66,10 @@ function VideoTable() {
   const [loading, setLoading] = useState(true);
   const [batchLoading, setBatchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [showIgnored, setShowIgnored] = useState(false);
+  const { page, limit, setPagination, searchParams, setSearchParams } =
+    usePaginationSearchParams(20);
+  const statusFilter = searchParams.get('status') ?? '';
+  const showIgnored = searchParams.get('includeIgnored') === 'true';
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
   const [batchTagModal, setBatchTagModal] = useState<{ open: boolean; mode: 'add' | 'remove' }>({
     open: false,
@@ -78,25 +81,26 @@ function VideoTable() {
   const requiresManualTagConfirmation = (tagName: string) =>
     ['short', 'private'].includes(tagName.trim().toLowerCase());
 
-  useEffect(() => {
-    void fetchVideos(1, statusFilter, showIgnored);
-  }, [statusFilter, showIgnored]);
-
-  const fetchVideos = async (page: number, status: string, includeIgnored = false) => {
+  const fetchVideos = async (
+    nextPage: number,
+    nextLimit: number,
+    status: string,
+    includeIgnored = false,
+  ) => {
     setLoading(true);
     setError(null);
     try {
       const response = await getVideos({
         status: status || undefined,
-        page,
-        limit: 20,
+        page: nextPage,
+        limit: nextLimit,
         includeIgnored,
       });
       setVideos(response.videos);
       const tagSet = new Set<string>();
       response.videos.forEach((video) => video.tags?.forEach((tag) => tagSet.add(tag.name)));
       setAllTags(Array.from(tagSet).sort((a, b) => a.localeCompare(b)));
-      setPagination(response.pagination);
+      setPaginationState(response.pagination);
       setSelectedRowKeys([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch videos');
@@ -104,6 +108,10 @@ function VideoTable() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    void fetchVideos(page, limit, statusFilter, showIgnored);
+  }, [page, limit, statusFilter, showIgnored]);
 
   const columns: ColumnsType<Video> = [
     {
@@ -206,7 +214,7 @@ function VideoTable() {
         message.success(`LLM parse completed for ${result.updated} videos`);
       }
 
-      await fetchVideos(pagination.page, statusFilter, showIgnored);
+      await fetchVideos(page, limit, statusFilter, showIgnored);
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Batch operation failed');
     } finally {
@@ -237,7 +245,7 @@ function VideoTable() {
     try {
       const result = await batchAddTags(selectedRowKeys, tagName, confirm);
       message.success(`Add Tag "${tagName}": ${result.succeeded}/${result.processed} succeeded`);
-      await fetchVideos(pagination.page, statusFilter, showIgnored);
+      await fetchVideos(page, limit, statusFilter, showIgnored);
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Batch tag operation failed');
     } finally {
@@ -282,7 +290,7 @@ function VideoTable() {
       );
       setBatchTagModal((prev) => ({ ...prev, open: false }));
       setBatchTagName('');
-      await fetchVideos(pagination.page, statusFilter, showIgnored);
+      await fetchVideos(page, limit, statusFilter, showIgnored);
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Batch tag operation failed');
     } finally {
@@ -304,7 +312,16 @@ function VideoTable() {
       </Typography.Title>
 
       <Space align="center">
-        <Checkbox checked={showIgnored} onChange={(e) => setShowIgnored(e.target.checked)}>
+        <Checkbox
+          checked={showIgnored}
+          onChange={(e) => {
+            const params = new URLSearchParams(searchParams);
+            if (e.target.checked) params.set('includeIgnored', 'true');
+            else params.delete('includeIgnored');
+            params.delete('page');
+            setSearchParams(params);
+          }}
+        >
           Show ignored
         </Checkbox>
         <Typography.Text strong>Status:</Typography.Text>
@@ -312,7 +329,13 @@ function VideoTable() {
           value={statusFilter}
           options={statusOptions}
           style={{ width: 220 }}
-          onChange={(value) => setStatusFilter(value)}
+          onChange={(value) => {
+            const params = new URLSearchParams(searchParams);
+            if (value) params.set('status', value);
+            else params.delete('status');
+            params.delete('page');
+            setSearchParams(params);
+          }}
         />
       </Space>
 
@@ -401,11 +424,12 @@ function VideoTable() {
             style: { cursor: 'pointer' },
           })}
           pagination={{
-            current: pagination.page,
-            pageSize: pagination.limit,
+            current: page,
+            pageSize: limit,
             total: pagination.total,
-            onChange: (page) => {
-              void fetchVideos(page, statusFilter);
+            showSizeChanger: true,
+            onChange: (nextPage, nextPageSize) => {
+              setPagination({ page: nextPage, limit: nextPageSize });
             },
           }}
         />

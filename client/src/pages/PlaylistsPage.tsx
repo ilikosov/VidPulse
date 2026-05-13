@@ -13,6 +13,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
+import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import { addPlaylist, deletePlaylist, getPlaylists, type Playlist } from '../api';
 
 function PlaylistsPage() {
@@ -21,13 +22,16 @@ function PlaylistsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [removeVideos, setRemoveVideos] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [total, setTotal] = useState(0);
   const [form] = Form.useForm<{ url: string }>();
+  const { page, limit, setPagination } = usePaginationSearchParams(50);
 
-  const fetchPlaylists = async () => {
+  const fetchPlaylists = async (nextPage = page, nextLimit = limit) => {
     setLoading(true);
     try {
-      const response = await getPlaylists();
+      const response = await getPlaylists(nextPage, nextLimit);
       setPlaylists(response.playlists);
+      setTotal(response.pagination.total);
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to load playlists');
     } finally {
@@ -36,8 +40,8 @@ function PlaylistsPage() {
   };
 
   useEffect(() => {
-    void fetchPlaylists();
-  }, []);
+    void fetchPlaylists(page, limit);
+  }, [page, limit]);
 
   const onAddPlaylist = async () => {
     try {
@@ -124,7 +128,14 @@ function PlaylistsPage() {
           loading={loading}
           columns={columns}
           dataSource={playlists}
-          pagination={false}
+          pagination={{
+            current: page,
+            pageSize: limit,
+            total,
+            showSizeChanger: true,
+            onChange: (nextPage, nextPageSize) =>
+              setPagination({ page: nextPage, limit: nextPageSize }),
+          }}
         />
       </Space>
 
