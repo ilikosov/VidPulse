@@ -20,7 +20,7 @@ import {
   message,
 } from 'antd';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   addTagToVideo,
   getVideo,
@@ -36,6 +36,7 @@ import {
 import AutocompleteField from './AutocompleteField';
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
+import { getBackPath } from '../utils/navigation';
 import OperationLogWidget from './OperationLogWidget';
 
 const { Text, Title } = Typography;
@@ -91,6 +92,8 @@ const SectionHeader = ({ title, extra }: { title: string; extra?: React.ReactNod
 function VideoCard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backPath = getBackPath(location.state, '/videos');
   const [video, setVideo] = useState<Video | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
   const [loading, setLoading] = useState(true);
@@ -301,7 +304,7 @@ function VideoCard() {
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 16px' }}>
       <Button
         type="text"
-        onClick={() => navigate('/videos')}
+        onClick={() => navigate(backPath)}
         style={{ paddingLeft: 0, marginBottom: 24, color: '#666' }}
       >
         ← Back to Videos

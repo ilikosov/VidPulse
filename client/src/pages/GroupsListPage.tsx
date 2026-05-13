@@ -1,7 +1,7 @@
 import { Button, Empty, Input, Select, Space, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import { dictionaryApi, type DictionaryGroup } from '../api/dictionary';
 
@@ -13,6 +13,8 @@ export default function GroupsListPage() {
   const { page, limit, setPagination, searchParams, setSearchParams } =
     usePaginationSearchParams(20);
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = `${location.pathname}${location.search}`;
   const [items, setItems] = useState<DictionaryGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchDraft, setSearchDraft] = useState(searchParams.get('q') ?? '');
@@ -51,7 +53,11 @@ export default function GroupsListPage() {
       {
         title: 'Name',
         dataIndex: 'name',
-        render: (_value, row) => <Link to={`/groups/${row.id}`}>{row.name}</Link>,
+        render: (_value, row) => (
+          <Link to={`/groups/${row.id}`} state={{ from }}>
+            {row.name}
+          </Link>
+        ),
       },
       {
         title: 'Type',
@@ -67,11 +73,11 @@ export default function GroupsListPage() {
         title: 'Actions',
         key: 'actions',
         render: (_value, row) => (
-          <Button onClick={() => navigate(`/groups/${row.id}`)}>View</Button>
+          <Button onClick={() => navigate(`/groups/${row.id}`, { state: { from } })}>View</Button>
         ),
       },
     ],
-    [navigate],
+    [from, navigate],
   );
 
   const updateParams = (next: Record<string, string | number | undefined>) => {

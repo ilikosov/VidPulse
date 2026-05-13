@@ -18,7 +18,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import {
   batchComplete,
@@ -78,6 +78,7 @@ function VideoTable() {
   const [batchTagName, setBatchTagName] = useState('');
   const [allTags, setAllTags] = useState<string[]>([]);
   const navigate = useNavigate();
+  const location = useLocation();
   const requiresManualTagConfirmation = (tagName: string) =>
     ['short', 'private'].includes(tagName.trim().toLowerCase());
 
@@ -420,7 +421,10 @@ function VideoTable() {
           columns={columns}
           dataSource={videos}
           onRow={(record) => ({
-            onClick: () => navigate(`/videos/${record.id}`),
+            onClick: () =>
+              navigate(`/videos/${record.id}`, {
+                state: { from: `${location.pathname}${location.search}` },
+              }),
             style: { cursor: 'pointer' },
           })}
           pagination={{
