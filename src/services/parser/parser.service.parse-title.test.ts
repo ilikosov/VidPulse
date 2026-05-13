@@ -160,6 +160,28 @@ describe('parseTitle real-world examples', () => {
         "[안방1열 직캠4K] 산토스 브라보스 케네스 'VELOCIDADE' (SANTOS BRAVOS Kenneth FanCam) @SBS Inkigayo 260419",
       expected: { is_fancam: true, perf_date: '260419', song_title: 'VELOCIDADE' },
     },
+    {
+      title: "[UNFILTERED CAM] KATSEYE Lara(라라) 'PINKY UP' 4K | STUDIO CHOOM ORIGINAL",
+      expected: {
+        is_fancam: true,
+        group_name: 'KATSEYE',
+        artist_name: 'Lara',
+        song_title: 'PINKY UP',
+        event: '@STUDIO CHOOM ORIGINAL',
+      } as any,
+    },
+    {
+      title:
+        "260430 리센느 미나미 직캠 (RESCENE MINAMI FanCam) 'Runaway' @ 경일대 축제 #갸루 #kpop #リセンヌ #ミナミ",
+      expected: {
+        perf_date: '260430',
+        group_name: 'RESCENE',
+        artist_name: 'MINAMI',
+        song_title: 'Runaway',
+        event: '@KYUNGIL UNIVERSITY FESTIVAL',
+        is_fancam: true,
+      } as any,
+    },
     { title: '[#shorts] 아이브 리즈 직캠', expected: { is_fancam: false } },
     { title: 'Private video', expected: { is_fancam: false, needsReview: true } },
     {
@@ -223,6 +245,19 @@ describe('parseTitle real-world examples', () => {
     }
     if ((expected as any).camera_type !== undefined) {
       expect(result.metadata.camera_type).toBe((expected as any).camera_type);
+    }
+    if (title === "[UNFILTERED CAM] KATSEYE Lara(라라) 'PINKY UP' 4K | STUDIO CHOOM ORIGINAL") {
+      expect(result.metadata.camera_type).toContain('UNFILTERED CAM');
+      expect(result.metadata.camera_type).toContain('4K');
+      expect(result.metadata.fancam_confidence).toBeGreaterThanOrEqual(0.85);
+      expect(result.needsReview).toBe(false);
+    }
+    if (
+      title ===
+      "260430 리센느 미나미 직캠 (RESCENE MINAMI FanCam) 'Runaway' @ 경일대 축제 #갸루 #kpop #リセンヌ #ミナミ"
+    ) {
+      expect(result.metadata.camera_type).toContain('FANCAM');
+      expect(result.needsReview).toBe(false);
     }
     if (expected.needsReview !== undefined) {
       expect(result.needsReview).toBe(expected.needsReview);
