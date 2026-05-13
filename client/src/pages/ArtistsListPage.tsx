@@ -1,7 +1,7 @@
 import { Empty, Input, Space, Table, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import { dictionaryApi, type DictionaryArtist } from '../api/dictionary';
 
@@ -11,6 +11,8 @@ export default function ArtistsListPage() {
   const [items, setItems] = useState<DictionaryArtist[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchDraft, setSearchDraft] = useState(searchParams.get('q') ?? '');
+  const location = useLocation();
+  const from = `${location.pathname}${location.search}`;
 
   const q = searchParams.get('q') ?? '';
   const [total, setTotal] = useState(0);
@@ -40,16 +42,26 @@ export default function ArtistsListPage() {
       {
         title: 'Name',
         dataIndex: 'name',
-        render: (_v, row) => <Link to={`/artists/${row.id}`}>{row.name}</Link>,
+        render: (_v, row) => (
+          <Link to={`/artists/${row.id}`} state={{ from }}>
+            {row.name}
+          </Link>
+        ),
       },
       {
         title: 'Group',
         dataIndex: 'group_name',
         render: (_v, row) =>
-          row.group_id ? <Link to={`/groups/${row.group_id}`}>{row.group_name}</Link> : '-',
+          row.group_id ? (
+            <Link to={`/groups/${row.group_id}`} state={{ from }}>
+              {row.group_name}
+            </Link>
+          ) : (
+            '-'
+          ),
       },
     ],
-    [],
+    [from],
   );
 
   const updateParams = (next: Record<string, string | number | undefined>) => {
