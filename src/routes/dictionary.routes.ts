@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { dictionaryService } from '../services/dictionary.service';
+import { buildPaginationMeta, getPaginationParams } from './pagination';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -38,15 +39,22 @@ const parseCsv = (text: string) => {
   });
 };
 
-router.get('/groups/list', async (req, res) =>
-  res.json(
-    await dictionaryService.getGroups(
+router.get('/groups/list', async (req, res) => {
+  const { page, limit, offset } = getPaginationParams(req, 20, 100);
+  const [groups, total] = await Promise.all([
+    dictionaryService.getGroups(
       req.query.type as string | undefined,
       req.query.q as string | undefined,
-      Number(req.query.limit) || 20,
+      limit,
+      offset,
     ),
-  ),
-);
+    dictionaryService.countGroups(
+      req.query.type as string | undefined,
+      req.query.q as string | undefined,
+    ),
+  ]);
+  return res.json({ groups, pagination: buildPaginationMeta(page, limit, total) });
+});
 router.post('/groups', async (req, res) => {
   const { name, type, active } = req.body;
   if (!name || !type) return res.status(400).json({ error: 'name and type are required' });
@@ -62,15 +70,15 @@ router.delete('/groups/:id', async (req, res) => {
   res.status(204).send();
 });
 
-router.get('/artists/list', async (req, res) =>
-  res.json(
-    await dictionaryService.getArtists(
-      req.query.group_id ? Number(req.query.group_id) : undefined,
-      req.query.q as string | undefined,
-      Number(req.query.limit) || 20,
-    ),
-  ),
-);
+router.get('/artists/list', async (req, res) => {
+  const { page, limit, offset } = getPaginationParams(req, 20, 100);
+  const groupId = req.query.group_id ? Number(req.query.group_id) : undefined;
+  const [artists, total] = await Promise.all([
+    dictionaryService.getArtists(groupId, req.query.q as string | undefined, limit, offset),
+    dictionaryService.countArtists(groupId, req.query.q as string | undefined),
+  ]);
+  return res.json({ artists, pagination: buildPaginationMeta(page, limit, total) });
+});
 router.post('/artists', async (req, res) => {
   const { name, group_id } = req.body;
   if (!name || !group_id) return res.status(400).json({ error: 'name and group_id are required' });
@@ -89,14 +97,14 @@ router.delete('/artists/:id', async (req, res) => {
   res.status(204).send();
 });
 
-router.get('/songs/list', async (req, res) =>
-  res.json(
-    await dictionaryService.getSongs(
-      req.query.q as string | undefined,
-      Number(req.query.limit) || 20,
-    ),
-  ),
-);
+router.get('/songs/list', async (req, res) => {
+  const { page, limit, offset } = getPaginationParams(req, 20, 100);
+  const [songs, total] = await Promise.all([
+    dictionaryService.getSongs(req.query.q as string | undefined, limit, offset),
+    dictionaryService.countSongs(req.query.q as string | undefined),
+  ]);
+  return res.json({ songs, pagination: buildPaginationMeta(page, limit, total) });
+});
 router.post('/songs', async (req, res) => {
   const { title, artist } = req.body;
   if (!title || !artist) return res.status(400).json({ error: 'title and artist are required' });
@@ -187,14 +195,14 @@ router.delete('/:entityType/:entityId/aliases/:aliasId', async (req, res) => {
   return res.status(204).send();
 });
 
-router.get('/events/list', async (req, res) =>
-  res.json(
-    await dictionaryService.getEvents(
-      req.query.q as string | undefined,
-      Number(req.query.limit) || 20,
-    ),
-  ),
-);
+router.get('/events/list', async (req, res) => {
+  const { page, limit, offset } = getPaginationParams(req, 20, 100);
+  const [events, total] = await Promise.all([
+    dictionaryService.getEvents(req.query.q as string | undefined, limit, offset),
+    dictionaryService.countEvents(req.query.q as string | undefined),
+  ]);
+  return res.json({ events, pagination: buildPaginationMeta(page, limit, total) });
+});
 router.post('/events', async (req, res) => {
   if (!req.body.name) return res.status(400).json({ error: 'name is required' });
   await dictionaryService.createEvent({ name: req.body.name });

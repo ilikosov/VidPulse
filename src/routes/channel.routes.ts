@@ -5,6 +5,7 @@ import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
 import { parseTitle } from '../services/parser/parser.service';
 import { assignAutoTags } from '../services/tag.service';
+import { buildPaginationMeta, getPaginationParams } from './pagination';
 
 const router = Router();
 
@@ -90,9 +91,7 @@ async function addChannelByUrl(url: string) {
 // GET /api/channels - List all channels with pagination
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = getPaginationParams(req, 10, 100);
 
     const channels = await knex('channels')
       .select(
@@ -113,12 +112,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json({
       channels,
-      pagination: {
-        page,
-        limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-      },
+      pagination: buildPaginationMeta(page, limit, totalCount),
     });
   } catch (error) {
     console.error('Error fetching channels:', error);
