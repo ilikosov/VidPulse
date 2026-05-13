@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import { Card, Select, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { EventLogEntry, getEvents } from '../api';
@@ -61,10 +62,10 @@ function formatMetadata(event: EventLogEntry): string {
 export default function EventLogPage() {
   const [events, setEvents] = useState<EventLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(50);
   const [total, setTotal] = useState(0);
-  const [eventType, setEventType] = useState<string | undefined>(undefined);
+  const { page, limit, setPagination, searchParams, setSearchParams } =
+    usePaginationSearchParams(50);
+  const eventType = searchParams.get('event_type') ?? undefined;
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -132,8 +133,11 @@ export default function EventLogPage() {
             style={{ width: 240 }}
             value={eventType}
             onChange={(value) => {
-              setPage(1);
-              setEventType(value);
+              const params = new URLSearchParams(searchParams);
+              if (value) params.set('event_type', value);
+              else params.delete('event_type');
+              params.delete('page');
+              setSearchParams(params);
             }}
             options={EVENT_TYPES.map((type) => ({ label: type, value: type }))}
           />
@@ -152,10 +156,7 @@ export default function EventLogPage() {
           showSizeChanger: true,
           pageSizeOptions: [20, 50, 100],
           onChange: (nextPage, nextPageSize) => {
-            setPage(nextPage);
-            if (nextPageSize !== limit) {
-              setLimit(nextPageSize);
-            }
+            setPagination({ page: nextPage, limit: nextPageSize });
           },
         }}
       />

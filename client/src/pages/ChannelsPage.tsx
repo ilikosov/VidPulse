@@ -18,6 +18,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { InboxOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
+import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import { useNavigate } from 'react-router-dom';
 import {
   addChannel,
@@ -38,14 +39,17 @@ function ChannelsPage() {
   const [importing, setImporting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<UploadFile | null>(null);
   const [importSummary, setImportSummary] = useState<ImportChannelsResponse | null>(null);
+  const [total, setTotal] = useState(0);
   const [form] = Form.useForm<{ url: string }>();
+  const { page, limit, setPagination } = usePaginationSearchParams(50);
   const navigate = useNavigate();
 
-  const fetchChannels = async () => {
+  const fetchChannels = async (nextPage = page, nextLimit = limit) => {
     setLoading(true);
     try {
-      const response = await getChannels();
+      const response = await getChannels(nextPage, nextLimit);
       setChannels(response.channels);
+      setTotal(response.pagination.total);
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to load channels');
     } finally {
@@ -54,8 +58,8 @@ function ChannelsPage() {
   };
 
   useEffect(() => {
-    void fetchChannels();
-  }, []);
+    void fetchChannels(page, limit);
+  }, [page, limit]);
 
   const onAddChannel = async () => {
     try {
@@ -191,7 +195,14 @@ function ChannelsPage() {
           loading={loading}
           columns={columns}
           dataSource={channels}
-          pagination={false}
+          pagination={{
+            current: page,
+            pageSize: limit,
+            total,
+            showSizeChanger: true,
+            onChange: (nextPage, nextPageSize) =>
+              setPagination({ page: nextPage, limit: nextPageSize }),
+          }}
         />
       </Space>
 

@@ -1,7 +1,8 @@
 import { Button, Empty, Input, Select, Space, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import { dictionaryApi, type DictionaryGroup } from '../api/dictionary';
 
 type GroupTypeFilter = 'all' | 'male' | 'female' | 'mixed';
@@ -9,15 +10,15 @@ type GroupTypeFilter = 'all' | 'male' | 'female' | 'mixed';
 const typeColorMap: Record<string, string> = { female: 'magenta', male: 'blue', mixed: 'purple' };
 
 export default function GroupsListPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { page, limit, setPagination, searchParams, setSearchParams } =
+    usePaginationSearchParams(20);
   const navigate = useNavigate();
   const [items, setItems] = useState<DictionaryGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchDraft, setSearchDraft] = useState(searchParams.get('q') ?? '');
 
-  const page = Number(searchParams.get('page') ?? 1);
-  const limit = Number(searchParams.get('limit') ?? 20);
   const q = searchParams.get('q') ?? '';
+  const [total, setTotal] = useState(0);
   const type = (searchParams.get('type') as GroupTypeFilter | null) ?? 'all';
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function GroupsListPage() {
           type: type === 'all' ? undefined : type,
         });
         setItems(data.items);
+        setTotal(data.pagination?.total ?? data.items.length);
       } catch (error) {
         message.error(error instanceof Error ? error.message : 'Failed to load groups');
       } finally {
@@ -116,9 +118,9 @@ export default function GroupsListPage() {
         pagination={{
           current: page,
           pageSize: limit,
-          total: items.length,
+          total,
           showSizeChanger: true,
-          onChange: (nextPage, nextLimit) => updateParams({ page: nextPage, limit: nextLimit }),
+          onChange: (nextPage, nextLimit) => setPagination({ page: nextPage, limit: nextLimit }),
         }}
       />
     </Space>

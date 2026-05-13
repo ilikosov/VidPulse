@@ -1,18 +1,19 @@
 import { Empty, Input, Space, Table, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import { dictionaryApi, type DictionarySong } from '../api/dictionary';
 
 export default function SongsListPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { page, limit, setPagination, searchParams, setSearchParams } =
+    usePaginationSearchParams(20);
   const [items, setItems] = useState<DictionarySong[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchDraft, setSearchDraft] = useState(searchParams.get('q') ?? '');
 
-  const page = Number(searchParams.get('page') ?? 1);
-  const limit = Number(searchParams.get('limit') ?? 20);
   const q = searchParams.get('q') ?? '';
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     setSearchDraft(q);
@@ -23,6 +24,7 @@ export default function SongsListPage() {
       try {
         const data = await dictionaryApi.getSongsList({ page, limit, q: q || undefined });
         setItems(data.items);
+        setTotal(data.pagination?.total ?? data.items.length);
       } catch (error) {
         message.error(error instanceof Error ? error.message : 'Failed to load songs');
       } finally {
@@ -74,9 +76,9 @@ export default function SongsListPage() {
         pagination={{
           current: page,
           pageSize: limit,
-          total: items.length,
+          total,
           showSizeChanger: true,
-          onChange: (nextPage, nextLimit) => updateParams({ page: nextPage, limit: nextLimit }),
+          onChange: (nextPage, nextLimit) => setPagination({ page: nextPage, limit: nextLimit }),
         }}
       />
     </Space>
