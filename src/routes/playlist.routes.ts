@@ -2,15 +2,14 @@ import { Router, Request, Response } from 'express';
 import knex from '../db/';
 import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
+import { buildPaginationMeta, getPaginationParams } from './pagination';
 
 const router = Router();
 
 // GET /api/playlists - List all playlists with pagination
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = getPaginationParams(req, 10, 100);
 
     const playlists = await knex('playlists')
       .select('id', 'youtube_id', 'title', 'added_at', 'last_checked_at')
@@ -23,12 +22,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json({
       playlists,
-      pagination: {
-        page,
-        limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-      },
+      pagination: buildPaginationMeta(page, limit, totalCount),
     });
   } catch (error) {
     console.error('Error fetching playlists:', error);

@@ -120,10 +120,10 @@ export class DictionaryModule implements ParserModule {
     if (this.dictionary) return this.dictionary;
 
     const [groups, artists, songs, events, aliases] = await Promise.all([
-      dictionaryService.getGroups(),
-      dictionaryService.getArtists(),
-      dictionaryService.getSongs(),
-      dictionaryService.getEvents(),
+      dictionaryService.getAllGroups(),
+      dictionaryService.getAllArtists(),
+      dictionaryService.getAllSongs(),
+      dictionaryService.getAllEvents(),
       dictionaryService.getAllAliases(),
     ]);
 

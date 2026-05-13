@@ -8,6 +8,7 @@ import { logEvent } from '../services/eventLog.service';
 import { assignAutoTags } from '../services/tag.service';
 import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
 import { parseTitleWithLLM } from '../services/ai.service';
+import { buildPaginationMeta, getPaginationParams } from './pagination';
 
 const router = Router();
 
@@ -72,6 +73,25 @@ function isConfirmationRequired(tagName: string): boolean {
   return PROTECTED_TAGS.has(tagName.trim().toLowerCase());
 }
 
+function applyVideoFilters(
+  query: ReturnType<typeof knex>,
+  filters: { status?: string; includeIgnored: boolean; channelId?: string },
+) {
+  const { status, includeIgnored, channelId } = filters;
+  if (channelId) query.where('videos.channel_id', channelId);
+  if (status) query.where('videos.status', status);
+  else if (!includeIgnored) query.whereNot('videos.status', 'ignored');
+  if (process.env.HIDE_FLAGGED_VIDEOS === 'true') {
+    query.whereNotIn('videos.id', function () {
+      this.select('v2.id')
+        .from('videos as v2')
+        .join('video_tags as vt', 'vt.video_id', 'v2.id')
+        .join('tags as t', 't.id', 'vt.tag_id')
+        .whereIn('t.name', ['short', 'private']);
+    });
+  }
+}
+
 function extractVideoIdFromUrl(url: string): string | null {
   const trimmed = url.trim();
   const directIdMatch = trimmed.match(/^[a-zA-Z0-9_-]{11}$/);
@@ -102,12 +122,10 @@ function extractVideoIdFromUrl(url: string): string | null {
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const { page, limit, offset } = getPaginationParams(req, 20, 100);
     const status = req.query.status as string | undefined;
     const includeIgnored = req.query.includeIgnored === 'true';
     const channelId = req.query.channel_id as string | undefined;
-    const offset = (page - 1) * limit;
 
     let query = knex('videos')
       .leftJoin('channels', 'videos.channel_id', 'channels.id')
@@ -133,30 +151,15 @@ router.get('/', async (req: Request, res: Response) => {
         'playlists.title as playlist_title',
       );
 
-    if (channelId) {
-      query = query.where('videos.channel_id', channelId);
-    }
-
     if (status) {
       if (!isValidStatus(status)) {
         return res.status(400).json({
           error: `Invalid status '${status}'. Allowed: ${VALID_STATUSES.join(', ')}`,
         });
       }
-      query = query.where('videos.status', status);
-    } else if (!includeIgnored) {
-      query = query.whereNot('videos.status', 'ignored');
+      applyVideoFilters(query, { status, includeIgnored, channelId });
     }
-
-    if (process.env.HIDE_FLAGGED_VIDEOS === 'true') {
-      query = query.whereNotIn('videos.id', function () {
-        this.select('v2.id')
-          .from('videos as v2')
-          .join('video_tags as vt', 'vt.video_id', 'v2.id')
-          .join('tags as t', 't.id', 'vt.tag_id')
-          .whereIn('t.name', ['short', 'private']);
-      });
-    }
+    if (!status) applyVideoFilters(query, { includeIgnored, channelId });
 
     query = query.orderBy('videos.created_at', 'desc');
 
@@ -169,38 +172,13 @@ router.get('/', async (req: Request, res: Response) => {
     }));
 
     const totalQuery = knex('videos');
-    if (channelId) {
-      query = query.where('videos.channel_id', channelId);
-    }
-
-    if (channelId) {
-      totalQuery.where('channel_id', channelId);
-    }
-    if (status) {
-      totalQuery.where('status', status);
-    } else if (!includeIgnored) {
-      totalQuery.whereNot('status', 'ignored');
-    }
-    if (process.env.HIDE_FLAGGED_VIDEOS === 'true') {
-      totalQuery.whereNotIn('videos.id', function () {
-        this.select('v2.id')
-          .from('videos as v2')
-          .join('video_tags as vt', 'vt.video_id', 'v2.id')
-          .join('tags as t', 't.id', 'vt.tag_id')
-          .whereIn('t.name', ['short', 'private']);
-      });
-    }
+    applyVideoFilters(totalQuery, { status, includeIgnored, channelId });
     const total = await totalQuery.count('* as count').first();
     const totalCount = parseInt(total?.count as string) || 0;
 
     res.json({
       videos: videosWithTags,
-      pagination: {
-        page,
-        limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-      },
+      pagination: buildPaginationMeta(page, limit, totalCount),
     });
   } catch (error) {
     console.error('Error fetching videos:', error);

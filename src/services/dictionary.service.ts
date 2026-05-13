@@ -21,7 +21,7 @@ function toTypes(raw?: string): DictionaryGroupType[] {
 }
 
 export class DictionaryService {
-  async getGroups(type?: string, q?: string, limit = 20) {
+  async getGroups(type?: string, q?: string, limit = 20, offset = 0) {
     const types = toTypes(type);
     const query = knex('dictionary_groups as g')
       .select('g.id', 'g.name', 'g.type', 'g.active')
@@ -39,7 +39,26 @@ export class DictionaryService {
           builder.whereILike('g.name', `%${q}%`).orWhereILike('ga.alias', `%${q}%`);
         });
     }
-    return query.limit(limit);
+    return query.limit(limit).offset(offset);
+  }
+  async getAllGroups(type?: string, q?: string) {
+    return this.getGroups(type, q, Number.MAX_SAFE_INTEGER, 0);
+  }
+  async countGroups(type?: string, q?: string) {
+    const types = toTypes(type);
+    const query = knex('dictionary_groups as g').countDistinct('g.id as count');
+    if (types.length) query.whereIn('g.type', types);
+    if (q) {
+      query
+        .leftJoin('dictionary_aliases as ga', function joinAlias() {
+          this.on('ga.entity_id', '=', 'g.id').andOnVal('ga.entity_type', 'group');
+        })
+        .where((builder) =>
+          builder.whereILike('g.name', `%${q}%`).orWhereILike('ga.alias', `%${q}%`),
+        );
+    }
+    const row = await query.first();
+    return Number(row?.count || 0);
   }
 
   async getGroupById(id: number) {
@@ -113,7 +132,7 @@ export class DictionaryService {
     return knex('dictionary_groups').where({ id }).delete();
   }
 
-  async getArtists(groupId?: number, q?: string, limit = 20) {
+  async getArtists(groupId?: number, q?: string, limit = 20, offset = 0) {
     const query = knex('dictionary_artists as a')
       .select('a.id', 'a.name', 'a.group_id', 'g.name as group_name')
       .leftJoin('dictionary_groups as g', 'g.id', 'a.group_id')
@@ -128,7 +147,25 @@ export class DictionaryService {
           builder.whereILike('a.name', `%${q}%`).orWhereILike('aa.alias', `%${q}%`);
         });
     }
-    return query.limit(limit);
+    return query.limit(limit).offset(offset);
+  }
+  async getAllArtists(groupId?: number, q?: string) {
+    return this.getArtists(groupId, q, Number.MAX_SAFE_INTEGER, 0);
+  }
+  async countArtists(groupId?: number, q?: string) {
+    const query = knex('dictionary_artists as a').countDistinct('a.id as count');
+    if (groupId) query.where('a.group_id', groupId);
+    if (q) {
+      query
+        .leftJoin('dictionary_aliases as aa', function joinAlias() {
+          this.on('aa.entity_id', '=', 'a.id').andOnVal('aa.entity_type', 'artist');
+        })
+        .where((builder) =>
+          builder.whereILike('a.name', `%${q}%`).orWhereILike('aa.alias', `%${q}%`),
+        );
+    }
+    const row = await query.first();
+    return Number(row?.count || 0);
   }
   async createArtist(payload: { name: string; group_id: number }) {
     return knex('dictionary_artists').insert(payload);
@@ -140,7 +177,7 @@ export class DictionaryService {
     return knex('dictionary_artists').where({ id }).delete();
   }
 
-  async getSongs(q?: string, limit = 20) {
+  async getSongs(q?: string, limit = 20, offset = 0) {
     const query = knex('dictionary_songs as s')
       .distinct('s.id', 's.title', 's.artist')
       .orderBy('s.title');
@@ -153,7 +190,24 @@ export class DictionaryService {
           builder.whereILike('s.title', `%${q}%`).orWhereILike('sa.alias', `%${q}%`);
         });
     }
-    return query.limit(limit);
+    return query.limit(limit).offset(offset);
+  }
+  async getAllSongs(q?: string) {
+    return this.getSongs(q, Number.MAX_SAFE_INTEGER, 0);
+  }
+  async countSongs(q?: string) {
+    const query = knex('dictionary_songs as s').countDistinct('s.id as count');
+    if (q) {
+      query
+        .leftJoin('dictionary_aliases as sa', function joinAlias() {
+          this.on('sa.entity_id', '=', 's.id').andOnVal('sa.entity_type', 'song');
+        })
+        .where((builder) =>
+          builder.whereILike('s.title', `%${q}%`).orWhereILike('sa.alias', `%${q}%`),
+        );
+    }
+    const row = await query.first();
+    return Number(row?.count || 0);
   }
   async createSong(payload: { title: string; artist: string }) {
     return knex('dictionary_songs').insert(payload);
@@ -225,10 +279,19 @@ export class DictionaryService {
     return song ? { id: song.id, name: song.title } : null;
   }
 
-  async getEvents(q?: string, limit = 20) {
+  async getEvents(q?: string, limit = 20, offset = 0) {
     const query = knex('dictionary_events').select('id', 'name').orderBy('name');
     if (q) query.whereILike('name', `%${q}%`);
-    return query.limit(limit);
+    return query.limit(limit).offset(offset);
+  }
+  async getAllEvents(q?: string) {
+    return this.getEvents(q, Number.MAX_SAFE_INTEGER, 0);
+  }
+  async countEvents(q?: string) {
+    const query = knex('dictionary_events').count('* as count');
+    if (q) query.whereILike('name', `%${q}%`);
+    const row = await query.first();
+    return Number(row?.count || 0);
   }
   async createEvent(payload: { name: string }) {
     return knex('dictionary_events').insert(payload);
