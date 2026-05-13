@@ -47,6 +47,7 @@ export class RegexModule implements ParserModule {
 
   private extractCameraType(title: string): string | undefined {
     const cameraPatterns: Array<{ pattern: RegExp; value: string }> = [
+      { pattern: /\bunfiltered\s+cam\b/i, value: 'UNFILTERED CAM' },
       { pattern: /\b8k\b/i, value: '8K' },
       { pattern: /\b4k\b/i, value: '4K' },
       { pattern: /\bface\s?cam\b/i, value: 'FaceCam' },
@@ -60,24 +61,40 @@ export class RegexModule implements ParserModule {
       { pattern: /가로/, value: '가로' },
     ];
 
-    return cameraPatterns.find(({ pattern }) => pattern.test(title))?.value;
+    const found = cameraPatterns
+      .filter(({ pattern }) => pattern.test(title))
+      .map(({ value }) => value)
+      .filter((value, index, arr) => arr.indexOf(value) === index);
+
+    return found.length > 0 ? found.join(' ') : undefined;
   }
 
   private extractEvent(title: string): string | undefined {
-    const atMatch = title.match(/@\s*([^|\]\[()]+?)(?=\s+\d{6}\b|\s*$|\s+\||\s+방송)/i);
+    const atMatch = title.match(/@\s*([^|\]\[()#]+(?:\s+[^|\]\[()#]+)*)/i);
     if (atMatch?.[1]) {
-      const raw = this.compact(atMatch[1])
-        .replace(/\b\d{6}\b/g, '')
-        .trim();
-      return raw ? `@${/[A-Za-z]/.test(raw) ? raw.toUpperCase() : raw}` : undefined;
+      const cleaned = this.cleanEvent(atMatch[1]);
+      return cleaned ? `@${/[A-Za-z]/.test(cleaned) ? cleaned.toUpperCase() : cleaned}` : undefined;
     }
 
-    const pipeMatch = title.match(/\|\s*([A-Za-z]+)\s+\d{6}\s+방송/i);
+    const pipeMatch = title.match(/\|\s*([^|\[\]]+)/);
     if (pipeMatch?.[1]) {
-      return `@${pipeMatch[1].toUpperCase()}`;
+      const cleaned = this.cleanEvent(pipeMatch[1])
+        .replace(/[\s,.-]+$/g, '')
+        .trim();
+      if (cleaned) {
+        return `@${/[A-Za-z]/.test(cleaned) ? cleaned.toUpperCase() : cleaned}`;
+      }
     }
 
     return undefined;
+  }
+
+  private cleanEvent(rawEvent: string): string {
+    return this.compact(rawEvent)
+      .replace(/\b\d{6}\b/g, '')
+      .replace(/#.*$/g, '')
+      .replace(/\b방송\b/gi, '')
+      .trim();
   }
 
   private extractSongTitle(title: string): string | undefined {
@@ -122,6 +139,16 @@ export class RegexModule implements ParserModule {
 
   private extractKoreanPrefix(title: string, songTitle?: string): Partial<ParsedMetadata> {
     const source = songTitle ? title.split(songTitle)[0] : title;
+    const englishWithKoreanParen = source.match(
+      /(?:^|\]\s*)([A-Za-z0-9_&.-]+)\s+([A-Za-z][A-Za-z0-9'.-]*)\s*\([가-힣]+\)/,
+    );
+    if (englishWithKoreanParen) {
+      return {
+        group_name: this.compact(englishWithKoreanParen[1]),
+        artist_name: this.compact(englishWithKoreanParen[2]),
+      };
+    }
+
     const koreanParen = source.match(/\b([가-힣A-Za-z0-9]+)\s+([가-힣]+)\s*\([A-Za-z]+\)/);
     if (koreanParen) {
       return { group_name: koreanParen[1], artist_name: koreanParen[2] };
@@ -147,7 +174,7 @@ export class RegexModule implements ParserModule {
     }
 
     const positive =
-      /(fan\s?cam|face\s?cam|직캠|페이스캠|얼빡직캠|focus|포커스|\([^)]+\s+fan\s?cam\))/i;
+      /(fan\s?cam|face\s?cam|직캠|페이스캠|얼빡직캠|focus|포커스|\([^)]+\s+fan\s?cam\)|\bunfiltered\s+cam\b|\[unfiltered\s+cam\])/i;
     if (positive.test(title)) {
       return { is_fancam: true, fancam_confidence: 0.95 };
     }

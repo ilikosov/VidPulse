@@ -77,6 +77,10 @@ export class DictionaryModule implements ParserModule {
     mcountdown: 'M COUNTDOWN',
     연세대: 'YONSEI UNIVERSITY',
     고려대: 'KOREA UNIVERSITY',
+    경일대: 'KYUNGIL UNIVERSITY',
+    '경일대 축제': 'KYUNGIL UNIVERSITY FESTIVAL',
+    경일대학교: 'KYUNGIL UNIVERSITY',
+    '경일대학교 축제': 'KYUNGIL UNIVERSITY FESTIVAL',
   };
 
   private normalizeLookup(value: string): string {
@@ -87,6 +91,11 @@ export class DictionaryModule implements ParserModule {
       .replace(/[“”]/g, '"')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  private normalizeLatinCanonical(value: string): string {
+    const compacted = value.trim().replace(/\s+/g, ' ');
+    return /^[A-Za-z0-9_&'.\-\s]+$/.test(compacted) ? compacted.toUpperCase() : compacted;
   }
 
   private containsTerm(haystack: string, needle: string): boolean {
@@ -178,6 +187,8 @@ export class DictionaryModule implements ParserModule {
           metadata.group_name = corrected;
         }
         correctionsMade++;
+      } else {
+        metadata.group_name = this.normalizeLatinCanonical(metadata.group_name);
       }
     } else {
       const foundGroup = this.findGroupInTitle(title, dictionary);
@@ -200,6 +211,8 @@ export class DictionaryModule implements ParserModule {
           metadata.artist_name = corrected;
         }
         correctionsMade++;
+      } else {
+        metadata.artist_name = this.normalizeLatinCanonical(metadata.artist_name);
       }
       if (metadata.artist_name && !metadata.group_name) {
         for (const [group, artistsOfGroup] of Object.entries(dictionary.artists)) {
@@ -249,9 +262,9 @@ export class DictionaryModule implements ParserModule {
     fieldsChecked++;
     if (metadata.event) {
       const eventName = metadata.event.replace('@', '');
-      const corrected = this.findBestMatch(eventName, dictionary.events, {});
       const aliasEvent = this.eventAliasMap[this.normalizeLookup(eventName)];
-      const canonicalEvent = corrected || aliasEvent;
+      const corrected = this.findBestMatch(eventName, dictionary.events, {});
+      const canonicalEvent = aliasEvent || corrected;
       if (canonicalEvent) {
         metadata.event = '@' + canonicalEvent;
         correctionsMade++;
