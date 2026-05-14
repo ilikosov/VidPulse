@@ -50,10 +50,26 @@ interface GroupsListParams extends ListParams {
 interface ArtistsListParams extends ListParams {
   group_id?: number;
 }
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
 interface PaginatedList<T> {
   items: T[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
+  pagination: Pagination;
 }
+type LegacyOrPaginated<T> =
+  | T[]
+  | {
+      items?: T[];
+      groups?: T[];
+      artists?: T[];
+      songs?: T[];
+      events?: T[];
+      pagination?: Pagination;
+    };
 
 const toQuery = (params: object) => {
   const query = new URLSearchParams();
@@ -73,35 +89,67 @@ const toPageData = <T>(rows: T[], params: ListParams): PaginatedList<T> => {
   };
 };
 
+const normalizePaginatedResponse = <T>(
+  response: LegacyOrPaginated<T>,
+  key: 'groups' | 'artists' | 'songs' | 'events',
+  params: ListParams,
+): PaginatedList<T> => {
+  if (Array.isArray(response)) return toPageData(response, params);
+
+  const rawItems = response.items ?? response[key] ?? [];
+  const items = Array.isArray(rawItems) ? rawItems : [];
+  const generatedPagination = toPageData(items, params).pagination;
+
+  return {
+    items,
+    pagination: response.pagination ?? generatedPagination,
+  };
+};
+
 export const dictionaryApi = {
   getGroupsList: async (params: GroupsListParams): Promise<PaginatedList<DictionaryGroup>> =>
-    toPageData(await req<DictionaryGroup[]>(`/dictionary/groups/list${toQuery(params)}`), params),
-  getArtistsList: async (params: ArtistsListParams): Promise<PaginatedList<DictionaryArtist>> =>
-    toPageData(await req<DictionaryArtist[]>(`/dictionary/artists/list${toQuery(params)}`), params),
-  getSongsList: async (params: ListParams): Promise<PaginatedList<DictionarySong>> =>
-    toPageData(await req<DictionarySong[]>(`/dictionary/songs/list${toQuery(params)}`), params),
-  getEventsList: async (params: ListParams): Promise<PaginatedList<{ id: number; name: string }>> =>
-    toPageData(
-      await req<{ id: number; name: string }[]>(`/dictionary/events/list${toQuery(params)}`),
+    normalizePaginatedResponse(
+      await req<LegacyOrPaginated<DictionaryGroup>>(`/dictionary/groups/list${toQuery(params)}`),
+      'groups',
       params,
     ),
-  getGroups: () => req<any[]>('/dictionary/groups/list'),
+  getArtistsList: async (params: ArtistsListParams): Promise<PaginatedList<DictionaryArtist>> =>
+    normalizePaginatedResponse(
+      await req<LegacyOrPaginated<DictionaryArtist>>(`/dictionary/artists/list${toQuery(params)}`),
+      'artists',
+      params,
+    ),
+  getSongsList: async (params: ListParams): Promise<PaginatedList<DictionarySong>> =>
+    normalizePaginatedResponse(
+      await req<LegacyOrPaginated<DictionarySong>>(`/dictionary/songs/list${toQuery(params)}`),
+      'songs',
+      params,
+    ),
+  getEventsList: async (params: ListParams): Promise<PaginatedList<{ id: number; name: string }>> =>
+    normalizePaginatedResponse(
+      await req<LegacyOrPaginated<{ id: number; name: string }>>(
+        `/dictionary/events/list${toQuery(params)}`,
+      ),
+      'events',
+      params,
+    ),
+  getGroups: async () => (await dictionaryApi.getGroupsList({ page: 1, limit: 1000 })).items,
   createGroup: (d: any) => req('/dictionary/groups', { method: 'POST', body: JSON.stringify(d) }),
   updateGroup: (id: number, d: any) =>
     req(`/dictionary/groups/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
   deleteGroup: (id: number) => req(`/dictionary/groups/${id}`, { method: 'DELETE' }),
-  getArtists: (groupId?: number) =>
-    req<any[]>(`/dictionary/artists/list${groupId ? `?group_id=${groupId}` : ''}`),
+  getArtists: async (groupId?: number) =>
+    (await dictionaryApi.getArtistsList({ page: 1, limit: 1000, group_id: groupId })).items,
   createArtist: (d: any) => req('/dictionary/artists', { method: 'POST', body: JSON.stringify(d) }),
   updateArtist: (id: number, d: any) =>
     req(`/dictionary/artists/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
   deleteArtist: (id: number) => req(`/dictionary/artists/${id}`, { method: 'DELETE' }),
-  getSongs: () => req<any[]>('/dictionary/songs/list'),
+  getSongs: async () => (await dictionaryApi.getSongsList({ page: 1, limit: 1000 })).items,
   createSong: (d: any) => req('/dictionary/songs', { method: 'POST', body: JSON.stringify(d) }),
   updateSong: (id: number, d: any) =>
     req(`/dictionary/songs/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
   deleteSong: (id: number) => req(`/dictionary/songs/${id}`, { method: 'DELETE' }),
-  getEvents: () => req<any[]>('/dictionary/events/list'),
+  getEvents: async () => (await dictionaryApi.getEventsList({ page: 1, limit: 1000 })).items,
   createEvent: (d: any) => req('/dictionary/events', { method: 'POST', body: JSON.stringify(d) }),
   updateEvent: (id: number, d: any) =>
     req(`/dictionary/events/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
