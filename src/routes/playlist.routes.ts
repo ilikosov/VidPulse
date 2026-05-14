@@ -1,6 +1,10 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db/';
 import { youtubeService } from '../services/youtube.service';
+import {
+  hasUnresolvedEntity,
+  resolveParsedMetadata,
+} from '../services/parser/metadataResolver.service';
 import { logEvent } from '../services/eventLog.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
 
@@ -80,6 +84,8 @@ router.post('/', async (req: Request, res: Response) => {
           // Parse metadata from title
           const { parseTitle } = await import('../services/parser/parser.service');
           const { metadata, needsReview } = await parseTitle(video.title);
+          const resolved = await resolveParsedMetadata(metadata);
+          const forceReview = hasUnresolvedEntity(metadata, resolved);
 
           const updateData: Record<string, any> = {};
           if (metadata.perf_date) {
@@ -88,13 +94,14 @@ router.post('/', async (req: Request, res: Response) => {
               `20${dateStr.slice(0, 2)}-${dateStr.slice(2, 4)}-${dateStr.slice(4, 6)}`,
             ).toISOString();
           }
-          if (metadata.group_name !== undefined)
-            updateData.group_name = metadata.group_name || null;
-          if (metadata.artist_name !== undefined)
-            updateData.artist_name = metadata.artist_name || null;
-          if (metadata.song_title !== undefined)
-            updateData.song_title = metadata.song_title || null;
-          if (metadata.event !== undefined) updateData.event = metadata.event || null;
+          updateData.group_id = resolved.group_id;
+          updateData.artist_id = resolved.artist_id;
+          updateData.song_id = resolved.song_id;
+          updateData.event_id = resolved.event_id;
+          updateData.group_name = resolved.group_name;
+          updateData.artist_name = resolved.artist_name;
+          updateData.song_title = resolved.song_title;
+          updateData.event = resolved.event;
           if (metadata.camera_type !== undefined)
             updateData.camera_type = metadata.camera_type || null;
 
@@ -103,7 +110,7 @@ router.post('/', async (req: Request, res: Response) => {
             playlist_id: newPlaylist.id,
             original_title: video.title,
             published_at: video.publishedAt,
-            status: needsReview ? 'needs_review' : 'new',
+            status: needsReview || forceReview ? 'needs_review' : 'new',
             description: null,
             ...updateData,
             created_at: new Date().toISOString(),

@@ -1,6 +1,10 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db';
 import { parseTitle } from '../services/parser/parser.service';
+import {
+  hasUnresolvedEntity,
+  resolveParsedMetadata,
+} from '../services/parser/metadataResolver.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import { youtubeService } from '../services/youtube.service';
@@ -547,6 +551,7 @@ router.post('/add', async (req: Request, res: Response) => {
 
     const details = await youtubeService.getVideoDetails(videoId);
     const { metadata } = await parseTitle(details.title, details.publishedAt, details.tags);
+    const resolved = await resolveParsedMetadata(metadata);
 
     const insertData: Record<string, string | number | boolean | null> = {
       youtube_id: videoId,
@@ -565,10 +570,14 @@ router.post('/add', async (req: Request, res: Response) => {
         `20${dateStr.slice(0, 2)}-${dateStr.slice(2, 4)}-${dateStr.slice(4, 6)}`,
       ).toISOString();
     }
-    if (metadata.group_name !== undefined) insertData.group_name = metadata.group_name || null;
-    if (metadata.artist_name !== undefined) insertData.artist_name = metadata.artist_name || null;
-    if (metadata.song_title !== undefined) insertData.song_title = metadata.song_title || null;
-    if (metadata.event !== undefined) insertData.event = metadata.event || null;
+    insertData.group_id = resolved.group_id;
+    insertData.artist_id = resolved.artist_id;
+    insertData.song_id = resolved.song_id;
+    insertData.event_id = resolved.event_id;
+    insertData.group_name = resolved.group_name;
+    insertData.artist_name = resolved.artist_name;
+    insertData.song_title = resolved.song_title;
+    insertData.event = resolved.event;
     if (metadata.camera_type !== undefined) insertData.camera_type = metadata.camera_type || null;
     insertData.is_fancam = metadata.is_fancam ?? null;
     insertData.fancam_confidence = metadata.fancam_confidence ?? null;
@@ -738,20 +747,27 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Failed to parse fresh metadata', resyncLog });
     }
 
+    const resolved = await resolveParsedMetadata(metadata);
+    const forceReview = hasUnresolvedEntity(metadata, resolved);
+
     const updatedVideo = await knex.transaction(async (trx) => {
       const updateData: Record<string, unknown> = {
         original_title: details.title,
         description: details.description || null,
         duration_seconds: details.durationSeconds ?? null,
         published_at: details.publishedAt || existingVideo.published_at || null,
-        group_name: metadata.group_name || null,
-        artist_name: metadata.artist_name || null,
-        song_title: metadata.song_title || null,
-        event: metadata.event || null,
+        group_id: resolved.group_id,
+        artist_id: resolved.artist_id,
+        song_id: resolved.song_id,
+        event_id: resolved.event_id,
+        group_name: resolved.group_name,
+        artist_name: resolved.artist_name,
+        song_title: resolved.song_title,
+        event: resolved.event,
         camera_type: metadata.camera_type || null,
         is_fancam: metadata.is_fancam ?? null,
         fancam_confidence: metadata.fancam_confidence ?? null,
-        status: needsReview ? 'needs_review' : 'new',
+        status: needsReview || forceReview ? 'needs_review' : 'new',
         updated_at: new Date().toISOString(),
       };
 
@@ -1045,6 +1061,8 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
 
     // Re-parse the title
     const { metadata, needsReview } = await parseTitle(video.original_title);
+    const resolved = await resolveParsedMetadata(metadata);
+    const forceReview = hasUnresolvedEntity(metadata, resolved);
 
     // Build update object
     const updateData: Record<string, string | number | boolean | null> = {
@@ -1059,21 +1077,14 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
       ).toISOString();
     }
 
-    if (metadata.group_name !== undefined) {
-      updateData.group_name = metadata.group_name || null;
-    }
-
-    if (metadata.artist_name !== undefined) {
-      updateData.artist_name = metadata.artist_name || null;
-    }
-
-    if (metadata.song_title !== undefined) {
-      updateData.song_title = metadata.song_title || null;
-    }
-
-    if (metadata.event !== undefined) {
-      updateData.event = metadata.event || null;
-    }
+    updateData.group_id = resolved.group_id;
+    updateData.artist_id = resolved.artist_id;
+    updateData.song_id = resolved.song_id;
+    updateData.event_id = resolved.event_id;
+    updateData.group_name = resolved.group_name;
+    updateData.artist_name = resolved.artist_name;
+    updateData.song_title = resolved.song_title;
+    updateData.event = resolved.event;
 
     if (metadata.camera_type !== undefined) {
       updateData.camera_type = metadata.camera_type || null;
@@ -1083,7 +1094,7 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
     updateData.fancam_confidence = metadata.fancam_confidence ?? null;
 
     // Set status based on parsing result
-    const newStatus = needsReview ? 'needs_review' : 'new';
+    const newStatus = needsReview || forceReview ? 'needs_review' : 'new';
     updateData.status = newStatus;
 
     // Perform the update

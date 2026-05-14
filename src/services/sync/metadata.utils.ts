@@ -1,4 +1,5 @@
 import type { IParser } from '../../interfaces/services';
+import { hasUnresolvedEntity, resolveParsedMetadata } from '../parser/metadataResolver.service';
 
 export async function parseVideoMetadata(
   parser: IParser,
@@ -7,17 +8,23 @@ export async function parseVideoMetadata(
   tags?: string[],
 ) {
   const { metadata, needsReview } = await parser.parseTitle(originalTitle, publishedAt, tags);
+  const resolved = await resolveParsedMetadata(metadata);
+  const forceReview = hasUnresolvedEntity(metadata, resolved);
   const updateData: Record<string, string | number | boolean | null> = {};
   if (metadata.perf_date)
     updateData.perf_date = new Date(
       `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
     ).toISOString();
-  if (metadata.group_name !== undefined) updateData.group_name = metadata.group_name || null;
-  if (metadata.artist_name !== undefined) updateData.artist_name = metadata.artist_name || null;
-  if (metadata.song_title !== undefined) updateData.song_title = metadata.song_title || null;
-  if (metadata.event !== undefined) updateData.event = metadata.event || null;
+  updateData.group_id = resolved.group_id;
+  updateData.artist_id = resolved.artist_id;
+  updateData.song_id = resolved.song_id;
+  updateData.event_id = resolved.event_id;
+  updateData.group_name = resolved.group_name;
+  updateData.artist_name = resolved.artist_name;
+  updateData.song_title = resolved.song_title;
+  updateData.event = resolved.event;
   if (metadata.camera_type !== undefined) updateData.camera_type = metadata.camera_type || null;
   updateData.is_fancam = metadata.is_fancam ?? null;
   updateData.fancam_confidence = metadata.fancam_confidence ?? null;
-  return { metadata: updateData, status: needsReview ? 'needs_review' : 'new' };
+  return { metadata: updateData, status: needsReview || forceReview ? 'needs_review' : 'new' };
 }

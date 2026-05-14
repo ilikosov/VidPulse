@@ -5,6 +5,7 @@ import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
 import { parseTitle } from '../services/parser/parser.service';
 import { assignAutoTags } from '../services/tag.service';
+import { resolveParsedMetadata } from '../services/parser/metadataResolver.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
 
 const router = Router();
@@ -281,6 +282,8 @@ router.post('/:id/load-more', async (req: Request, res: Response) => {
           details.tags,
         );
 
+        const resolved = await resolveParsedMetadata(metadata);
+
         const [createdVideo] = await knex('videos')
           .insert({
             youtube_id: item.videoId,
@@ -295,10 +298,14 @@ router.post('/:id/load-more', async (req: Request, res: Response) => {
                   `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
                 ).toISOString()
               : null,
-            group_name: metadata.group_name || null,
-            artist_name: metadata.artist_name || null,
-            song_title: metadata.song_title || null,
-            event: metadata.event || null,
+            group_id: resolved.group_id,
+            artist_id: resolved.artist_id,
+            song_id: resolved.song_id,
+            event_id: resolved.event_id,
+            group_name: resolved.group_name,
+            artist_name: resolved.artist_name,
+            song_title: resolved.song_title,
+            event: resolved.event,
             camera_type: metadata.camera_type || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),

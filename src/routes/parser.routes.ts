@@ -3,6 +3,10 @@ import knex from '../db';
 import { parseTitle } from '../services/parser/parser.service';
 import { parseTitleWithLLM } from '../services/ai.service';
 import { youtubeService } from '../services/youtube.service';
+import {
+  hasUnresolvedEntity,
+  resolveParsedMetadata,
+} from '../services/parser/metadataResolver.service';
 
 const router = Router();
 
@@ -39,15 +43,20 @@ router.post('/llm-parse/:id', async (req: Request, res: Response) => {
     }
 
     const metadata = await parseTitleWithLLM(video.original_title, video.description);
+    const resolved = await resolveParsedMetadata(metadata);
 
     await knex('videos')
       .where('id', id)
       .update({
         perf_date: normalizePerfDate(metadata.perf_date),
-        group_name: metadata.group_name || null,
-        artist_name: metadata.artist_name || null,
-        song_title: metadata.song_title || null,
-        event: metadata.event || null,
+        group_id: resolved.group_id,
+        artist_id: resolved.artist_id,
+        song_id: resolved.song_id,
+        event_id: resolved.event_id,
+        group_name: resolved.group_name,
+        artist_name: resolved.artist_name,
+        song_title: resolved.song_title,
+        event: resolved.event,
         camera_type: metadata.camera_type || null,
         is_fancam: metadata.is_fancam ?? null,
         fancam_confidence: metadata.fancam_confidence ?? null,
@@ -78,14 +87,19 @@ router.post('/llm-parse-batch', async (req: Request, res: Response) => {
     for (const video of videos) {
       try {
         const metadata = await parseTitleWithLLM(video.original_title, video.description);
+        const resolved = await resolveParsedMetadata(metadata);
         await knex('videos')
           .where('id', video.id)
           .update({
             perf_date: normalizePerfDate(metadata.perf_date),
-            group_name: metadata.group_name || null,
-            artist_name: metadata.artist_name || null,
-            song_title: metadata.song_title || null,
-            event: metadata.event || null,
+            group_id: resolved.group_id,
+            artist_id: resolved.artist_id,
+            song_id: resolved.song_id,
+            event_id: resolved.event_id,
+            group_name: resolved.group_name,
+            artist_name: resolved.artist_name,
+            song_title: resolved.song_title,
+            event: resolved.event,
             camera_type: metadata.camera_type || null,
             is_fancam: metadata.is_fancam ?? null,
             fancam_confidence: metadata.fancam_confidence ?? null,
@@ -126,20 +140,27 @@ router.post('/reparse-all', async (req: Request, res: Response) => {
           details.tags,
         );
 
+        const resolved = await resolveParsedMetadata(metadata);
+        const forceReview = hasUnresolvedEntity(metadata, resolved);
+
         const updateData: Record<string, string | number | boolean | null> = {
           perf_date: metadata.perf_date
             ? new Date(
                 `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
               ).toISOString()
             : null,
-          group_name: metadata.group_name || null,
-          artist_name: metadata.artist_name || null,
-          song_title: metadata.song_title || null,
-          event: metadata.event || null,
+          group_id: resolved.group_id,
+          artist_id: resolved.artist_id,
+          song_id: resolved.song_id,
+          event_id: resolved.event_id,
+          group_name: resolved.group_name,
+          artist_name: resolved.artist_name,
+          song_title: resolved.song_title,
+          event: resolved.event,
           camera_type: metadata.camera_type || null,
           is_fancam: metadata.is_fancam ?? null,
           fancam_confidence: metadata.fancam_confidence ?? null,
-          status: needsReview ? 'needs_review' : video.status,
+          status: needsReview || forceReview ? 'needs_review' : video.status,
         };
 
         await knex('videos')
@@ -205,7 +226,9 @@ router.post('/reparse/:id', async (req: Request, res: Response) => {
       reparseLog.error = error instanceof Error ? error.message : 'Unknown parser error';
       return res.status(500).json({ error: 'Failed to re-parse video', reparseLog });
     }
-    const nextStatus = needsReview ? 'needs_review' : 'new';
+    const resolved = await resolveParsedMetadata(metadata);
+    const forceReview = hasUnresolvedEntity(metadata, resolved);
+    const nextStatus = needsReview || forceReview ? 'needs_review' : 'new';
 
     const updateData: Record<string, string | number | boolean | null> = {
       perf_date: metadata.perf_date
@@ -213,10 +236,14 @@ router.post('/reparse/:id', async (req: Request, res: Response) => {
             `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
           ).toISOString()
         : null,
-      group_name: metadata.group_name || null,
-      artist_name: metadata.artist_name || null,
-      song_title: metadata.song_title || null,
-      event: metadata.event || null,
+      group_id: resolved.group_id,
+      artist_id: resolved.artist_id,
+      song_id: resolved.song_id,
+      event_id: resolved.event_id,
+      group_name: resolved.group_name,
+      artist_name: resolved.artist_name,
+      song_title: resolved.song_title,
+      event: resolved.event,
       camera_type: metadata.camera_type || null,
       is_fancam: metadata.is_fancam ?? null,
       fancam_confidence: metadata.fancam_confidence ?? null,
@@ -271,7 +298,9 @@ router.post('/reparse-batch', async (req: Request, res: Response) => {
           details.publishedAt || video.published_at,
           details.tags,
         );
-        const nextStatus = needsReview ? 'needs_review' : video.status;
+        const resolved = await resolveParsedMetadata(metadata);
+        const forceReview = hasUnresolvedEntity(metadata, resolved);
+        const nextStatus = needsReview || forceReview ? 'needs_review' : video.status;
 
         const updateData: Record<string, string | number | boolean | null> = {
           perf_date: metadata.perf_date
@@ -279,10 +308,14 @@ router.post('/reparse-batch', async (req: Request, res: Response) => {
                 `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
               ).toISOString()
             : null,
-          group_name: metadata.group_name || null,
-          artist_name: metadata.artist_name || null,
-          song_title: metadata.song_title || null,
-          event: metadata.event || null,
+          group_id: resolved.group_id,
+          artist_id: resolved.artist_id,
+          song_id: resolved.song_id,
+          event_id: resolved.event_id,
+          group_name: resolved.group_name,
+          artist_name: resolved.artist_name,
+          song_title: resolved.song_title,
+          event: resolved.event,
           camera_type: metadata.camera_type || null,
           is_fancam: metadata.is_fancam ?? null,
           fancam_confidence: metadata.fancam_confidence ?? null,
