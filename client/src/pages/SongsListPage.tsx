@@ -42,7 +42,7 @@ export default function SongsListPage() {
         title: 'Title',
         dataIndex: 'title',
         render: (_v, row) => (
-          <Link to={`/songs/${row.id}`} state={{ from }}>
+          <Link to={`/dictionary/songs/${row.id}`} state={{ from }}>
             {row.title}
           </Link>
         ),

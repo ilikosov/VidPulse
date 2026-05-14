@@ -11,7 +11,7 @@ export default function GroupPage() {
   const { id = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const backPath = getBackPath(location.state, '/groups');
+  const backPath = getBackPath(location.state, '/dictionary/groups');
   const from = `${location.pathname}${location.search}`;
   const [group, setGroup] = useState<DictionaryGroup | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,7 +35,7 @@ export default function GroupPage() {
         dataIndex: 'group_name',
         render: (_v, r: any) =>
           r.group_id ? (
-            <Link to={`/groups/${r.group_id}`} state={{ from }}>
+            <Link to={`/dictionary/groups/${r.group_id}`} state={{ from }}>
               {r.group_name}
             </Link>
           ) : (
@@ -47,7 +47,7 @@ export default function GroupPage() {
         dataIndex: 'artist_name',
         render: (_v, r: any) =>
           r.artist_id ? (
-            <Link to={`/artists/${r.artist_id}`} state={{ from }}>
+            <Link to={`/dictionary/artists/${r.artist_id}`} state={{ from }}>
               {r.artist_name}
             </Link>
           ) : (
@@ -59,7 +59,7 @@ export default function GroupPage() {
         dataIndex: 'song_title',
         render: (_v, r: any) =>
           r.song_id ? (
-            <Link to={`/songs/${r.song_id}`} state={{ from }}>
+            <Link to={`/dictionary/songs/${r.song_id}`} state={{ from }}>
               {r.song_title}
             </Link>
           ) : (
@@ -114,7 +114,7 @@ export default function GroupPage() {
             children: group.artists?.length
               ? group.artists.map((a) => (
                   <Tag key={a.id}>
-                    <Link to={`/artists/${a.id}`} state={{ from }}>
+                    <Link to={`/dictionary/artists/${a.id}`} state={{ from }}>
                       {a.name}
                     </Link>
                   </Tag>

@@ -54,7 +54,7 @@ export default function GroupsListPage() {
         title: 'Name',
         dataIndex: 'name',
         render: (_value, row) => (
-          <Link to={`/groups/${row.id}`} state={{ from }}>
+          <Link to={`/dictionary/groups/${row.id}`} state={{ from }}>
             {row.name}
           </Link>
         ),
@@ -73,7 +73,9 @@ export default function GroupsListPage() {
         title: 'Actions',
         key: 'actions',
         render: (_value, row) => (
-          <Button onClick={() => navigate(`/groups/${row.id}`, { state: { from } })}>View</Button>
+          <Button onClick={() => navigate(`/dictionary/groups/${row.id}`, { state: { from } })}>
+            View
+          </Button>
         ),
       },
     ],

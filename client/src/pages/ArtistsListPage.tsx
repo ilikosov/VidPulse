@@ -43,7 +43,7 @@ export default function ArtistsListPage() {
         title: 'Name',
         dataIndex: 'name',
         render: (_v, row) => (
-          <Link to={`/artists/${row.id}`} state={{ from }}>
+          <Link to={`/dictionary/artists/${row.id}`} state={{ from }}>
             {row.name}
           </Link>
         ),
@@ -53,7 +53,7 @@ export default function ArtistsListPage() {
         dataIndex: 'group_name',
         render: (_v, row) =>
           row.group_id ? (
-            <Link to={`/groups/${row.group_id}`} state={{ from }}>
+            <Link to={`/dictionary/groups/${row.group_id}`} state={{ from }}>
               {row.group_name}
             </Link>
           ) : (

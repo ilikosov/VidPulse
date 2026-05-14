@@ -74,7 +74,7 @@ function ChannelPage() {
       render: (_value: string | null | undefined, row: Video) =>
         row.group_name ? (
           row.group_id ? (
-            <Link to={`/groups/${row.group_id}`} state={{ from }}>
+            <Link to={`/dictionary/groups/${row.group_id}`} state={{ from }}>
               {row.group_name}
             </Link>
           ) : (
@@ -90,7 +90,7 @@ function ChannelPage() {
       render: (_value: string | null | undefined, row: Video) =>
         row.artist_name ? (
           row.artist_id ? (
-            <Link to={`/artists/${row.artist_id}`} state={{ from }}>
+            <Link to={`/dictionary/artists/${row.artist_id}`} state={{ from }}>
               {row.artist_name}
             </Link>
           ) : (
@@ -106,7 +106,7 @@ function ChannelPage() {
       render: (_value: string | null | undefined, row: Video) =>
         row.song_title ? (
           row.song_id ? (
-            <Link to={`/songs/${row.song_id}`} state={{ from }}>
+            <Link to={`/dictionary/songs/${row.song_id}`} state={{ from }}>
               {row.song_title}
             </Link>
           ) : (
