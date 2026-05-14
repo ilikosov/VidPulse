@@ -25,7 +25,7 @@ export default function SongsListPage() {
       setLoading(true);
       try {
         const data = await dictionaryApi.getSongsList({ page, limit, q: q || undefined });
-        setItems(data.items);
+        setItems(Array.isArray(data.items) ? data.items : []);
         setTotal(data.pagination?.total ?? data.items.length);
       } catch (error) {
         message.error(error instanceof Error ? error.message : 'Failed to load songs');

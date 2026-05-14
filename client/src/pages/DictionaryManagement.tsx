@@ -208,7 +208,7 @@ export default function DictionaryManagement() {
           { key: 'events', label: 'Events' },
         ]}
       />
-      <Table rowKey="id" dataSource={rows as any[]} columns={columns[tab]} />
+      <Table rowKey="id" dataSource={Array.isArray(rows) ? rows : []} columns={columns[tab]} />
       <Modal
         open={modalOpen}
         onCancel={() => setModalOpen(false)}

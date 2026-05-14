@@ -37,7 +37,7 @@ export default function GroupsListPage() {
           q: q || undefined,
           type: type === 'all' ? undefined : type,
         });
-        setItems(data.items);
+        setItems(Array.isArray(data.items) ? data.items : []);
         setTotal(data.pagination?.total ?? data.items.length);
       } catch (error) {
         message.error(error instanceof Error ? error.message : 'Failed to load groups');
