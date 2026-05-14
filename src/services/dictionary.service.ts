@@ -118,6 +118,142 @@ export class DictionaryService {
       },
     };
   }
+
+  async getVideosByGroupId(groupId: number, page = 1, limit = 20) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, limit);
+    const offset = (safePage - 1) * safeLimit;
+    const base = knex('videos').where('videos.group_id', groupId);
+    const videos = await base
+      .clone()
+      .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
+      .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
+      .leftJoin('dictionary_songs as ds', 'videos.song_id', 'ds.id')
+      .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
+      .select(
+        'videos.*',
+        'dg.name as group_name',
+        'da.name as artist_name',
+        'ds.title as song_title',
+        'de.name as event',
+      )
+      .orderBy('videos.created_at', 'desc')
+      .limit(safeLimit)
+      .offset(offset);
+    const totalRow = await base.clone().count('* as count').first();
+    const total = Number(totalRow?.count || 0);
+    return {
+      videos,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit),
+      },
+    };
+  }
+
+  async getVideosByArtistId(artistId: number, page = 1, limit = 20) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, limit);
+    const offset = (safePage - 1) * safeLimit;
+    const base = knex('videos').where('videos.artist_id', artistId);
+    const videos = await base
+      .clone()
+      .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
+      .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
+      .leftJoin('dictionary_songs as ds', 'videos.song_id', 'ds.id')
+      .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
+      .select(
+        'videos.*',
+        'dg.name as group_name',
+        'da.name as artist_name',
+        'ds.title as song_title',
+        'de.name as event',
+      )
+      .orderBy('videos.created_at', 'desc')
+      .limit(safeLimit)
+      .offset(offset);
+    const totalRow = await base.clone().count('* as count').first();
+    const total = Number(totalRow?.count || 0);
+    return {
+      videos,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit),
+      },
+    };
+  }
+
+  async getVideosBySongId(songId: number, page = 1, limit = 20) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, limit);
+    const offset = (safePage - 1) * safeLimit;
+    const base = knex('videos').where('videos.song_id', songId);
+    const videos = await base
+      .clone()
+      .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
+      .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
+      .leftJoin('dictionary_songs as ds', 'videos.song_id', 'ds.id')
+      .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
+      .select(
+        'videos.*',
+        'dg.name as group_name',
+        'da.name as artist_name',
+        'ds.title as song_title',
+        'de.name as event',
+      )
+      .orderBy('videos.created_at', 'desc')
+      .limit(safeLimit)
+      .offset(offset);
+    const totalRow = await base.clone().count('* as count').first();
+    const total = Number(totalRow?.count || 0);
+    return {
+      videos,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit),
+      },
+    };
+  }
+
+  async getVideosByEventId(eventId: number, page = 1, limit = 20) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, limit);
+    const offset = (safePage - 1) * safeLimit;
+    const base = knex('videos').where('videos.event_id', eventId);
+    const videos = await base
+      .clone()
+      .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
+      .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
+      .leftJoin('dictionary_songs as ds', 'videos.song_id', 'ds.id')
+      .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
+      .select(
+        'videos.*',
+        'dg.name as group_name',
+        'da.name as artist_name',
+        'ds.title as song_title',
+        'de.name as event',
+      )
+      .orderBy('videos.created_at', 'desc')
+      .limit(safeLimit)
+      .offset(offset);
+    const totalRow = await base.clone().count('* as count').first();
+    const total = Number(totalRow?.count || 0);
+    return {
+      videos,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit),
+      },
+    };
+  }
   async createGroup(payload: { name: string; type: DictionaryGroupType; active?: boolean }) {
     return knex('dictionary_groups').insert({ ...payload, active: payload.active ?? true });
   }

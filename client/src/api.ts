@@ -8,6 +8,10 @@ export interface Video {
   original_title: string;
   description?: string | null;
   perf_date: string | null;
+  group_id?: number | null;
+  artist_id?: number | null;
+  song_id?: number | null;
+  event_id?: number | null;
   group_name: string | null;
   artist_name: string | null;
   song_title: string | null;

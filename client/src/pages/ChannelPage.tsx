@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Avatar, Button, Card, Descriptions, message, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { getChannel, getVideos, loadMoreChannelVideos, type Channel, type Video } from '../api';
@@ -9,12 +9,14 @@ type ChannelDetails = Channel & { videoCount: number };
 function ChannelPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [channel, setChannel] = useState<ChannelDetails | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const from = `${location.pathname}${location.search}`;
 
   const fetchData = async (nextPage = page) => {
     if (!id) return;
@@ -66,9 +68,54 @@ function ChannelPage() {
       ),
     },
     { title: 'Original Title', dataIndex: 'original_title' },
-    { title: 'Group', dataIndex: 'group_name', render: (value?: string | null) => value || '-' },
-    { title: 'Artist', dataIndex: 'artist_name', render: (value?: string | null) => value || '-' },
-    { title: 'Song', dataIndex: 'song_title', render: (value?: string | null) => value || '-' },
+    {
+      title: 'Group',
+      dataIndex: 'group_name',
+      render: (_value: string | null | undefined, row: Video) =>
+        row.group_name ? (
+          row.group_id ? (
+            <Link to={`/groups/${row.group_id}`} state={{ from }}>
+              {row.group_name}
+            </Link>
+          ) : (
+            row.group_name
+          )
+        ) : (
+          '-'
+        ),
+    },
+    {
+      title: 'Artist',
+      dataIndex: 'artist_name',
+      render: (_value: string | null | undefined, row: Video) =>
+        row.artist_name ? (
+          row.artist_id ? (
+            <Link to={`/artists/${row.artist_id}`} state={{ from }}>
+              {row.artist_name}
+            </Link>
+          ) : (
+            row.artist_name
+          )
+        ) : (
+          '-'
+        ),
+    },
+    {
+      title: 'Song',
+      dataIndex: 'song_title',
+      render: (_value: string | null | undefined, row: Video) =>
+        row.song_title ? (
+          row.song_id ? (
+            <Link to={`/songs/${row.song_id}`} state={{ from }}>
+              {row.song_title}
+            </Link>
+          ) : (
+            row.song_title
+          )
+        ) : (
+          '-'
+        ),
+    },
     { title: 'Event', dataIndex: 'event', render: (value?: string | null) => value || '-' },
     { title: 'Camera', dataIndex: 'camera_type', render: (value?: string | null) => value || '-' },
     { title: 'Status', dataIndex: 'status', render: (value: string) => <Tag>{value}</Tag> },

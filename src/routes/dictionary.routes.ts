@@ -131,7 +131,7 @@ router.get('/groups/:id/videos', async (req, res) => {
   if (!group) return res.status(404).json({ error: 'Group not found' });
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 20;
-  return res.json(await dictionaryService.getVideosByField('group_name', group.name, page, limit));
+  return res.json(await dictionaryService.getVideosByGroupId(Number(req.params.id), page, limit));
 });
 
 router.get('/artists/:id', async (req, res) => {
@@ -145,9 +145,7 @@ router.get('/artists/:id/videos', async (req, res) => {
   if (!artist) return res.status(404).json({ error: 'Artist not found' });
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 20;
-  return res.json(
-    await dictionaryService.getVideosByField('artist_name', artist.name, page, limit),
-  );
+  return res.json(await dictionaryService.getVideosByArtistId(Number(req.params.id), page, limit));
 });
 
 router.get('/songs/:id', async (req, res) => {
@@ -161,7 +159,7 @@ router.get('/songs/:id/videos', async (req, res) => {
   if (!song) return res.status(404).json({ error: 'Song not found' });
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 20;
-  return res.json(await dictionaryService.getVideosByField('song_title', song.title, page, limit));
+  return res.json(await dictionaryService.getVideosBySongId(Number(req.params.id), page, limit));
 });
 
 router.get('/:entityType/:entityId/aliases', async (req, res) => {
