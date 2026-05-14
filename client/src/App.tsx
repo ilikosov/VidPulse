@@ -1,5 +1,5 @@
 import { Layout, Menu, Typography } from 'antd';
-import { Link, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import ReviewQueue from './components/ReviewQueue';
 import VideoCard from './components/VideoCard';
 import VideoTable from './components/VideoTable';
@@ -16,6 +16,8 @@ import SongPage from './pages/SongPage';
 import GroupsListPage from './pages/GroupsListPage';
 import ArtistsListPage from './pages/ArtistsListPage';
 import SongsListPage from './pages/SongsListPage';
+import DictionaryPage from './pages/DictionaryPage';
+import EventDictionaryPage from './pages/EventDictionaryPage';
 
 const { Header, Content } = Layout;
 
@@ -25,19 +27,24 @@ const menuItems = [
   { key: '/channels', label: <Link to="/channels">Channels</Link> },
   { key: '/playlists', label: <Link to="/playlists">Playlists</Link> },
   { key: '/add-video', label: <Link to="/add-video">Add Video</Link> },
-  { key: '/events', label: <Link to="/events">Event Log</Link> },
+  { key: '/events', label: <Link to="/events">Activity Log</Link> },
   { key: '/settings', label: <Link to="/settings">Settings</Link> },
-  { key: '/dictionary', label: <Link to="/dictionary">Dictionary</Link> },
-  { key: '/groups', label: <Link to="/groups">Groups</Link> },
-  { key: '/artists', label: <Link to="/artists">Artists</Link> },
-  { key: '/songs', label: <Link to="/songs">Songs</Link> },
+  { key: '/dictionary', label: <Link to="/dictionary/groups">Dictionary</Link> },
 ];
+
+function RedirectEntityDetail({ entity }: { entity: 'groups' | 'artists' | 'songs' }) {
+  const { id = '' } = useParams();
+  return <Navigate to={`/dictionary/${entity}/${id}`} replace />;
+}
 
 function App() {
   const location = useLocation();
-  const selectedKey = menuItems.some((item) => item.key === location.pathname)
-    ? location.pathname
-    : '/videos';
+  let selectedKey = location.pathname;
+  if (location.pathname.startsWith('/dictionary')) selectedKey = '/dictionary';
+  else if (/^\/videos\/[^/]+/.test(location.pathname)) selectedKey = '/videos';
+  else if (/^\/channels\/[^/]+/.test(location.pathname)) selectedKey = '/channels';
+  else if (/^\/playlists\/[^/]+/.test(location.pathname)) selectedKey = '/playlists';
+  else if (!menuItems.some((item) => item.key === selectedKey)) selectedKey = '/videos';
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -72,13 +79,26 @@ function App() {
           <Route path="/add-video" element={<AddVideoPage />} />
           <Route path="/events" element={<EventLogPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/dictionary" element={<DictionaryManagement />} />
-          <Route path="/groups" element={<GroupsListPage />} />
-          <Route path="/groups/:id" element={<GroupPage />} />
-          <Route path="/artists" element={<ArtistsListPage />} />
-          <Route path="/artists/:id" element={<ArtistPage />} />
-          <Route path="/songs" element={<SongsListPage />} />
-          <Route path="/songs/:id" element={<SongPage />} />
+
+          <Route path="/dictionary" element={<DictionaryPage />}>
+            <Route index element={<Navigate to="groups" replace />} />
+            <Route path="groups" element={<GroupsListPage />} />
+            <Route path="groups/:id" element={<GroupPage />} />
+            <Route path="artists" element={<ArtistsListPage />} />
+            <Route path="artists/:id" element={<ArtistPage />} />
+            <Route path="songs" element={<SongsListPage />} />
+            <Route path="songs/:id" element={<SongPage />} />
+            <Route path="events" element={<EventDictionaryPage />} />
+            <Route path="tools" element={<DictionaryManagement />} />
+          </Route>
+
+          <Route path="/groups" element={<Navigate to="/dictionary/groups" replace />} />
+          <Route path="/groups/:id" element={<RedirectEntityDetail entity="groups" />} />
+          <Route path="/artists" element={<Navigate to="/dictionary/artists" replace />} />
+          <Route path="/artists/:id" element={<RedirectEntityDetail entity="artists" />} />
+          <Route path="/songs" element={<Navigate to="/dictionary/songs" replace />} />
+          <Route path="/songs/:id" element={<RedirectEntityDetail entity="songs" />} />
+
           <Route path="*" element={<VideoTable />} />
         </Routes>
       </Content>
