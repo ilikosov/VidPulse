@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import Ajv, { type ErrorObject } from 'ajv';
+import Ajv2020, { type ErrorObject } from 'ajv/dist/2020';
 import addFormats from 'ajv-formats';
 
 type ValidationResult = { valid: true } | { valid: false; errors: string[] };
@@ -8,7 +8,10 @@ type ValidationResult = { valid: true } | { valid: false; errors: string[] };
 const schemaPath = path.resolve(process.cwd(), 'schemas/media-library.schema.json');
 const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf-8'));
 
-const ajv = new Ajv({ allErrors: true });
+const ajv = new Ajv2020({
+  allErrors: true,
+  strict: false,
+});
 addFormats(ajv);
 
 const validate = ajv.compile(schema);
