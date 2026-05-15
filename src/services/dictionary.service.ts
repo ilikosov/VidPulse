@@ -140,6 +140,69 @@ export class DictionaryService {
     if (!alias) return null;
     return trx('dictionary_events').where({ id: alias.entity_id }).first();
   }
+
+  private async importSongNode(
+    db: DbClient,
+    songPayload: any,
+    context: {
+      artist?: { id: number; name: string };
+      group?: { id: number; name: string };
+    },
+    summary: MediaLibraryImportSummary,
+  ) {
+    const title = String(songPayload.title || '').trim();
+    if (!title) return null;
+
+    let song = await this.findSongByTitleOrAlias(db, title);
+    if (!song) {
+      const [songId] = await db('dictionary_songs').insert({
+        title,
+        artist: context.artist?.name ?? context.group?.name ?? '',
+      });
+      song = await db('dictionary_songs').where({ id: songId }).first();
+      summary.songs.inserted += 1;
+    } else {
+      summary.songs.updated += 1;
+    }
+
+    if (context.artist) {
+      const insertedArtistLink = await db('dictionary_song_artists')
+        .insert({ song_id: song.id, artist_id: context.artist.id })
+        .onConflict(['song_id', 'artist_id'])
+        .ignore();
+      if (Array.isArray(insertedArtistLink) && insertedArtistLink.length > 0) {
+        summary.songs.artistLinksInserted += 1;
+      }
+    }
+
+    if (context.group) {
+      const insertedGroupLink = await db('dictionary_song_groups')
+        .insert({ song_id: song.id, group_id: context.group.id })
+        .onConflict(['song_id', 'group_id'])
+        .ignore();
+      if (Array.isArray(insertedGroupLink) && insertedGroupLink.length > 0) {
+        summary.songs.groupLinksInserted += 1;
+      }
+    }
+
+    for (const rawAlias of Array.isArray(songPayload.aliases) ? songPayload.aliases : []) {
+      const alias = String(rawAlias || '').trim();
+      if (!alias || this.normalizeName(alias) === this.normalizeName(title)) continue;
+      const existingAlias = await db('dictionary_aliases')
+        .where({ entity_type: 'song', entity_id: song.id })
+        .andWhereRaw('LOWER(alias) = ?', [this.normalizeName(alias)])
+        .first();
+      if (existingAlias) continue;
+      await db('dictionary_aliases').insert({
+        entity_type: 'song',
+        entity_id: song.id,
+        alias,
+      });
+      summary.songs.aliasesInserted += 1;
+    }
+
+    return song;
+  }
   async getArtistMemberships(artistId: number) {
     return knex('dictionary_artist_memberships as m')
       .leftJoin('dictionary_groups as g', 'g.id', 'm.group_id')
@@ -1271,27 +1334,19 @@ export class DictionaryService {
           emit('artists', `Importing artists: ${artistName}`);
 
           for (const songPayload of Array.isArray(artistPayload.songs) ? artistPayload.songs : []) {
-            const title = String(songPayload.title || '').trim();
-            let song = await this.findSongByTitleOrAlias(trx as unknown as DbClient, title);
-            if (!song) {
-              const [songId] = await trx('dictionary_songs').insert({ title, artist: artist.name });
-              song = await trx('dictionary_songs').where({ id: songId }).first();
-              summary.songs.inserted += 1;
-            } else summary.songs.updated += 1;
-            await trx('dictionary_song_artists')
-              .insert({ song_id: song.id, artist_id: artist.id })
-              .onConflict(['song_id', 'artist_id'])
-              .ignore();
-            await trx('dictionary_song_groups')
-              .insert({ song_id: song.id, group_id: group.id })
-              .onConflict(['song_id', 'group_id'])
-              .ignore();
+            await this.importSongNode(
+              trx as unknown as DbClient,
+              songPayload,
+              { artist, group },
+              summary,
+            );
             processed += 1;
-            emit('songs', `Importing songs: ${title}`);
+            emit('songs', `Importing songs: ${String(songPayload.title || '').trim()}`);
           }
         }
 
         for (const songPayload of Array.isArray(groupPayload.songs) ? groupPayload.songs : []) {
+          await this.importSongNode(trx as unknown as DbClient, songPayload, { group }, summary);
           processed += 1;
           emit('songs', `Importing songs: ${String(songPayload.title || '').trim()}`);
         }
@@ -1325,6 +1380,7 @@ export class DictionaryService {
         emit('artists', `Importing artists: ${artistName}`);
 
         for (const songPayload of Array.isArray(soloPayload.songs) ? soloPayload.songs : []) {
+          await this.importSongNode(trx as unknown as DbClient, songPayload, { artist }, summary);
           processed += 1;
           emit('songs', `Importing songs: ${String(songPayload.title || '').trim()}`);
         }
