@@ -1,5 +1,8 @@
 import knex from '../db';
 
+type MembershipActivityType = 'group' | 'solo';
+type MembershipStatus = 'active' | 'former' | 'hiatus';
+
 export type DictionaryGroupType = 'male' | 'female' | 'mixed';
 
 export interface ImportSummary {
@@ -39,6 +42,47 @@ function toTypes(raw?: string): DictionaryGroupType[] {
 }
 
 export class DictionaryService {
+  private async upsertMembership(payload: {
+    artist_id: number;
+    group_id: number | null;
+    activity_type: MembershipActivityType;
+    status: MembershipStatus;
+    started_at?: string | null;
+    ended_at?: string | null;
+    is_primary?: boolean;
+  }) {
+    const existing = await knex('dictionary_artist_memberships')
+      .where({
+        artist_id: payload.artist_id,
+        group_id: payload.group_id,
+        activity_type: payload.activity_type,
+        status: payload.status,
+      })
+      .where((q) => {
+        if (payload.started_at) q.where({ started_at: payload.started_at });
+        else q.whereNull('started_at');
+      })
+      .first();
+
+    if (existing) {
+      await knex('dictionary_artist_memberships')
+        .where({ id: existing.id })
+        .update({
+          ended_at: payload.ended_at ?? existing.ended_at,
+          is_primary: payload.is_primary ?? existing.is_primary,
+          updated_at: knex.fn.now(),
+        });
+      return existing.id;
+    }
+
+    const [id] = await knex('dictionary_artist_memberships').insert({
+      ...payload,
+      created_at: knex.fn.now(),
+      updated_at: knex.fn.now(),
+    });
+    return id;
+  }
+
   async getGroups(type?: string, q?: string, limit = 20, offset = 0) {
     const types = toTypes(type);
     const query = knex('dictionary_groups as g')
@@ -91,26 +135,46 @@ export class DictionaryService {
       .where({ id })
       .first();
     if (!group) return null;
-    const artists = await knex('dictionary_artists')
-      .select('id', 'name', 'group_id')
-      .where({ group_id: id })
-      .orderBy('name');
+    const artists = await knex('dictionary_artist_memberships as m')
+      .select(
+        'a.id',
+        'a.name',
+        'a.group_id',
+        'm.activity_type',
+        'm.status',
+        'm.started_at',
+        'm.ended_at',
+        'm.is_primary',
+      )
+      .leftJoin('dictionary_artists as a', 'a.id', 'm.artist_id')
+      .where('m.group_id', id)
+      .orderBy('a.name');
     return { ...group, artists };
   }
 
   async getGroupArtists(groupId: number, limit = 20, offset = 0) {
-    return knex('dictionary_artists')
-      .select('id', 'name', 'group_id')
-      .where({ group_id: groupId })
-      .orderBy('name')
+    return knex('dictionary_artist_memberships as m')
+      .select(
+        'a.id',
+        'a.name',
+        'a.group_id',
+        'm.activity_type',
+        'm.status',
+        'm.started_at',
+        'm.ended_at',
+        'm.is_primary',
+      )
+      .leftJoin('dictionary_artists as a', 'a.id', 'm.artist_id')
+      .where('m.group_id', groupId)
+      .orderBy('a.name')
       .limit(limit)
       .offset(offset);
   }
 
   async countGroupArtists(groupId: number) {
-    const row = await knex('dictionary_artists')
+    const row = await knex('dictionary_artist_memberships')
       .where({ group_id: groupId })
-      .count('* as count')
+      .countDistinct('artist_id as count')
       .first();
     return Number(row?.count || 0);
   }
@@ -135,11 +199,27 @@ export class DictionaryService {
   }
 
   async getArtistById(id: number) {
-    return knex('dictionary_artists as a')
+    const artist = await knex('dictionary_artists as a')
       .distinct('a.id', 'a.name', 'a.group_id', 'g.name as group_name')
       .leftJoin('dictionary_groups as g', 'g.id', 'a.group_id')
       .where('a.id', id)
       .first();
+    if (!artist) return null;
+    const memberships = await knex('dictionary_artist_memberships as m')
+      .leftJoin('dictionary_groups as g', 'g.id', 'm.group_id')
+      .select(
+        'm.id',
+        'm.group_id',
+        'g.name as group_name',
+        'm.activity_type',
+        'm.status',
+        'm.started_at',
+        'm.ended_at',
+        'm.is_primary',
+      )
+      .where('m.artist_id', id)
+      .orderBy('m.is_primary', 'desc');
+    return { ...artist, memberships };
   }
 
   async getArtistSongs(artistId: number, limit = 20, offset = 0) {
@@ -736,16 +816,38 @@ export class DictionaryService {
           }
         } else if (kind === 'artists') {
           const name = String(row.name || '').trim();
-          const group_id = Number(row.group_id);
-          if (!name || !group_id) throw new Error('Invalid artist payload');
-          const existing = await knex('dictionary_artists').where({ name, group_id }).first();
-          if (existing) {
-            await knex('dictionary_artists').where({ id: existing.id }).update({ name, group_id });
-            summary.updated += 1;
-          } else {
-            await knex('dictionary_artists').insert({ name, group_id });
+          const group_id =
+            row.group_id == null || row.group_id === '' ? null : Number(row.group_id);
+          if (!name) throw new Error('Invalid artist payload');
+          let artist = await knex('dictionary_artists').where({ name }).first();
+          if (!artist) {
+            const [artistId] = await knex('dictionary_artists').insert({ name, group_id });
+            artist = { id: artistId, name, group_id };
             summary.inserted += 1;
+          } else {
+            await knex('dictionary_artists')
+              .where({ id: artist.id })
+              .update({ name, group_id: group_id ?? artist.group_id });
+            summary.updated += 1;
           }
+
+          const activity_type = String(
+            row.activity_type || (group_id ? 'group' : 'solo'),
+          ).toLowerCase() as MembershipActivityType;
+          const status = String(row.status || 'active').toLowerCase() as MembershipStatus;
+          const started_at = row.started_at ? String(row.started_at) : null;
+          const ended_at = row.ended_at ? String(row.ended_at) : null;
+          const is_primary =
+            String(row.is_primary ?? (group_id ? 'true' : 'false')).toLowerCase() === 'true';
+          await this.upsertMembership({
+            artist_id: Number(artist.id),
+            group_id,
+            activity_type,
+            status,
+            started_at,
+            ended_at,
+            is_primary,
+          });
         } else if (kind === 'songs') {
           const title = String(row.title || '').trim();
           const artist = String(row.artist || '').trim();
