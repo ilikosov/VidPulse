@@ -1,9 +1,15 @@
-import { Button, Modal, Space, Typography, Upload, notification } from 'antd';
+import { Alert, Button, Input, Modal, Space, Typography, Upload, notification } from 'antd';
 import { useState } from 'react';
 import { dictionaryApi } from '../api/dictionary';
 
 export default function DictionaryManagement() {
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [clearModalOpen, setClearModalOpen] = useState(false);
+  const [clearConfirmValue, setClearConfirmValue] = useState('');
+  const [clearing, setClearing] = useState(false);
+
+  const dangerousActionsEnabled =
+    (import.meta as any).env?.VITE_MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED === 'true';
 
   const templateEntities = ['groups', 'artists', 'songs', 'events'] as const;
   const templateFormats = ['csv', 'json'] as const;
@@ -15,6 +21,26 @@ export default function DictionaryManagement() {
   };
   const templateUrl = (entity: string, format: string) =>
     `${(import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api'}/dictionary/template/${entity}/${format}`;
+
+  const handleClearMediaLibrary = async () => {
+    try {
+      setClearing(true);
+      const response: any = await dictionaryApi.clearMediaLibrary();
+      notification.success({
+        message: 'Media library cleared successfully',
+        description:
+          typeof response?.videosUpdated === 'number'
+            ? `Videos updated: ${response.videosUpdated}`
+            : undefined,
+      });
+      setClearModalOpen(false);
+      setClearConfirmValue('');
+    } catch (error: any) {
+      notification.error({ message: error.message });
+    } finally {
+      setClearing(false);
+    }
+  };
 
   return (
     <>
@@ -31,6 +57,27 @@ export default function DictionaryManagement() {
         <Button type="primary" onClick={() => setImportModalOpen(true)}>
           Import from File
         </Button>
+
+        {dangerousActionsEnabled ? (
+          <Alert
+            type="warning"
+            message="Dangerous actions are enabled"
+            description={
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Typography.Text>
+                  This will clear groups, artists, songs, events, aliases and media-library links.
+                  Videos will not be deleted.
+                </Typography.Text>
+                <Button danger onClick={() => setClearModalOpen(true)}>
+                  Clear Media Library
+                </Button>
+              </Space>
+            }
+            showIcon
+          />
+        ) : (
+          <Typography.Text type="secondary">Dangerous actions are disabled.</Typography.Text>
+        )}
       </Space>
 
       <Modal
@@ -76,6 +123,35 @@ export default function DictionaryManagement() {
               ))}
             </Space>
           </div>
+        </Space>
+      </Modal>
+
+      <Modal
+        open={clearModalOpen}
+        title="Clear Media Library"
+        okText="Clear"
+        okButtonProps={{ danger: true, disabled: clearConfirmValue !== 'CLEAR', loading: clearing }}
+        cancelButtonProps={{ disabled: clearing }}
+        onCancel={() => {
+          if (!clearing) {
+            setClearModalOpen(false);
+            setClearConfirmValue('');
+          }
+        }}
+        onOk={handleClearMediaLibrary}
+      >
+        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+          <Typography.Text>
+            This will clear groups, artists, songs, events, aliases and media-library links. Videos
+            will not be deleted.
+          </Typography.Text>
+          <Typography.Text type="secondary">Type CLEAR to confirm.</Typography.Text>
+          <Input
+            value={clearConfirmValue}
+            onChange={(event) => setClearConfirmValue(event.target.value)}
+            placeholder="CLEAR"
+            disabled={clearing}
+          />
         </Space>
       </Modal>
     </>
