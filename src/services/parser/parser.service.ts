@@ -4,15 +4,11 @@ import { DictionaryModule } from './dictionary.module';
 
 const MIN_CONFIDENCE_THRESHOLD = 0.5;
 
-function hasUnnormalizedNonEnglish(metadata: Partial<ParsedMetadata>): boolean {
-  const values = [
-    metadata.group_name,
-    metadata.artist_name,
-    metadata.song_title,
-    metadata.event,
-    metadata.camera_type,
-  ].filter((v): v is string => Boolean(v));
-  return values.some((value) => /[가-힣]/.test(value));
+function hasUnresolvedCoreAliases(metadata: Partial<ParsedMetadata>): boolean {
+  const identityValues = [metadata.group_name, metadata.artist_name].filter((v): v is string =>
+    Boolean(v),
+  );
+  return identityValues.some((value) => /[가-힣]/.test(value));
 }
 
 function calculateMetadataConfidence(metadata: Partial<ParsedMetadata>): number {
@@ -121,7 +117,7 @@ export class ParserService {
       needsReview:
         !hasRequiredFields(currentMetadata, title, publishedAt) ||
         confidence < MIN_CONFIDENCE_THRESHOLD ||
-        hasUnnormalizedNonEnglish(currentMetadata),
+        hasUnresolvedCoreAliases(currentMetadata),
     };
   }
 }
