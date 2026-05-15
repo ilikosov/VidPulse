@@ -15,7 +15,9 @@
     "prepare": "husky",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,json,css,md}\" \"client/src/**/*.{ts,tsx,js,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,json,css,md}\" \"client/src/**/*.{ts,tsx,js,json,css,md}\"",
-    "backfill:video-entities": "tsx src/scripts/backfill-video-entity-ids.ts"
+    "backfill:video-entities": "tsx src/scripts/backfill-video-entity-ids.ts",
+    "backfill:shorts-tags": "tsx src/scripts/backfill-shorts-tags.ts",
+    "merge:short-tags": "tsx src/scripts/merge-short-tags.ts"
   },
   "keywords": [],
   "author": "",

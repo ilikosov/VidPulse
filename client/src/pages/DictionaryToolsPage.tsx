@@ -63,6 +63,12 @@ export default function DictionaryToolsPage() {
 
   const [clearModalOpen, setClearModalOpen] = useState(false);
   const [clearConfirmValue, setClearConfirmValue] = useState('');
+  const [tagShortsModalOpen, setTagShortsModalOpen] = useState(false);
+  const [tagShortsConfirmValue, setTagShortsConfirmValue] = useState('');
+  const [taggingShorts, setTaggingShorts] = useState(false);
+  const [mergeShortModalOpen, setMergeShortModalOpen] = useState(false);
+  const [mergeShortConfirmValue, setMergeShortConfirmValue] = useState('');
+  const [mergingShortTags, setMergingShortTags] = useState(false);
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -122,9 +128,17 @@ export default function DictionaryToolsPage() {
               showIcon
               message="Replace mode is dangerous and requires dangerous actions to be enabled."
             />
-            <Button danger onClick={() => setClearModalOpen(true)}>
-              Clear Media Library
-            </Button>
+            <Space>
+              <Button danger onClick={() => setClearModalOpen(true)}>
+                Clear Media Library
+              </Button>
+              <Button danger onClick={() => setTagShortsModalOpen(true)}>
+                Check durations and tag Shorts
+              </Button>
+              <Button danger onClick={() => setMergeShortModalOpen(true)}>
+                Merge short → shorts tags
+              </Button>
+            </Space>
           </Space>
         </Card>
       ) : null}
@@ -242,6 +256,97 @@ export default function DictionaryToolsPage() {
           </Typography.Text>
           <Typography.Text>Type CLEAR to confirm:</Typography.Text>
           <Input value={clearConfirmValue} onChange={(e) => setClearConfirmValue(e.target.value)} />
+        </Space>
+      </Modal>
+
+      <Modal
+        open={tagShortsModalOpen}
+        onCancel={() => {
+          if (taggingShorts) return;
+          setTagShortsModalOpen(false);
+          setTagShortsConfirmValue('');
+        }}
+        onOk={async () => {
+          setTaggingShorts(true);
+          try {
+            const { checked, eligible, tagged, alreadyTagged } =
+              await dictionaryApi.tagShortsByDuration();
+            notification.success({
+              message: 'Shorts tagging completed',
+              description: `Checked: ${checked}, eligible: ${eligible}, tagged: ${tagged}, already tagged: ${alreadyTagged}`,
+            });
+            setTagShortsModalOpen(false);
+            setTagShortsConfirmValue('');
+          } catch (error: any) {
+            notification.error({ message: error.message || 'Shorts tagging failed' });
+          } finally {
+            setTaggingShorts(false);
+          }
+        }}
+        okButtonProps={{
+          danger: true,
+          disabled: tagShortsConfirmValue !== 'SHORTS',
+          loading: taggingShorts,
+        }}
+        okText="Tag Shorts"
+        title="Check all videos and tag Shorts?"
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Typography.Text>
+            This will scan all videos with known duration and add the 'shorts' tag to videos shorter
+            than 1 minute 30 seconds. Videos will not be deleted or modified otherwise.
+          </Typography.Text>
+          <Typography.Text>Type SHORTS to confirm:</Typography.Text>
+          <Input
+            value={tagShortsConfirmValue}
+            onChange={(e) => setTagShortsConfirmValue(e.target.value)}
+            disabled={taggingShorts}
+          />
+        </Space>
+      </Modal>
+
+      <Modal
+        open={mergeShortModalOpen}
+        onCancel={() => {
+          if (mergingShortTags) return;
+          setMergeShortModalOpen(false);
+          setMergeShortConfirmValue('');
+        }}
+        onOk={async () => {
+          setMergingShortTags(true);
+          try {
+            const { moved, removedLegacyTag } = await dictionaryApi.mergeShortTags();
+            notification.success({
+              message: 'Short tags merge completed',
+              description: `Moved: ${moved}, removed legacy tag: ${removedLegacyTag ? 'yes' : 'no'}`,
+            });
+            setMergeShortModalOpen(false);
+            setMergeShortConfirmValue('');
+          } catch (error: any) {
+            notification.error({ message: error.message || 'Merge failed' });
+          } finally {
+            setMergingShortTags(false);
+          }
+        }}
+        okButtonProps={{
+          danger: true,
+          disabled: mergeShortConfirmValue !== 'MERGE',
+          loading: mergingShortTags,
+        }}
+        okText="Merge"
+        title="Merge short → shorts tags?"
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Typography.Text>
+            This will move all video links from the legacy 'short' tag to canonical 'shorts' and
+            delete the legacy tag. Videos will not be deleted.
+          </Typography.Text>
+          <Typography.Text>Type MERGE to confirm:</Typography.Text>
+          <Input
+            value={mergeShortConfirmValue}
+            onChange={(e) => setMergeShortConfirmValue(e.target.value)}
+            disabled={mergingShortTags}
+          />
         </Space>
       </Modal>
     </Space>
