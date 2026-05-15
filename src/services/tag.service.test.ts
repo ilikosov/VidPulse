@@ -114,7 +114,7 @@ function makeDb() {
   return db;
 }
 
-const mockedKnex = makeDb();
+const mockedKnex = vi.hoisted(() => makeDb());
 vi.mock('../db', () => ({ default: mockedKnex }));
 
 import { assignAutoTags, tagShortsByDuration } from './tag.service';
@@ -160,5 +160,22 @@ describe('tag service', () => {
 
     const second = await tagShortsByDuration();
     expect(second).toEqual({ checked: 3, eligible: 2, tagged: 0, alreadyTagged: 2 });
+  });
+
+  it('tagShortsByDuration handles bulk tagging for more than 600 shorts videos', async () => {
+    state.videos = Array.from({ length: 650 }, (_, index) => ({
+      id: index + 1,
+      duration_seconds: 45,
+    }));
+
+    const first = await tagShortsByDuration();
+    expect(first).toEqual({ checked: 650, eligible: 650, tagged: 650, alreadyTagged: 0 });
+
+    const shortsId = state.tags.get('shorts') as number;
+    const taggedCount = state.videoTags.filter((x) => x.tag_id === shortsId).length;
+    expect(taggedCount).toBe(650);
+
+    const second = await tagShortsByDuration();
+    expect(second).toEqual({ checked: 650, eligible: 650, tagged: 0, alreadyTagged: 650 });
   });
 });
