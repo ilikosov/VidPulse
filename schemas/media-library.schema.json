@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/media-library.schema.json",
+  "title": "Media Library Import",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["merge", "replace"],
+      "default": "merge"
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/group"
+      }
+    },
+    "soloArtists": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/soloArtist"
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    }
+  },
+  "$defs": {
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "song": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "aliases"],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "aliases": {
+          "$ref": "#/$defs/aliases"
+        }
+      }
+    },
+    "membership": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "activityType": {
+          "type": "string",
+          "enum": ["group", "solo"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "former", "hiatus"]
+        },
+        "from": {
+          "type": "string",
+          "format": "date"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "isPrimary": {
+          "type": "boolean"
+        }
+      }
+    },
+    "groupArtist": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "aliases": {
+          "$ref": "#/$defs/aliases"
+        },
+        "membership": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/membership"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "activityType": {
+                  "const": "group"
+                }
+              }
+            }
+          ]
+        },
+        "songs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/song"
+          }
+        }
+      }
+    },
+    "soloArtist": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "aliases": {
+          "$ref": "#/$defs/aliases"
+        },
+        "membership": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/membership"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "activityType": {
+                  "const": "solo"
+                }
+              }
+            }
+          ]
+        },
+        "songs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/song"
+          }
+        }
+      }
+    },
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "aliases": {
+          "$ref": "#/$defs/aliases"
+        },
+        "artists": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/groupArtist"
+          }
+        },
+        "songs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/song"
+          }
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "aliases": {
+          "$ref": "#/$defs/aliases"
+        }
+      }
+    }
+  }
+}

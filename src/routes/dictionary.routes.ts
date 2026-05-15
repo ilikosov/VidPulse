@@ -2,11 +2,15 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { dictionaryService } from '../services/dictionary.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
+import { validateMediaLibraryPayload } from '../services/mediaLibrarySchema.service';
+import {
+  dangerousActionsEnabled,
+  requireDangerousActionsEnabled,
+} from '../middleware/dangerousActions';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 type TemplateEntity = 'groups' | 'artists' | 'songs' | 'events';
-type TemplateFormat = 'csv' | 'json';
 type AliasEntityType = 'group' | 'artist' | 'song' | 'event';
 const aliasEntityMap: Record<string, AliasEntityType> = {
   group: 'group',
@@ -24,21 +28,6 @@ const dictionaryTemplates: Record<TemplateEntity, Record<string, string>> = {
   artists: { name: '', group_name: '' },
   songs: { title: '', artist: '' },
   events: { name: '' },
-};
-
-const createCsvTemplate = (entity: TemplateEntity): string =>
-  `${Object.keys(dictionaryTemplates[entity]).join(',')}\n`;
-
-const parseCsv = (text: string) => {
-  const [header, ...lines] = text.split(/\r?\n/).filter(Boolean);
-  const cols = header.split(',').map((c) => c.trim());
-  return lines.map((line) => {
-    const values = line.split(',').map((v) => v.trim());
-    return cols.reduce<Record<string, string>>((acc, col, i) => {
-      acc[col] = values[i] ?? '';
-      return acc;
-    }, {});
-  });
 };
 
 router.get('/groups/list', async (req, res) => {
@@ -280,33 +269,75 @@ router.get('/events/:id/videos', async (req, res) => {
 });
 
 router.get('/template/:entity/:format', (req, res) => {
-  const entity = req.params.entity as TemplateEntity;
-  const format = req.params.format as TemplateFormat;
+  const format = req.params.format.toLowerCase();
+  if (format === 'csv') {
+    return res
+      .status(410)
+      .json({ error: 'CSV templates are deprecated. Use /api/dictionary/schema' });
+  }
+  if (format === 'json') {
+    return res.redirect(302, '/api/dictionary/example');
+  }
+  return res.status(400).json({ error: 'unsupported format' });
+});
 
-  if (!dictionaryTemplates[entity]) return res.status(400).json({ error: 'unsupported entity' });
-  if (!['csv', 'json'].includes(format))
-    return res.status(400).json({ error: 'unsupported format' });
+router.get('/schema', (_req, res) => {
+  return res.download('schemas/media-library.schema.json', 'media-library.schema.json');
+});
 
-  const filename = `template_${entity}.${format}`;
-  const payload =
-    format === 'csv'
-      ? createCsvTemplate(entity)
-      : `${JSON.stringify([dictionaryTemplates[entity]], null, 2)}\n`;
+router.get('/example', (_req, res) => {
+  return res.download('examples/media-library.example.json', 'media-library.example.json');
+});
 
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.type(format === 'csv' ? 'text/csv' : 'application/json');
-  return res.send(payload);
+router.get('/export', async (_req, res) => {
+  const payload = await dictionaryService.exportMediaLibrary();
+  res.setHeader('Content-Disposition', 'attachment; filename="vidpulse-media-library.json"');
+  return res.type('application/json').send(JSON.stringify(payload, null, 2));
+});
+
+router.delete('/clear', requireDangerousActionsEnabled, async (_req, res) => {
+  const summary = await dictionaryService.clearMediaLibrary();
+  return res.json(summary);
 });
 
 router.post('/import', upload.single('file'), async (req: Request, res: Response) => {
   if (!req.file) return res.status(400).json({ error: 'file is required' });
   const name = req.file.originalname.toLowerCase();
-  const raw = req.file.buffer.toString('utf-8');
-  let records: Record<string, unknown>[] = [];
-  if (name.endsWith('.json')) records = JSON.parse(raw);
-  else if (name.endsWith('.csv')) records = parseCsv(raw);
-  else return res.status(400).json({ error: 'unsupported file format' });
-  const summary = await dictionaryService.importRecords(records);
+  if (!name.endsWith('.json')) {
+    return res.status(400).json({ error: 'Only media library JSON files are supported' });
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(req.file.buffer.toString('utf-8'));
+  } catch {
+    return res.status(400).json({ error: 'Invalid media library JSON', details: ['Invalid JSON'] });
+  }
+
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return res.status(400).json({
+      error: 'Invalid media library JSON',
+      details: ['Payload must be an object'],
+    });
+  }
+
+  const validationResult = validateMediaLibraryPayload(payload);
+  if (!validationResult.valid) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid media library JSON', details: validationResult.errors });
+  }
+
+  const mode = (payload as Record<string, unknown>).mode;
+  if (mode === 'replace') {
+    if (!dangerousActionsEnabled()) {
+      return res.status(403).json({ error: 'Dangerous media library actions are disabled' });
+    }
+    await dictionaryService.clearMediaLibrary();
+    (payload as Record<string, unknown>).mode = 'merge';
+  }
+
+  const summary = await dictionaryService.importMediaLibrary(payload);
   return res.json(summary);
 });
 

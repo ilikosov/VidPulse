@@ -11,6 +11,48 @@ export interface ImportSummary {
   updated: number;
   errors: string[];
 }
+
+export interface MediaLibraryImportSummary {
+  mode: 'merge' | 'replace';
+  groups: { inserted: number; updated: number; aliasesInserted: number };
+  artists: {
+    inserted: number;
+    updated: number;
+    aliasesInserted: number;
+    membershipsInserted: number;
+  };
+  songs: {
+    inserted: number;
+    updated: number;
+    aliasesInserted: number;
+    artistLinksInserted: number;
+    groupLinksInserted: number;
+  };
+  events: { inserted: number; updated: number; aliasesInserted: number };
+  errors: string[];
+}
+export interface MediaLibraryExportPayload {
+  version: 1;
+  mode: 'merge';
+  exportedAt: string;
+  groups: any[];
+  soloArtists: any[];
+  events: any[];
+}
+
+export interface ClearMediaLibrarySummary {
+  cleared: {
+    groups: number;
+    artists: number;
+    songs: number;
+    events: number;
+    aliases: number;
+    memberships: number;
+    songArtistLinks: number;
+    songGroupLinks: number;
+  };
+  videosUpdated: number;
+}
 export type AliasEntityType = 'group' | 'artist' | 'song' | 'event';
 
 export interface DictionaryStats {
@@ -32,6 +74,7 @@ export interface DictionaryStats {
 }
 
 type ImportRecord = Record<string, unknown> & { type?: string };
+type DbClient = typeof knex;
 
 function toTypes(raw?: string): DictionaryGroupType[] {
   if (!raw) return [];
@@ -42,6 +85,167 @@ function toTypes(raw?: string): DictionaryGroupType[] {
 }
 
 export class DictionaryService {
+  private normalizeName(value: string) {
+    return value.trim().toLowerCase();
+  }
+
+  private async findGroupByNameOrAlias(trx: DbClient, name: string) {
+    const normalized = this.normalizeName(name);
+    const byName = await trx('dictionary_groups').whereRaw('LOWER(name) = ?', [normalized]).first();
+    if (byName) return byName;
+    const alias = await trx('dictionary_aliases')
+      .where({ entity_type: 'group' })
+      .andWhereRaw('LOWER(alias) = ?', [normalized])
+      .first();
+    if (!alias) return null;
+    return trx('dictionary_groups').where({ id: alias.entity_id }).first();
+  }
+
+  private async findArtistByNameOrAlias(trx: DbClient, name: string) {
+    const normalized = this.normalizeName(name);
+    const byName = await trx('dictionary_artists')
+      .whereRaw('LOWER(name) = ?', [normalized])
+      .first();
+    if (byName) return byName;
+    const alias = await trx('dictionary_aliases')
+      .where({ entity_type: 'artist' })
+      .andWhereRaw('LOWER(alias) = ?', [normalized])
+      .first();
+    if (!alias) return null;
+    return trx('dictionary_artists').where({ id: alias.entity_id }).first();
+  }
+
+  private async findSongByTitleOrAlias(trx: DbClient, title: string) {
+    const normalized = this.normalizeName(title);
+    const byTitle = await trx('dictionary_songs')
+      .whereRaw('LOWER(title) = ?', [normalized])
+      .first();
+    if (byTitle) return byTitle;
+    const alias = await trx('dictionary_aliases')
+      .where({ entity_type: 'song' })
+      .andWhereRaw('LOWER(alias) = ?', [normalized])
+      .first();
+    if (!alias) return null;
+    return trx('dictionary_songs').where({ id: alias.entity_id }).first();
+  }
+
+  private async findEventByNameOrAlias(trx: DbClient, name: string) {
+    const normalized = this.normalizeName(name);
+    const byName = await trx('dictionary_events').whereRaw('LOWER(name) = ?', [normalized]).first();
+    if (byName) return byName;
+    const alias = await trx('dictionary_aliases')
+      .where({ entity_type: 'event' })
+      .andWhereRaw('LOWER(alias) = ?', [normalized])
+      .first();
+    if (!alias) return null;
+    return trx('dictionary_events').where({ id: alias.entity_id }).first();
+  }
+  async getArtistMemberships(artistId: number) {
+    return knex('dictionary_artist_memberships as m')
+      .leftJoin('dictionary_groups as g', 'g.id', 'm.group_id')
+      .select(
+        'm.id',
+        'm.artist_id',
+        'm.group_id',
+        'g.name as group_name',
+        'm.activity_type',
+        'm.status',
+        'm.started_at',
+        'm.ended_at',
+        'm.is_primary',
+        'm.created_at',
+        'm.updated_at',
+      )
+      .where('m.artist_id', artistId)
+      .orderBy([
+        { column: 'm.is_primary', order: 'desc' },
+        { column: 'm.created_at', order: 'desc' },
+      ]);
+  }
+
+  async findActiveMemberships(artistId: number) {
+    return knex('dictionary_artist_memberships')
+      .where({ artist_id: artistId, status: 'active' })
+      .orderBy([
+        { column: 'is_primary', order: 'desc' },
+        { column: 'created_at', order: 'desc' },
+      ]);
+  }
+
+  async getGroupArtistsByMembership(groupId: number, status?: MembershipStatus) {
+    const query = knex('dictionary_artist_memberships as m')
+      .leftJoin('dictionary_artists as a', 'a.id', 'm.artist_id')
+      .select(
+        'a.id',
+        'a.name',
+        'a.group_id',
+        'm.activity_type',
+        'm.status',
+        'm.started_at',
+        'm.ended_at',
+        'm.is_primary',
+      )
+      .where('m.group_id', groupId)
+      .andWhere('m.activity_type', 'group')
+      .orderBy([
+        { column: 'm.is_primary', order: 'desc' },
+        { column: 'a.name', order: 'asc' },
+      ]);
+
+    if (status) query.andWhere('m.status', status);
+    return query;
+  }
+
+  async addOrUpdateArtistMembership(payload: {
+    artist_id: number;
+    group_id: number | null;
+    activity_type: MembershipActivityType;
+    status: MembershipStatus;
+    started_at?: string | null;
+    ended_at?: string | null;
+    is_primary?: boolean;
+  }) {
+    const startedAt = payload.started_at ?? null;
+
+    const query = knex('dictionary_artist_memberships')
+      .where({
+        artist_id: payload.artist_id,
+        activity_type: payload.activity_type,
+        status: payload.status,
+      })
+      .where((qb) => {
+        if (payload.activity_type === 'group') {
+          qb.where({ group_id: payload.group_id });
+        } else {
+          qb.whereNull('group_id');
+        }
+      })
+      .where((qb) => {
+        if (startedAt) qb.where({ started_at: startedAt });
+        else qb.whereNull('started_at');
+      });
+
+    const existing = await query.first();
+    if (existing) {
+      await knex('dictionary_artist_memberships')
+        .where({ id: existing.id })
+        .update({
+          ended_at: payload.ended_at ?? existing.ended_at,
+          is_primary: payload.is_primary ?? existing.is_primary,
+          updated_at: knex.fn.now(),
+        });
+      return existing.id as number;
+    }
+
+    const [id] = await knex('dictionary_artist_memberships').insert({
+      ...payload,
+      started_at: startedAt,
+      created_at: knex.fn.now(),
+      updated_at: knex.fn.now(),
+    });
+    return Number(id);
+  }
+
   private async upsertMembership(payload: {
     artist_id: number;
     group_id: number | null;
@@ -923,6 +1127,326 @@ export class DictionaryService {
       }
     }
     return summary;
+  }
+
+  async importMediaLibrary(payload: unknown): Promise<MediaLibraryImportSummary> {
+    const data = (payload ?? {}) as Record<string, any>;
+    const mode = data.mode === 'replace' ? 'replace' : 'merge';
+    const summary: MediaLibraryImportSummary = {
+      mode,
+      groups: { inserted: 0, updated: 0, aliasesInserted: 0 },
+      artists: { inserted: 0, updated: 0, aliasesInserted: 0, membershipsInserted: 0 },
+      songs: {
+        inserted: 0,
+        updated: 0,
+        aliasesInserted: 0,
+        artistLinksInserted: 0,
+        groupLinksInserted: 0,
+      },
+      events: { inserted: 0, updated: 0, aliasesInserted: 0 },
+      errors: [],
+    };
+
+    if (mode === 'replace') {
+      summary.errors.push('mode=replace is disabled');
+      return summary;
+    }
+
+    const groups = Array.isArray(data.groups) ? data.groups : [];
+    const soloArtists = Array.isArray(data.soloArtists) ? data.soloArtists : [];
+    const events = Array.isArray(data.events) ? data.events : [];
+
+    await knex.transaction(async (trx) => {
+      for (const groupPayload of groups) {
+        const groupName = String(groupPayload.name || '').trim();
+        let group = await this.findGroupByNameOrAlias(trx as unknown as DbClient, groupName);
+        if (!group) {
+          if (!groupPayload.type) throw new Error(`Group "${groupName}" requires type`);
+          const [id] = await trx('dictionary_groups').insert({
+            name: groupName,
+            type: String(groupPayload.type),
+            active: groupPayload.active ?? true,
+          });
+          group = await trx('dictionary_groups').where({ id }).first();
+          summary.groups.inserted += 1;
+        } else {
+          summary.groups.updated += 1;
+        }
+
+        for (const alias of Array.isArray(groupPayload.aliases) ? groupPayload.aliases : []) {
+          const exists = await trx('dictionary_aliases')
+            .where({ entity_type: 'group', entity_id: group.id })
+            .andWhereRaw('LOWER(alias)=?', [this.normalizeName(String(alias))])
+            .first();
+          if (
+            !exists &&
+            String(alias).trim() &&
+            this.normalizeName(String(alias)) !== this.normalizeName(group.name)
+          ) {
+            await trx('dictionary_aliases').insert({
+              entity_type: 'group',
+              entity_id: group.id,
+              alias: String(alias).trim(),
+            });
+            summary.groups.aliasesInserted += 1;
+          }
+        }
+
+        for (const artistPayload of Array.isArray(groupPayload.artists)
+          ? groupPayload.artists
+          : []) {
+          const artistName = String(artistPayload.name || '').trim();
+          let artist = await this.findArtistByNameOrAlias(trx as unknown as DbClient, artistName);
+          if (!artist) {
+            const [artistId] = await trx('dictionary_artists').insert({
+              name: artistName,
+              group_id: group.id,
+            });
+            artist = await trx('dictionary_artists').where({ id: artistId }).first();
+            summary.artists.inserted += 1;
+          } else {
+            summary.artists.updated += 1;
+          }
+          await this.addOrUpdateArtistMembership({
+            artist_id: artist.id,
+            group_id: group.id,
+            activity_type: 'group',
+            status: (artistPayload.membership?.status || 'active') as MembershipStatus,
+            started_at: artistPayload.membership?.from ?? null,
+            ended_at: artistPayload.membership?.to ?? null,
+            is_primary: artistPayload.membership?.isPrimary ?? false,
+          });
+          summary.artists.membershipsInserted += 1;
+
+          for (const songPayload of Array.isArray(artistPayload.songs) ? artistPayload.songs : []) {
+            const title = String(songPayload.title || '').trim();
+            let song = await this.findSongByTitleOrAlias(trx as unknown as DbClient, title);
+            if (!song) {
+              const [songId] = await trx('dictionary_songs').insert({ title, artist: artist.name });
+              song = await trx('dictionary_songs').where({ id: songId }).first();
+              summary.songs.inserted += 1;
+            } else summary.songs.updated += 1;
+            await trx('dictionary_song_artists')
+              .insert({ song_id: song.id, artist_id: artist.id })
+              .onConflict(['song_id', 'artist_id'])
+              .ignore();
+            await trx('dictionary_song_groups')
+              .insert({ song_id: song.id, group_id: group.id })
+              .onConflict(['song_id', 'group_id'])
+              .ignore();
+          }
+        }
+      }
+
+      for (const soloPayload of soloArtists) {
+        const artistName = String(soloPayload.name || '').trim();
+        let artist = await this.findArtistByNameOrAlias(trx as unknown as DbClient, artistName);
+        if (!artist) {
+          const [artistId] = await trx('dictionary_artists').insert({
+            name: artistName,
+            group_id: null,
+          });
+          artist = await trx('dictionary_artists').where({ id: artistId }).first();
+          summary.artists.inserted += 1;
+        } else summary.artists.updated += 1;
+        await this.addOrUpdateArtistMembership({
+          artist_id: artist.id,
+          group_id: null,
+          activity_type: 'solo',
+          status: (soloPayload.membership?.status || 'active') as MembershipStatus,
+          started_at: soloPayload.membership?.from ?? null,
+          ended_at: soloPayload.membership?.to ?? null,
+          is_primary: soloPayload.membership?.isPrimary ?? true,
+        });
+        summary.artists.membershipsInserted += 1;
+      }
+
+      for (const eventPayload of events) {
+        const name = String(eventPayload.name || '').trim();
+        let event = await this.findEventByNameOrAlias(trx as unknown as DbClient, name);
+        if (!event) {
+          const [id] = await trx('dictionary_events').insert({ name });
+          event = await trx('dictionary_events').where({ id }).first();
+          summary.events.inserted += 1;
+        } else summary.events.updated += 1;
+      }
+    });
+
+    return summary;
+  }
+
+  async exportMediaLibrary(): Promise<MediaLibraryExportPayload> {
+    const [groups, artists, songs, events, aliases, memberships, songArtists, songGroups] =
+      await Promise.all([
+        knex('dictionary_groups').select('*'),
+        knex('dictionary_artists').select('*'),
+        knex('dictionary_songs').select('*'),
+        knex('dictionary_events').select('*'),
+        knex('dictionary_aliases').select('*'),
+        knex('dictionary_artist_memberships').select('*'),
+        knex('dictionary_song_artists').select('*'),
+        knex('dictionary_song_groups').select('*'),
+      ]);
+
+    const aliasesByEntity = new Map<string, string[]>();
+    for (const a of aliases as any[]) {
+      const key = `${a.entity_type}:${a.entity_id}`;
+      if (!aliasesByEntity.has(key)) aliasesByEntity.set(key, []);
+      aliasesByEntity.get(key)!.push(a.alias);
+    }
+
+    const artistById = new Map((artists as any[]).map((a) => [a.id, a]));
+    const songsById = new Map((songs as any[]).map((s) => [s.id, s]));
+    const songArtistSet = new Set((songArtists as any[]).map((r) => `${r.song_id}:${r.artist_id}`));
+    const songGroupSet = new Set((songGroups as any[]).map((r) => `${r.song_id}:${r.group_id}`));
+
+    const groupsPayload = (groups as any[]).map((group) => {
+      const groupMemberships = (memberships as any[]).filter(
+        (m) => m.group_id === group.id && m.activity_type === 'group',
+      );
+
+      const artistsPayload = groupMemberships.map((m) => {
+        const artist = artistById.get(m.artist_id);
+        const artistSongs = (songs as any[])
+          .filter(
+            (s) =>
+              songArtistSet.has(`${s.id}:${artist.id}`) && songGroupSet.has(`${s.id}:${group.id}`),
+          )
+          .map((s) => ({
+            title: s.title,
+            aliases: aliasesByEntity.get(`song:${s.id}`) ?? [],
+          }));
+        return {
+          name: artist.name,
+          aliases: aliasesByEntity.get(`artist:${artist.id}`) ?? [],
+          membership: {
+            activityType: m.activity_type,
+            status: m.status,
+            from: m.started_at ?? null,
+            to: m.ended_at ?? null,
+            isPrimary: Boolean(m.is_primary),
+          },
+          songs: artistSongs,
+        };
+      });
+
+      const artistSongIdsInGroup = new Set<number>();
+      for (const s of songs as any[]) {
+        if (!songGroupSet.has(`${s.id}:${group.id}`)) continue;
+        const hasArtistInGroup = artistsPayload.some((a) => {
+          const ar = (artists as any[]).find((x) => x.name === a.name);
+          return ar ? songArtistSet.has(`${s.id}:${ar.id}`) : false;
+        });
+        if (hasArtistInGroup) artistSongIdsInGroup.add(s.id);
+      }
+
+      const groupSongs = (songs as any[])
+        .filter((s) => songGroupSet.has(`${s.id}:${group.id}`) && !artistSongIdsInGroup.has(s.id))
+        .map((s) => ({ title: s.title, aliases: aliasesByEntity.get(`song:${s.id}`) ?? [] }));
+
+      return {
+        name: group.name,
+        type: group.type,
+        active: Boolean(group.active),
+        aliases: aliasesByEntity.get(`group:${group.id}`) ?? [],
+        artists: artistsPayload,
+        songs: groupSongs,
+      };
+    });
+
+    const soloArtistsPayload = (memberships as any[])
+      .filter((m) => m.activity_type === 'solo')
+      .map((m) => {
+        const artist = artistById.get(m.artist_id);
+        const soloSongs = (songs as any[])
+          .filter((s) => songArtistSet.has(`${s.id}:${artist.id}`))
+          .filter((s) => !(songGroups as any[]).some((sg) => sg.song_id === s.id))
+          .map((s) => ({ title: s.title, aliases: aliasesByEntity.get(`song:${s.id}`) ?? [] }));
+        return {
+          name: artist.name,
+          aliases: aliasesByEntity.get(`artist:${artist.id}`) ?? [],
+          membership: {
+            activityType: 'solo',
+            status: m.status,
+            from: m.started_at ?? null,
+            to: m.ended_at ?? null,
+            isPrimary: Boolean(m.is_primary),
+          },
+          songs: soloSongs,
+        };
+      });
+
+    const eventsPayload = (events as any[]).map((e) => ({
+      name: e.name,
+      aliases: aliasesByEntity.get(`event:${e.id}`) ?? [],
+    }));
+
+    return {
+      version: 1,
+      mode: 'merge',
+      exportedAt: new Date().toISOString(),
+      groups: groupsPayload,
+      soloArtists: soloArtistsPayload,
+      events: eventsPayload,
+    };
+  }
+
+  async clearMediaLibrary(): Promise<ClearMediaLibrarySummary> {
+    return knex.transaction(async (trx) => {
+      const [
+        groups,
+        artists,
+        songs,
+        events,
+        aliases,
+        memberships,
+        songArtistLinks,
+        songGroupLinks,
+      ] = await Promise.all([
+        trx('dictionary_groups').count<{ count: number }>('id as count').first(),
+        trx('dictionary_artists').count<{ count: number }>('id as count').first(),
+        trx('dictionary_songs').count<{ count: number }>('id as count').first(),
+        trx('dictionary_events').count<{ count: number }>('id as count').first(),
+        trx('dictionary_aliases').count<{ count: number }>('id as count').first(),
+        trx('dictionary_artist_memberships').count<{ count: number }>('id as count').first(),
+        trx('dictionary_song_artists').count<{ count: number }>('song_id as count').first(),
+        trx('dictionary_song_groups').count<{ count: number }>('song_id as count').first(),
+      ]);
+
+      const videosUpdated = await trx('videos').update({
+        group_id: null,
+        artist_id: null,
+        song_id: null,
+        event_id: null,
+        group_name: null,
+        artist_name: null,
+        song_title: null,
+        event: null,
+      });
+
+      await trx('dictionary_aliases').del();
+      await trx('dictionary_song_artists').del();
+      await trx('dictionary_song_groups').del();
+      await trx('dictionary_artist_memberships').del();
+      await trx('dictionary_songs').del();
+      await trx('dictionary_artists').del();
+      await trx('dictionary_events').del();
+      await trx('dictionary_groups').del();
+
+      return {
+        cleared: {
+          groups: Number(groups?.count || 0),
+          artists: Number(artists?.count || 0),
+          songs: Number(songs?.count || 0),
+          events: Number(events?.count || 0),
+          aliases: Number(aliases?.count || 0),
+          memberships: Number(memberships?.count || 0),
+          songArtistLinks: Number(songArtistLinks?.count || 0),
+          songGroupLinks: Number(songGroupLinks?.count || 0),
+        },
+        videosUpdated: Number(videosUpdated || 0),
+      };
+    });
   }
 }
 
