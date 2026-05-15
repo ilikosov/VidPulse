@@ -14,12 +14,17 @@ const req = async <T>(path: string, options?: RequestInit): Promise<T> => {
   return res.json();
 };
 
+export type DictionaryGroupType = 'male' | 'female' | 'mixed';
+
 export interface DictionaryGroup {
   id: number;
   name: string;
-  type: string;
+  type: DictionaryGroupType;
   active: boolean;
   artist_count?: number;
+  song_count?: number;
+  video_count?: number;
+  aliases_count?: number;
   artists?: Array<{ id: number; name: string; group_id: number }>;
 }
 export interface DictionaryArtist {
@@ -27,13 +32,22 @@ export interface DictionaryArtist {
   name: string;
   group_id: number;
   group_name: string | null;
+  songs_count?: number;
+  videos_count?: number;
+  aliases_count?: number;
 }
 export interface DictionarySong {
   id: number;
   title: string;
   artist: string | null;
+  artist_id?: number;
+  artist_name?: string | null;
+  group_id?: number;
+  group_name?: string | null;
+  videos_count?: number;
+  aliases_count?: number;
 }
-export type DictionaryAliasEntityType = 'group' | 'artist' | 'song';
+export type DictionaryAliasEntityType = 'group' | 'artist' | 'song' | 'event';
 export interface DictionaryAlias {
   id: number;
   alias: string;
@@ -43,6 +57,8 @@ interface ListParams {
   page?: number;
   limit?: number;
   q?: string;
+  group_id?: number;
+  artist_id?: number;
 }
 interface GroupsListParams extends ListParams {
   type?: string;
@@ -150,6 +166,9 @@ export const dictionaryApi = {
     req(`/dictionary/songs/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
   deleteSong: (id: number) => req(`/dictionary/songs/${id}`, { method: 'DELETE' }),
   getEvents: async () => (await dictionaryApi.getEventsList({ page: 1, limit: 1000 })).items,
+  getEvent: (id: number | string) => req<{ id: number; name: string }>(`/dictionary/events/${id}`),
+  getEventVideos: (id: number | string, page = 1, limit = 20) =>
+    req<VideosResponse>(`/dictionary/events/${id}/videos?page=${page}&limit=${limit}`),
   createEvent: (d: any) => req('/dictionary/events', { method: 'POST', body: JSON.stringify(d) }),
   updateEvent: (id: number, d: any) =>
     req(`/dictionary/events/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
@@ -168,6 +187,32 @@ export const dictionaryApi = {
   getSong: (id: number | string) => req<DictionarySong>(`/dictionary/songs/${id}`),
   getSongVideos: (id: number | string, page = 1, limit = 20) =>
     req<VideosResponse>(`/dictionary/songs/${id}/videos?page=${page}&limit=${limit}`),
+
+  getArtistSongs: async (
+    artistId: number | string,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedList<DictionarySong>> =>
+    normalizePaginatedResponse(
+      await req<LegacyOrPaginated<DictionarySong>>(
+        `/dictionary/artists/${artistId}/songs${toQuery({ page, limit })}`,
+      ),
+      'songs',
+      { page, limit },
+    ),
+
+  getGroupSongs: async (
+    groupId: number | string,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedList<DictionarySong>> =>
+    normalizePaginatedResponse(
+      await req<LegacyOrPaginated<DictionarySong>>(
+        `/dictionary/groups/${groupId}/songs${toQuery({ page, limit })}`,
+      ),
+      'songs',
+      { page, limit },
+    ),
   getAliases: (entityType: DictionaryAliasEntityType, entityId: number | string) =>
     req<DictionaryAlias[]>(`/dictionary/${entityType}/${entityId}/aliases`),
   addAlias: (entityType: DictionaryAliasEntityType, entityId: number | string, alias: string) =>

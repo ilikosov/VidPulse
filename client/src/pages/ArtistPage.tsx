@@ -1,22 +1,50 @@
-import { Button, Card, Descriptions, Empty, Spin, Table, Tag } from 'antd';
+import { Button, Card, Descriptions, Empty, List, Spin, Table, Tabs, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Video } from '../api';
-import { dictionaryApi, type DictionaryArtist } from '../api/dictionary';
+import { dictionaryApi, type DictionaryArtist, type DictionarySong } from '../api/dictionary';
 import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
+
+const defaultVideosLimit = 20;
+const defaultSongsLimit = 10;
 
 export default function ArtistPage() {
   const { id = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const backPath = getBackPath(location.state, '/dictionary/artists');
   const from = `${location.pathname}${location.search}`;
+
+  const tab = searchParams.get('tab') || 'overview';
+  const videosPage = Number(searchParams.get('videosPage') || '1');
+  const songsPage = Number(searchParams.get('songsPage') || '1');
+
   const [artist, setArtist] = useState<DictionaryArtist | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [songs, setSongs] = useState<DictionarySong[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [videosPagination, setVideosPagination] = useState({
+    page: 1,
+    limit: defaultVideosLimit,
+    total: 0,
+  });
+  const [songsPagination, setSongsPagination] = useState({
+    page: 1,
+    limit: defaultSongsLimit,
+    total: 0,
+  });
+
+  const updateParams = (next: Record<string, string | number | undefined>) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(next).forEach(([k, v]) => {
+      if (v === undefined || v === '') params.delete(k);
+      else params.set(k, String(v));
+    });
+    setSearchParams(params);
+  };
 
   const columns: ColumnsType<Video> = useMemo(
     () => [
@@ -73,64 +101,129 @@ export default function ArtistPage() {
     [from],
   );
 
-  const load = async (page = 1) => {
-    setLoading(true);
-    try {
-      const [a, v] = await Promise.all([
-        dictionaryApi.getArtist(id),
-        dictionaryApi.getArtistVideos(id, page, pagination.limit),
-      ]);
-      setArtist(a);
-      setVideos(v.videos);
-      setPagination(v.pagination);
-    } finally {
-      setLoading(false);
-    }
-  };
   useEffect(() => {
-    void load(1);
-  }, [id]);
+    const load = async () => {
+      setLoading(true);
+      try {
+        const a = await dictionaryApi.getArtist(id);
+        const [videosResponse, songsResponse] = await Promise.all([
+          dictionaryApi.getArtistVideos(id, videosPage, videosPagination.limit),
+          dictionaryApi.getArtistSongs(id, songsPage, songsPagination.limit),
+        ]);
+        setArtist(a);
+        setVideos(videosResponse.videos);
+        setVideosPagination(videosResponse.pagination);
+        setSongs(songsResponse.items);
+        setSongsPagination(songsResponse.pagination);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+  }, [id, videosPage, songsPage]);
+
   if (loading) return <Spin />;
   if (!artist) return <Empty />;
+
   return (
-    <Card title={artist.name}>
-      <Button
-        type="text"
-        onClick={() => navigate(backPath)}
-        style={{ paddingLeft: 0, marginBottom: 16 }}
-      >
-        ← Back
-      </Button>
-      <Descriptions
-        bordered
-        column={1}
+    <Card
+      title={<Typography.Title level={3}>Artist: {artist.name}</Typography.Title>}
+      extra={
+        <Button type="text" onClick={() => navigate(backPath)} style={{ paddingLeft: 0 }}>
+          ← Back
+        </Button>
+      }
+    >
+      <Tabs
+        activeKey={tab}
+        onChange={(nextTab) => updateParams({ tab: nextTab })}
         items={[
           {
-            key: 'group',
-            label: 'Group',
-            children: artist.group_id ? (
-              <Link to={`/dictionary/groups/${artist.group_id}`} state={{ from }}>
-                {artist.group_name}
-              </Link>
-            ) : (
-              '-'
+            key: 'overview',
+            label: 'Overview',
+            children: (
+              <Descriptions
+                bordered
+                column={1}
+                items={[
+                  { key: 'name', label: 'Name', children: artist.name },
+                  {
+                    key: 'group',
+                    label: 'Group',
+                    children: artist.group_id ? (
+                      <Link to={`/dictionary/groups/${artist.group_id}`} state={{ from }}>
+                        {artist.group_name}
+                      </Link>
+                    ) : (
+                      '-'
+                    ),
+                  },
+                  {
+                    key: 'songsCount',
+                    label: 'Songs count',
+                    children: artist.songs_count ?? songsPagination.total,
+                  },
+                  {
+                    key: 'videosCount',
+                    label: 'Videos count',
+                    children: artist.videos_count ?? videosPagination.total,
+                  },
+                  {
+                    key: 'aliasesCount',
+                    label: 'Aliases count',
+                    children: artist.aliases_count ?? '-',
+                  },
+                ]}
+              />
             ),
           },
+          {
+            key: 'songs',
+            label: 'Songs',
+            children: (
+              <List
+                dataSource={songs}
+                locale={{ emptyText: <Empty description="No songs found" /> }}
+                renderItem={(song) => (
+                  <List.Item>
+                    <Link to={`/dictionary/songs/${song.id}`} state={{ from }}>
+                      {song.title}
+                    </Link>
+                  </List.Item>
+                )}
+                pagination={{
+                  current: songsPagination.page,
+                  pageSize: songsPagination.limit,
+                  total: songsPagination.total,
+                  onChange: (nextPage) => updateParams({ songsPage: nextPage }),
+                }}
+              />
+            ),
+          },
+          {
+            key: 'videos',
+            label: 'Videos',
+            children: (
+              <Table
+                rowKey="id"
+                columns={columns}
+                dataSource={videos}
+                locale={{ emptyText: <Empty description="No videos found" /> }}
+                pagination={{
+                  current: videosPagination.page,
+                  pageSize: videosPagination.limit,
+                  total: videosPagination.total,
+                  onChange: (nextPage) => updateParams({ videosPage: nextPage }),
+                }}
+              />
+            ),
+          },
+          {
+            key: 'aliases',
+            label: 'Aliases',
+            children: <AliasesEditor entityType="artist" entityId={id} />,
+          },
         ]}
-      />
-      <AliasesEditor entityType="artist" entityId={id} />
-      <Table
-        rowKey="id"
-        style={{ marginTop: 16 }}
-        columns={columns}
-        dataSource={videos}
-        locale={{ emptyText: <Empty description="No videos found" /> }}
-        pagination={{
-          current: pagination.page,
-          pageSize: pagination.limit,
-          total: pagination.total,
-          onChange: (page) => void load(page),
-        }}
       />
     </Card>
   );

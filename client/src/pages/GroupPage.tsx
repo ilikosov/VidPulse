@@ -1,22 +1,50 @@
-import { Button, Card, Descriptions, Empty, Spin, Table, Tag, Typography } from 'antd';
+import { Button, Card, Descriptions, Empty, List, Spin, Table, Tabs, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Video } from '../api';
-import { dictionaryApi, type DictionaryGroup } from '../api/dictionary';
+import { dictionaryApi, type DictionaryGroup, type DictionarySong } from '../api/dictionary';
 import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
+
+const defaultVideosLimit = 20;
+const defaultSongsLimit = 10;
 
 export default function GroupPage() {
   const { id = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const backPath = getBackPath(location.state, '/dictionary/groups');
   const from = `${location.pathname}${location.search}`;
+
+  const tab = searchParams.get('tab') || 'overview';
+  const videosPage = Number(searchParams.get('videosPage') || '1');
+  const songsPage = Number(searchParams.get('songsPage') || '1');
+
   const [group, setGroup] = useState<DictionaryGroup | null>(null);
   const [loading, setLoading] = useState(true);
   const [videos, setVideos] = useState<Video[]>([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [songs, setSongs] = useState<DictionarySong[]>([]);
+  const [videosPagination, setVideosPagination] = useState({
+    page: 1,
+    limit: defaultVideosLimit,
+    total: 0,
+  });
+  const [songsPagination, setSongsPagination] = useState({
+    page: 1,
+    limit: defaultSongsLimit,
+    total: 0,
+  });
+
+  const updateParams = (next: Record<string, string | number | undefined>) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(next).forEach(([k, v]) => {
+      if (v === undefined || v === '') params.delete(k);
+      else params.set(k, String(v));
+    });
+    setSearchParams(params);
+  };
 
   const columns: ColumnsType<Video> = useMemo(
     () => [
@@ -73,72 +101,144 @@ export default function GroupPage() {
     [from],
   );
 
-  const load = async (page = 1) => {
-    setLoading(true);
-    try {
-      const [g, response] = await Promise.all([
-        dictionaryApi.getGroup(id),
-        dictionaryApi.getGroupVideos(id, page, pagination.limit),
-      ]);
-      setGroup(g);
-      setVideos(response.videos);
-      setPagination(response.pagination);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    void load(1);
-  }, [id]);
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [g, videosResponse, songsResponse] = await Promise.all([
+          dictionaryApi.getGroup(id),
+          dictionaryApi.getGroupVideos(id, videosPage, videosPagination.limit),
+          dictionaryApi.getGroupSongs(id, songsPage, songsPagination.limit),
+        ]);
+
+        setGroup(g);
+        setVideos(videosResponse.videos);
+        setVideosPagination(videosResponse.pagination);
+        setSongs(songsResponse.items);
+        setSongsPagination(songsResponse.pagination);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, [id, videosPage, songsPage]);
+
   if (loading) return <Spin />;
   if (!group) return <Empty description="Group not found" />;
 
   return (
-    <Card title={<Typography.Title level={3}>{group.name}</Typography.Title>}>
-      <Button
-        type="text"
-        onClick={() => navigate(backPath)}
-        style={{ paddingLeft: 0, marginBottom: 16 }}
-      >
-        ← Back
-      </Button>
-      <Descriptions
-        bordered
-        column={1}
+    <Card
+      title={<Typography.Title level={3}>Group: {group.name}</Typography.Title>}
+      extra={
+        <Button type="text" onClick={() => navigate(backPath)} style={{ paddingLeft: 0 }}>
+          ← Back
+        </Button>
+      }
+    >
+      <Tabs
+        activeKey={tab}
+        onChange={(nextTab) => updateParams({ tab: nextTab })}
         items={[
-          { key: 'type', label: 'Type', children: <Tag>{group.type}</Tag> },
+          {
+            key: 'overview',
+            label: 'Overview',
+            children: (
+              <Descriptions
+                bordered
+                column={1}
+                items={[
+                  { key: 'type', label: 'Type', children: <Tag>{group.type}</Tag> },
+                  { key: 'active', label: 'Active', children: group.active ? 'Yes' : 'No' },
+                  {
+                    key: 'artistsCount',
+                    label: 'Artists count',
+                    children: group.artist_count ?? group.artists?.length ?? 0,
+                  },
+                  {
+                    key: 'songsCount',
+                    label: 'Songs count',
+                    children: group.song_count ?? songsPagination.total ?? 0,
+                  },
+                  {
+                    key: 'videosCount',
+                    label: 'Videos count',
+                    children: group.video_count ?? videosPagination.total ?? 0,
+                  },
+                  {
+                    key: 'aliasesCount',
+                    label: 'Aliases count',
+                    children: group.aliases_count ?? '-',
+                  },
+                ]}
+              />
+            ),
+          },
           {
             key: 'artists',
             label: 'Artists',
-            children: group.artists?.length
-              ? group.artists.map((a) => (
-                  <Tag key={a.id}>
-                    <Link to={`/dictionary/artists/${a.id}`} state={{ from }}>
-                      {a.name}
+            children: group.artists?.length ? (
+              <List
+                dataSource={group.artists}
+                renderItem={(artist) => (
+                  <List.Item>
+                    <Link to={`/dictionary/artists/${artist.id}`} state={{ from }}>
+                      {artist.name}
                     </Link>
-                  </Tag>
-                ))
-              : 'No members listed',
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Empty description="No artists in this group" />
+            ),
+          },
+          {
+            key: 'songs',
+            label: 'Songs',
+            children: (
+              <List
+                dataSource={songs}
+                locale={{ emptyText: <Empty description="No songs found" /> }}
+                renderItem={(song) => (
+                  <List.Item>
+                    <Link to={`/dictionary/songs/${song.id}`} state={{ from }}>
+                      {song.title}
+                    </Link>
+                  </List.Item>
+                )}
+                pagination={{
+                  current: songsPagination.page,
+                  pageSize: songsPagination.limit,
+                  total: songsPagination.total,
+                  onChange: (nextPage) => updateParams({ songsPage: nextPage }),
+                }}
+              />
+            ),
+          },
+          {
+            key: 'videos',
+            label: 'Videos',
+            children: (
+              <Table
+                rowKey="id"
+                columns={columns}
+                dataSource={videos}
+                locale={{ emptyText: <Empty description="No videos found" /> }}
+                pagination={{
+                  current: videosPagination.page,
+                  pageSize: videosPagination.limit,
+                  total: videosPagination.total,
+                  onChange: (nextPage) => updateParams({ videosPage: nextPage }),
+                }}
+              />
+            ),
+          },
+          {
+            key: 'aliases',
+            label: 'Aliases',
+            children: <AliasesEditor entityType="group" entityId={id} />,
           },
         ]}
-      />
-      <AliasesEditor entityType="group" entityId={id} />
-      <Table
-        rowKey="id"
-        style={{ marginTop: 16 }}
-        columns={columns}
-        dataSource={videos}
-        locale={{ emptyText: <Empty description="No videos found" /> }}
-        pagination={{
-          current: pagination.page,
-          pageSize: pagination.limit,
-          total: pagination.total,
-          onChange: (page, pageSize) => {
-            setPagination((p) => ({ ...p, limit: pageSize || 20 }));
-            void load(page);
-          },
-        }}
       />
     </Card>
   );

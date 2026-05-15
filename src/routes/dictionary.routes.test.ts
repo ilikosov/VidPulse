@@ -22,6 +22,18 @@ vi.mock('../services/dictionary.service', () => ({
       videos: [{ id: 102, song_id: 20, song_title: 'S' }],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
     }),
+    getStats: vi.fn().mockResolvedValue({
+      groups: 1,
+      artists: 1,
+      songs: 1,
+      events: 1,
+      aliases: 1,
+      videosLinkedToGroups: 1,
+      videosLinkedToArtists: 1,
+      videosLinkedToSongs: 1,
+      videosLinkedToEvents: 1,
+      unmatched: { groups: 0, artists: 0, songs: 0, events: 0 },
+    }),
   },
 }));
 
@@ -77,4 +89,27 @@ describe('dictionary routes pagination contract', () => {
     expect(svc.getVideosByArtistId).toHaveBeenCalledWith(10, 1, 7);
     expect(svc.getVideosBySongId).toHaveBeenCalledWith(20, 3, 9);
   });
+});
+
+it('returns dictionary stats payload', async () => {
+  const app = express();
+  app.use('/api/dictionary', router);
+  const server = app.listen(0);
+  const { port } = server.address() as AddressInfo;
+
+  const res = await fetch(`http://127.0.0.1:${port}/api/dictionary/stats`);
+  const body = await res.json();
+  server.close();
+
+  expect(res.status).toBe(200);
+  expect(body).toMatchObject({
+    groups: 1,
+    artists: 1,
+    songs: 1,
+    events: 1,
+    aliases: 1,
+    unmatched: { groups: 0, artists: 0, songs: 0, events: 0 },
+  });
+  const svc = (await import('../services/dictionary.service')).dictionaryService as any;
+  expect(svc.getStats).toHaveBeenCalled();
 });
