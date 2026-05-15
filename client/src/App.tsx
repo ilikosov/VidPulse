@@ -9,15 +9,17 @@ import ChannelPage from './pages/ChannelPage';
 import PlaylistsPage from './pages/PlaylistsPage';
 import EventLogPage from './pages/EventLogPage';
 import SettingsPage from './pages/SettingsPage';
-import DictionaryManagement from './pages/DictionaryManagement';
+import DictionaryToolsPage from './pages/DictionaryToolsPage';
 import GroupPage from './pages/GroupPage';
 import ArtistPage from './pages/ArtistPage';
 import SongPage from './pages/SongPage';
 import GroupsListPage from './pages/GroupsListPage';
 import ArtistsListPage from './pages/ArtistsListPage';
 import SongsListPage from './pages/SongsListPage';
-import DictionaryPage from './pages/DictionaryPage';
+import MediaLibraryPage from './pages/MediaLibraryPage';
 import EventDictionaryPage from './pages/EventDictionaryPage';
+import EventPage from './pages/EventPage';
+import MediaLibraryOverviewPage from './pages/MediaLibraryOverviewPage';
 
 const { Header, Content } = Layout;
 
@@ -29,7 +31,7 @@ const menuItems = [
   { key: '/add-video', label: <Link to="/add-video">Add Video</Link> },
   { key: '/events', label: <Link to="/events">Activity Log</Link> },
   { key: '/settings', label: <Link to="/settings">Settings</Link> },
-  { key: '/dictionary', label: <Link to="/dictionary/groups">Dictionary</Link> },
+  { key: '/dictionary', label: <Link to="/dictionary/overview">Media Library</Link> },
 ];
 
 function RedirectEntityDetail({ entity }: { entity: 'groups' | 'artists' | 'songs' }) {
@@ -80,8 +82,9 @@ function App() {
           <Route path="/events" element={<EventLogPage />} />
           <Route path="/settings" element={<SettingsPage />} />
 
-          <Route path="/dictionary" element={<DictionaryPage />}>
-            <Route index element={<Navigate to="groups" replace />} />
+          <Route path="/dictionary" element={<MediaLibraryPage />}>
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<MediaLibraryOverviewPage />} />
             <Route path="groups" element={<GroupsListPage />} />
             <Route path="groups/:id" element={<GroupPage />} />
             <Route path="artists" element={<ArtistsListPage />} />
@@ -89,7 +92,8 @@ function App() {
             <Route path="songs" element={<SongsListPage />} />
             <Route path="songs/:id" element={<SongPage />} />
             <Route path="events" element={<EventDictionaryPage />} />
-            <Route path="tools" element={<DictionaryManagement />} />
+            <Route path="events/:id" element={<EventPage />} />
+            <Route path="tools" element={<DictionaryToolsPage />} />
           </Route>
 
           <Route path="/groups" element={<Navigate to="/dictionary/groups" replace />} />

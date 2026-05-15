@@ -7,7 +7,7 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 type TemplateEntity = 'groups' | 'artists' | 'songs' | 'events';
 type TemplateFormat = 'csv' | 'json';
-type AliasEntityType = 'group' | 'artist' | 'song';
+type AliasEntityType = 'group' | 'artist' | 'song' | 'event';
 const aliasEntityMap: Record<string, AliasEntityType> = {
   group: 'group',
   groups: 'group',
@@ -15,6 +15,8 @@ const aliasEntityMap: Record<string, AliasEntityType> = {
   artists: 'artist',
   song: 'song',
   songs: 'song',
+  event: 'event',
+  events: 'event',
 };
 
 const dictionaryTemplates: Record<TemplateEntity, Record<string, string>> = {
@@ -106,18 +108,48 @@ router.get('/songs/list', async (req, res) => {
   return res.json({ songs, pagination: buildPaginationMeta(page, limit, total) });
 });
 router.post('/songs', async (req, res) => {
-  const { title, artist } = req.body;
+  const { title, artist, artist_ids, group_ids } = req.body;
   if (!title || !artist) return res.status(400).json({ error: 'title and artist are required' });
-  await dictionaryService.createSong({ title, artist });
+  await dictionaryService.createSong({ title, artist, artist_ids, group_ids });
   res.status(201).json({ ok: true });
 });
 router.put('/songs/:id', async (req, res) => {
-  await dictionaryService.updateSong(Number(req.params.id), req.body);
+  const { title, artist, artist_ids, group_ids } = req.body;
+  await dictionaryService.updateSong(Number(req.params.id), {
+    title,
+    artist,
+    artist_ids,
+    group_ids,
+  });
   res.json({ ok: true });
 });
 router.delete('/songs/:id', async (req, res) => {
   await dictionaryService.deleteSong(Number(req.params.id));
   res.status(204).send();
+});
+
+router.get('/groups/:id/artists', async (req, res) => {
+  const groupId = Number(req.params.id);
+  const group = await dictionaryService.getGroupById(groupId);
+  if (!group) return res.status(404).json({ error: 'Group not found' });
+  const { page, limit, offset } = getPaginationParams(req, 20, 100);
+  const [artists, total] = await Promise.all([
+    dictionaryService.getGroupArtists(groupId, limit, offset),
+    dictionaryService.countGroupArtists(groupId),
+  ]);
+  return res.json({ artists, pagination: buildPaginationMeta(page, limit, total) });
+});
+
+router.get('/groups/:id/songs', async (req, res) => {
+  const groupId = Number(req.params.id);
+  const group = await dictionaryService.getGroupById(groupId);
+  if (!group) return res.status(404).json({ error: 'Group not found' });
+  const { page, limit, offset } = getPaginationParams(req, 20, 100);
+  const [songs, total] = await Promise.all([
+    dictionaryService.getGroupSongs(groupId, limit, offset),
+    dictionaryService.countGroupSongs(groupId),
+  ]);
+  return res.json({ songs, pagination: buildPaginationMeta(page, limit, total) });
 });
 
 router.get('/groups/:id', async (req, res) => {
@@ -138,6 +170,18 @@ router.get('/artists/:id', async (req, res) => {
   const artist = await dictionaryService.getArtistById(Number(req.params.id));
   if (!artist) return res.status(404).json({ error: 'Artist not found' });
   return res.json(artist);
+});
+
+router.get('/artists/:id/songs', async (req, res) => {
+  const artistId = Number(req.params.id);
+  const artist = await dictionaryService.getArtistById(artistId);
+  if (!artist) return res.status(404).json({ error: 'Artist not found' });
+  const { page, limit, offset } = getPaginationParams(req, 20, 100);
+  const [songs, total] = await Promise.all([
+    dictionaryService.getArtistSongs(artistId, limit, offset),
+    dictionaryService.countArtistSongs(artistId),
+  ]);
+  return res.json({ songs, pagination: buildPaginationMeta(page, limit, total) });
 });
 
 router.get('/artists/:id/videos', async (req, res) => {
@@ -193,6 +237,10 @@ router.delete('/:entityType/:entityId/aliases/:aliasId', async (req, res) => {
   return res.status(204).send();
 });
 
+router.get('/stats', async (_req, res) => {
+  return res.json(await dictionaryService.getStats());
+});
+
 router.get('/events/list', async (req, res) => {
   const { page, limit, offset } = getPaginationParams(req, 20, 100);
   const [events, total] = await Promise.all([
@@ -213,6 +261,22 @@ router.put('/events/:id', async (req, res) => {
 router.delete('/events/:id', async (req, res) => {
   await dictionaryService.deleteEvent(Number(req.params.id));
   res.status(204).send();
+});
+
+router.get('/events/:id', async (req, res) => {
+  const events = await dictionaryService.getEvents(undefined, 10000, 0);
+  const event = events.find((item: any) => item.id === Number(req.params.id));
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+  return res.json(event);
+});
+
+router.get('/events/:id/videos', async (req, res) => {
+  const events = await dictionaryService.getEvents(undefined, 10000, 0);
+  const event = events.find((item: any) => item.id === Number(req.params.id));
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  return res.json(await dictionaryService.getVideosByEventId(Number(req.params.id), page, limit));
 });
 
 router.get('/template/:entity/:format', (req, res) => {
