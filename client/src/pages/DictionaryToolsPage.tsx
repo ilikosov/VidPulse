@@ -22,6 +22,37 @@ type ImportSummary = {
   errors: string[];
 };
 
+const emptySummary = (): ImportSummary => ({
+  mode: 'merge',
+  groups: { inserted: 0, updated: 0, aliasesInserted: 0 },
+  artists: { inserted: 0, updated: 0, aliasesInserted: 0, membershipsInserted: 0 },
+  songs: {
+    inserted: 0,
+    updated: 0,
+    aliasesInserted: 0,
+    artistLinksInserted: 0,
+    groupLinksInserted: 0,
+  },
+  events: { inserted: 0, updated: 0, aliasesInserted: 0 },
+  errors: [],
+});
+
+const normalizeImportSummary = (value: unknown): ImportSummary | null => {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  if (!record.groups || !record.artists || !record.songs || !record.events) return null;
+
+  const defaults = emptySummary();
+  return {
+    mode: typeof record.mode === 'string' ? record.mode : defaults.mode,
+    groups: { ...defaults.groups, ...(record.groups as Partial<ImportSummary['groups']>) },
+    artists: { ...defaults.artists, ...(record.artists as Partial<ImportSummary['artists']>) },
+    songs: { ...defaults.songs, ...(record.songs as Partial<ImportSummary['songs']>) },
+    events: { ...defaults.events, ...(record.events as Partial<ImportSummary['events']>) },
+    errors: Array.isArray(record.errors) ? (record.errors as string[]) : [],
+  };
+};
+
 const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api';
 
 export default function DictionaryToolsPage() {
@@ -122,9 +153,57 @@ export default function DictionaryToolsPage() {
                 // backend validation handles malformed JSON
               }
 
-              const result = (await dictionaryApi.importFile(file as File)) as ImportSummary;
-              setSummary(result);
-              notification.success({ message: 'Media library import completed' });
+              const result = await dictionaryApi.importFile(file as File);
+              const normalized = normalizeImportSummary(result);
+
+              if (normalized !== null) {
+                setSummary(normalized);
+                notification.success({ message: 'Media library import completed' });
+              } else if (
+                result &&
+                typeof result === 'object' &&
+                'jobId' in result &&
+                typeof (result as { jobId?: unknown }).jobId === 'string'
+              ) {
+                const jobId = (result as { jobId: string }).jobId;
+                notification.success({ message: 'Media library import started' });
+
+                const pollImportProgress = async () => {
+                  try {
+                    const progress = await dictionaryApi.getImportProgress(jobId);
+                    if (!progress || typeof progress !== 'object') return;
+
+                    const status = (progress as { status?: unknown }).status;
+                    if (status === 'completed') {
+                      const progressSummary = normalizeImportSummary(
+                        (progress as { summary?: unknown }).summary,
+                      );
+                      if (progressSummary) {
+                        setSummary(progressSummary);
+                        notification.success({ message: 'Media library import completed' });
+                      } else {
+                        notification.warning({
+                          message: 'Import response did not include summary',
+                        });
+                      }
+                      return;
+                    }
+
+                    if (status === 'failed') {
+                      notification.error({ message: 'Media library import failed' });
+                      return;
+                    }
+
+                    window.setTimeout(pollImportProgress, 1500);
+                  } catch {
+                    notification.error({ message: 'Failed to fetch import progress' });
+                  }
+                };
+
+                window.setTimeout(pollImportProgress, 1500);
+              } else {
+                notification.warning({ message: 'Import response did not include summary' });
+              }
               setImportModalOpen(false);
             } catch (error: any) {
               notification.error({ message: error.message || 'Import failed' });

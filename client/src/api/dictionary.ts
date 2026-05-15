@@ -53,6 +53,8 @@ export interface DictionaryAlias {
   alias: string;
 }
 
+export type ImportStartResponse = { jobId: string };
+
 interface ListParams {
   page?: number;
   limit?: number;
@@ -176,7 +178,7 @@ export const dictionaryApi = {
   importMediaLibraryFile: (
     file: File,
     onUploadProgress?: (percent: number) => void,
-  ): Promise<{ jobId: string }> =>
+  ): Promise<ImportStartResponse> =>
     new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const fd = new FormData();
@@ -194,10 +196,11 @@ export const dictionaryApi = {
       xhr.onerror = () => reject(new Error('Network error'));
       xhr.send(fd);
     }),
-  getImportProgress: (jobId: string) => req(`/dictionary/import/${jobId}/progress`),
+  getImportProgress: (jobId: string) => req<unknown>(`/dictionary/import/${jobId}/progress`),
   getImportResult: (jobId: string) => req(`/dictionary/import/${jobId}/result`),
 
-  importFile: (file: File) => dictionaryApi.importMediaLibraryFile(file),
+  importFile: (file: File): Promise<ImportStartResponse | unknown> =>
+    dictionaryApi.importMediaLibraryFile(file),
   clearMediaLibrary: () => req('/dictionary/clear', { method: 'DELETE' }),
   getGroup: (id: number | string) => req<DictionaryGroup>(`/dictionary/groups/${id}`),
   getGroupVideos: (id: number | string, page = 1, limit = 20) =>
