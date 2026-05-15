@@ -26,5 +26,7 @@ export async function parseVideoMetadata(
   if (metadata.camera_type !== undefined) updateData.camera_type = metadata.camera_type || null;
   updateData.is_fancam = metadata.is_fancam ?? null;
   updateData.fancam_confidence = metadata.fancam_confidence ?? null;
+  updateData.is_own_group_song = metadata.is_own_group_song ?? null;
+  updateData.is_own_artist_song = metadata.is_own_artist_song ?? null;
   return { metadata: updateData, status: needsReview || forceReview ? 'needs_review' : 'new' };
 }

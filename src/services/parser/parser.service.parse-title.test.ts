@@ -14,6 +14,8 @@ type ParseCase = {
     is_fancam: boolean;
     needsReview: boolean;
     camera_type: string;
+    is_own_group_song: boolean;
+    is_own_artist_song: boolean;
   }>;
   expectedArtistVariants?: string[];
 };
@@ -34,6 +36,48 @@ describe('ParserService.parseTitle table-driven examples', () => {
         event: '@AESPA LIVE TOUR -SYNK : AEXIS LINE- IN SEOUL',
         is_fancam: true,
         needsReview: false,
+        is_own_group_song: true,
+        is_own_artist_song: false,
+      },
+    },
+    {
+      title: '250829 에스파 카리나 UP @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM)',
+      expected: {
+        perf_date: '250829',
+        group_name: 'AESPA',
+        artist_name: 'KARINA',
+        song_title: 'UP',
+        is_fancam: true,
+        is_own_group_song: false,
+        is_own_artist_song: true,
+      },
+    },
+    {
+      title: '250829 에스파 카리나 Solo Group Song @ aespa LIVE TOUR (4K FANCAM)',
+      expected: {
+        group_name: 'AESPA',
+        artist_name: 'KARINA',
+        song_title: 'Solo Group Song',
+        is_fancam: true,
+        is_own_group_song: true,
+        is_own_artist_song: true,
+      },
+    },
+    {
+      title: '250829 에스파 카리나 UNKNOWN SONG @ aespa LIVE TOUR (4K FANCAM)',
+      expected: {
+        group_name: 'AESPA',
+        artist_name: 'KARINA',
+        is_fancam: true,
+      },
+    },
+    {
+      title: '250829 에스파 GOOD STUFF @ aespa LIVE TOUR (4K FANCAM)',
+      expected: {
+        group_name: 'AESPA',
+        song_title: 'GOOD STUFF',
+        is_fancam: true,
+        is_own_group_song: true,
       },
     },
     {
@@ -46,6 +90,7 @@ describe('ParserService.parseTitle table-driven examples', () => {
         event: '@INKIGAYO',
         is_fancam: true,
         needsReview: false,
+        is_own_group_song: true,
       },
     },
     {
@@ -88,9 +133,22 @@ describe('ParserService.parseTitle table-driven examples', () => {
     if (expected.is_fancam !== undefined)
       expect(result.metadata.is_fancam).toBe(expected.is_fancam);
     if (expected.needsReview !== undefined) expect(result.needsReview).toBe(expected.needsReview);
+    if (expected.is_own_group_song !== undefined)
+      expect(result.metadata.is_own_group_song).toBe(expected.is_own_group_song);
+    if (expected.is_own_artist_song !== undefined)
+      expect(result.metadata.is_own_artist_song).toBe(expected.is_own_artist_song);
 
     if (expectedArtistVariants) {
       expect(expectedArtistVariants).toContain(result.metadata.artist_name);
+    }
+
+    if (title.includes('UNKNOWN SONG')) {
+      expect(result.metadata.is_own_group_song).toBeUndefined();
+      expect(result.metadata.is_own_artist_song).toBeUndefined();
+    }
+
+    if (title === '250829 에스파 GOOD STUFF @ aespa LIVE TOUR (4K FANCAM)') {
+      expect(result.metadata.is_own_artist_song).toBeUndefined();
     }
   });
 });
@@ -193,6 +251,7 @@ describe('parseTitle real-world examples', () => {
         song_title: 'Runaway',
         event: '@KYUNGIL UNIVERSITY FESTIVAL',
         is_fancam: true,
+        is_own_group_song: false,
       } as any,
     },
     {
@@ -203,6 +262,17 @@ describe('parseTitle real-world examples', () => {
         artist_name: 'KARINA',
         song_title: 'Dark Arts',
         event: '@PUBG NATIONS CUP 2025 - FINAL STAGE',
+        is_fancam: true,
+        is_own_group_song: false,
+      } as any,
+    },
+    {
+      title:
+        '250727 에스파 카리나 Unknown Song Title @ PUBG NATIONS CUP 2025 - FINAL STAGE (4K FANCAM)',
+      expected: {
+        perf_date: '250727',
+        group_name: 'AESPA',
+        artist_name: 'KARINA',
         is_fancam: true,
       } as any,
     },

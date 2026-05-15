@@ -60,6 +60,8 @@ router.post('/llm-parse/:id', async (req: Request, res: Response) => {
         camera_type: metadata.camera_type || null,
         is_fancam: metadata.is_fancam ?? null,
         fancam_confidence: metadata.fancam_confidence ?? null,
+        is_own_group_song: metadata.is_own_group_song ?? null,
+        is_own_artist_song: metadata.is_own_artist_song ?? null,
         updated_at: new Date().toISOString(),
       });
 
@@ -103,6 +105,8 @@ router.post('/llm-parse-batch', async (req: Request, res: Response) => {
             camera_type: metadata.camera_type || null,
             is_fancam: metadata.is_fancam ?? null,
             fancam_confidence: metadata.fancam_confidence ?? null,
+            is_own_group_song: metadata.is_own_group_song ?? null,
+            is_own_artist_song: metadata.is_own_artist_song ?? null,
             updated_at: new Date().toISOString(),
           });
         updated += 1;
@@ -160,6 +164,8 @@ router.post('/reparse-all', async (req: Request, res: Response) => {
           camera_type: metadata.camera_type || null,
           is_fancam: metadata.is_fancam ?? null,
           fancam_confidence: metadata.fancam_confidence ?? null,
+          is_own_group_song: metadata.is_own_group_song ?? null,
+          is_own_artist_song: metadata.is_own_artist_song ?? null,
           status: needsReview || forceReview ? 'needs_review' : video.status,
         };
 
@@ -247,6 +253,8 @@ router.post('/reparse/:id', async (req: Request, res: Response) => {
       camera_type: metadata.camera_type || null,
       is_fancam: metadata.is_fancam ?? null,
       fancam_confidence: metadata.fancam_confidence ?? null,
+      is_own_group_song: metadata.is_own_group_song ?? null,
+      is_own_artist_song: metadata.is_own_artist_song ?? null,
       status: nextStatus,
     };
 
@@ -319,6 +327,8 @@ router.post('/reparse-batch', async (req: Request, res: Response) => {
           camera_type: metadata.camera_type || null,
           is_fancam: metadata.is_fancam ?? null,
           fancam_confidence: metadata.fancam_confidence ?? null,
+          is_own_group_song: metadata.is_own_group_song ?? null,
+          is_own_artist_song: metadata.is_own_artist_song ?? null,
           status: nextStatus,
         };
 

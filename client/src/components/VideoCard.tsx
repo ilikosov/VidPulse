@@ -573,6 +573,20 @@ function VideoCard() {
                   <Descriptions.Item label="Camera Type">
                     {video.camera_type || '-'}
                   </Descriptions.Item>
+                  <Descriptions.Item label="Own group song">
+                    {video.is_own_group_song === undefined || video.is_own_group_song === null
+                      ? 'Unknown'
+                      : video.is_own_group_song
+                        ? 'Yes'
+                        : 'No'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Own artist song">
+                    {video.is_own_artist_song === undefined || video.is_own_artist_song === null
+                      ? 'Unknown'
+                      : video.is_own_artist_song
+                        ? 'Yes'
+                        : 'No'}
+                  </Descriptions.Item>
                 </Descriptions>
               )}
             </div>

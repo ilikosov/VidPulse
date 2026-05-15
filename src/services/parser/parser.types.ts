@@ -11,6 +11,10 @@ export interface ParsedMetadata {
   is_fancam?: boolean;
   fancam_confidence?: number;
   confidence?: number; // 0-1 confidence score
+  // Whether the parsed song is linked to the parsed group in the media library.
+  is_own_group_song?: boolean;
+  // Whether the parsed song is linked to the parsed artist in the media library.
+  is_own_artist_song?: boolean;
 }
 
 /**
