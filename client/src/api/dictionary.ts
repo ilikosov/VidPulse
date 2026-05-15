@@ -215,6 +215,11 @@ export const dictionaryApi = {
       '/videos/batch/tag-shorts-by-duration',
       { method: 'POST' },
     ),
+  tagLongVideosByDuration: () =>
+    req<{ checked: number; eligible: number; tagged: number; alreadyTagged: number }>(
+      '/videos/batch/tag-long-videos-by-duration',
+      { method: 'POST' },
+    ),
   getGroup: (id: number | string) => req<DictionaryGroup>(`/dictionary/groups/${id}`),
   getGroupVideos: (id: number | string, page = 1, limit = 20) =>
     req<VideosResponse>(`/dictionary/groups/${id}/videos?page=${page}&limit=${limit}`),

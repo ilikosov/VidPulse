@@ -67,8 +67,11 @@ export default function DictionaryToolsPage() {
   const [tagShortsConfirmValue, setTagShortsConfirmValue] = useState('');
   const [taggingShorts, setTaggingShorts] = useState(false);
   const [mergeShortModalOpen, setMergeShortModalOpen] = useState(false);
+  const [tagLongVideosModalOpen, setTagLongVideosModalOpen] = useState(false);
   const [mergeShortConfirmValue, setMergeShortConfirmValue] = useState('');
+  const [tagLongVideosConfirmValue, setTagLongVideosConfirmValue] = useState('');
   const [mergingShortTags, setMergingShortTags] = useState(false);
+  const [taggingLongVideos, setTaggingLongVideos] = useState(false);
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -134,6 +137,9 @@ export default function DictionaryToolsPage() {
               </Button>
               <Button danger onClick={() => setTagShortsModalOpen(true)}>
                 Check durations and tag Shorts
+              </Button>
+              <Button danger onClick={() => setTagLongVideosModalOpen(true)}>
+                Check durations and tag Long Videos
               </Button>
               <Button danger onClick={() => setMergeShortModalOpen(true)}>
                 Merge short → shorts tags
@@ -301,6 +307,52 @@ export default function DictionaryToolsPage() {
             value={tagShortsConfirmValue}
             onChange={(e) => setTagShortsConfirmValue(e.target.value)}
             disabled={taggingShorts}
+          />
+        </Space>
+      </Modal>
+
+      <Modal
+        open={tagLongVideosModalOpen}
+        onCancel={() => {
+          if (taggingLongVideos) return;
+          setTagLongVideosModalOpen(false);
+          setTagLongVideosConfirmValue('');
+        }}
+        onOk={async () => {
+          setTaggingLongVideos(true);
+          try {
+            const { checked, eligible, tagged, alreadyTagged } =
+              await dictionaryApi.tagLongVideosByDuration();
+            notification.success({
+              message: 'Long video tagging completed',
+              description: `Checked: ${checked}, eligible: ${eligible}, tagged: ${tagged}, already tagged: ${alreadyTagged}`,
+            });
+            setTagLongVideosModalOpen(false);
+            setTagLongVideosConfirmValue('');
+          } catch (error: any) {
+            notification.error({ message: error.message || 'Long video tagging failed' });
+          } finally {
+            setTaggingLongVideos(false);
+          }
+        }}
+        okButtonProps={{
+          danger: true,
+          disabled: tagLongVideosConfirmValue !== 'LONG',
+          loading: taggingLongVideos,
+        }}
+        okText="Tag Long Videos"
+        title="Check all videos and tag Long Videos?"
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Typography.Text>
+            This will scan all videos with known duration and add the 'длинное видео' tag to videos
+            longer than 20 minutes. Videos will not be deleted or modified otherwise.
+          </Typography.Text>
+          <Typography.Text>Type LONG to confirm:</Typography.Text>
+          <Input
+            value={tagLongVideosConfirmValue}
+            onChange={(e) => setTagLongVideosConfirmValue(e.target.value)}
+            disabled={taggingLongVideos}
           />
         </Space>
       </Modal>
