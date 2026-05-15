@@ -104,6 +104,8 @@ router.post('/', async (req: Request, res: Response) => {
           updateData.event = resolved.event;
           if (metadata.camera_type !== undefined)
             updateData.camera_type = metadata.camera_type || null;
+          updateData.is_own_group_song = metadata.is_own_group_song ?? null;
+          updateData.is_own_artist_song = metadata.is_own_artist_song ?? null;
 
           await trx('videos').insert({
             youtube_id: video.videoId,

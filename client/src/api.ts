@@ -17,6 +17,8 @@ export interface Video {
   song_title: string | null;
   event: string | null;
   camera_type: string | null;
+  is_own_group_song?: boolean | null;
+  is_own_artist_song?: boolean | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -35,6 +37,8 @@ export interface SuggestedMetadata {
   event?: string;
   perf_date?: string;
   camera_type?: string;
+  is_own_group_song?: boolean | null;
+  is_own_artist_song?: boolean | null;
 }
 
 export interface VideoTag {

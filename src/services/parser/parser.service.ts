@@ -21,6 +21,8 @@ function calculateMetadataConfidence(metadata: Partial<ParsedMetadata>): number 
   if (metadata.camera_type) score += 0.08;
   if (metadata.is_fancam !== undefined) score += 0.12;
   if ((metadata.fancam_confidence ?? 0) >= 0.8) score += 0.1;
+  if (metadata.is_own_group_song !== undefined) score += 0.02;
+  if (metadata.is_own_artist_song !== undefined) score += 0.02;
 
   return Number(Math.min(1, score).toFixed(2));
 }
@@ -107,6 +109,26 @@ export class ParserService {
         currentMetadata.event ||
         (await this.dictionaryModule.searchInTags(tags, 'event')) ||
         currentMetadata.event;
+    }
+
+    if (this.dictionaryModule) {
+      const isOwnGroupSong = await this.dictionaryModule.isOwnGroupSong?.(
+        currentMetadata.group_name,
+        currentMetadata.song_title,
+      );
+
+      if (isOwnGroupSong !== undefined) {
+        currentMetadata.is_own_group_song = isOwnGroupSong;
+      }
+
+      const isOwnArtistSong = await this.dictionaryModule.isOwnArtistSong(
+        currentMetadata.artist_name,
+        currentMetadata.song_title,
+      );
+
+      if (isOwnArtistSong !== undefined) {
+        currentMetadata.is_own_artist_song = isOwnArtistSong;
+      }
     }
 
     const confidence = calculateMetadataConfidence(currentMetadata);

@@ -307,6 +307,8 @@ router.post('/:id/load-more', async (req: Request, res: Response) => {
             song_title: resolved.song_title,
             event: resolved.event,
             camera_type: metadata.camera_type || null,
+            is_own_group_song: metadata.is_own_group_song ?? null,
+            is_own_artist_song: metadata.is_own_artist_song ?? null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })

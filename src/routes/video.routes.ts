@@ -632,6 +632,8 @@ router.post('/add', async (req: Request, res: Response) => {
     if (metadata.camera_type !== undefined) insertData.camera_type = metadata.camera_type || null;
     insertData.is_fancam = metadata.is_fancam ?? null;
     insertData.fancam_confidence = metadata.fancam_confidence ?? null;
+    insertData.is_own_group_song = metadata.is_own_group_song ?? null;
+    insertData.is_own_artist_song = metadata.is_own_artist_song ?? null;
 
     const [createdVideo] = await knex('videos').insert(insertData).returning('*');
     await assignAutoTags(createdVideo.id, details.durationSeconds, details.privacyStatus);
@@ -818,6 +820,8 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
         camera_type: metadata.camera_type || null,
         is_fancam: metadata.is_fancam ?? null,
         fancam_confidence: metadata.fancam_confidence ?? null,
+        is_own_group_song: metadata.is_own_group_song ?? null,
+        is_own_artist_song: metadata.is_own_artist_song ?? null,
         status: needsReview || forceReview ? 'needs_review' : 'new',
         updated_at: new Date().toISOString(),
       };
@@ -1143,6 +1147,8 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
 
     updateData.is_fancam = metadata.is_fancam ?? null;
     updateData.fancam_confidence = metadata.fancam_confidence ?? null;
+    updateData.is_own_group_song = metadata.is_own_group_song ?? null;
+    updateData.is_own_artist_song = metadata.is_own_artist_song ?? null;
 
     // Set status based on parsing result
     const newStatus = needsReview || forceReview ? 'needs_review' : 'new';

@@ -1,3 +1,4 @@
+import knex from '../../db';
 import { dictionaryService } from '../dictionary.service';
 import { ParsedMetadata, ParserModule } from './parser.types';
 
@@ -336,6 +337,137 @@ export class DictionaryModule implements ParserModule {
     }
 
     return null;
+  }
+
+  public async isOwnGroupSong(
+    groupName?: string,
+    songTitle?: string,
+  ): Promise<boolean | undefined> {
+    if (!groupName?.trim() || !songTitle?.trim()) {
+      return undefined;
+    }
+
+    const group = await this.resolveGroupByNameOrAlias(groupName);
+    const song = await this.resolveSongByTitleOrAlias(songTitle);
+
+    if (!group || !song) {
+      return undefined;
+    }
+
+    const link = await knex('dictionary_song_groups')
+      .where({ group_id: group.id, song_id: song.id })
+      .first();
+
+    return Boolean(link);
+  }
+
+  public async isOwnArtistSong(
+    artistName?: string,
+    songTitle?: string,
+  ): Promise<boolean | undefined> {
+    if (!artistName?.trim() || !songTitle?.trim()) {
+      return undefined;
+    }
+
+    const artist = await this.resolveArtistByNameOrAlias(artistName);
+    const song = await this.resolveSongByTitleOrAlias(songTitle);
+
+    if (!artist || !song) {
+      return undefined;
+    }
+
+    const link = await knex('dictionary_song_artists')
+      .where({ artist_id: artist.id, song_id: song.id })
+      .first();
+
+    return Boolean(link);
+  }
+
+  private async resolveArtistByNameOrAlias(
+    name: string,
+  ): Promise<{ id: number; name: string } | null> {
+    const normalized = this.normalizeLookup(name);
+
+    const artist = await knex('dictionary_artists')
+      .whereRaw('LOWER(name) = ?', [normalized])
+      .first('id', 'name');
+
+    if (artist) {
+      return artist as { id: number; name: string };
+    }
+
+    const alias = await knex('dictionary_aliases')
+      .where({ entity_type: 'artist' })
+      .andWhereRaw('LOWER(alias) = ?', [normalized])
+      .first('entity_id');
+
+    if (!alias) {
+      return null;
+    }
+
+    const artistByAlias = await knex('dictionary_artists')
+      .where({ id: alias.entity_id })
+      .first('id', 'name');
+
+    return (artistByAlias as { id: number; name: string }) ?? null;
+  }
+
+  private async resolveGroupByNameOrAlias(
+    name: string,
+  ): Promise<{ id: number; name: string } | null> {
+    const normalized = this.normalizeLookup(name);
+
+    const group = await knex('dictionary_groups')
+      .whereRaw('LOWER(name) = ?', [normalized])
+      .first('id', 'name');
+
+    if (group) {
+      return group as { id: number; name: string };
+    }
+
+    const alias = await knex('dictionary_aliases')
+      .where({ entity_type: 'group' })
+      .andWhereRaw('LOWER(alias) = ?', [normalized])
+      .first('entity_id');
+
+    if (!alias) {
+      return null;
+    }
+
+    const groupByAlias = await knex('dictionary_groups')
+      .where({ id: alias.entity_id })
+      .first('id', 'name');
+
+    return (groupByAlias as { id: number; name: string }) ?? null;
+  }
+
+  private async resolveSongByTitleOrAlias(
+    title: string,
+  ): Promise<{ id: number; title: string } | null> {
+    const normalized = this.normalizeLookup(title);
+
+    const song = await knex('dictionary_songs')
+      .whereRaw('LOWER(title) = ?', [normalized])
+      .first('id', 'title');
+
+    if (song) {
+      return song as { id: number; title: string };
+    }
+
+    const alias = await knex('dictionary_aliases')
+      .where({ entity_type: 'song' })
+      .andWhereRaw('LOWER(alias) = ?', [normalized])
+      .first('entity_id');
+
+    if (!alias) {
+      return null;
+    }
+
+    const songByAlias = await knex('dictionary_songs')
+      .where({ id: alias.entity_id })
+      .first('id', 'title');
+
+    return (songByAlias as { id: number; title: string }) ?? null;
   }
 
   private findBestMatch(
