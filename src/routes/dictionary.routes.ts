@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { dictionaryService } from '../services/dictionary.service';
+import { mediaLibraryImportJobsService } from '../services/mediaLibraryImportJobs.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
 import { validateMediaLibraryPayload } from '../services/mediaLibrarySchema.service';
 import {
@@ -303,9 +304,8 @@ router.delete('/clear', requireDangerousActionsEnabled, async (_req, res) => {
 router.post('/import', upload.single('file'), async (req: Request, res: Response) => {
   if (!req.file) return res.status(400).json({ error: 'file is required' });
   const name = req.file.originalname.toLowerCase();
-  if (!name.endsWith('.json')) {
+  if (!name.endsWith('.json'))
     return res.status(400).json({ error: 'Only media library JSON files are supported' });
-  }
 
   let payload: unknown;
   try {
@@ -313,32 +313,98 @@ router.post('/import', upload.single('file'), async (req: Request, res: Response
   } catch {
     return res.status(400).json({ error: 'Invalid media library JSON', details: ['Invalid JSON'] });
   }
-
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    return res.status(400).json({
-      error: 'Invalid media library JSON',
-      details: ['Payload must be an object'],
-    });
-  }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload))
+    return res
+      .status(400)
+      .json({ error: 'Invalid media library JSON', details: ['Payload must be an object'] });
 
   const validationResult = validateMediaLibraryPayload(payload);
-  if (!validationResult.valid) {
+  if (!validationResult.valid)
     return res
       .status(400)
       .json({ error: 'Invalid media library JSON', details: validationResult.errors });
-  }
 
   const mode = (payload as Record<string, unknown>).mode;
-  if (mode === 'replace') {
-    if (!dangerousActionsEnabled()) {
-      return res.status(403).json({ error: 'Dangerous media library actions are disabled' });
-    }
-    await dictionaryService.clearMediaLibrary();
-    (payload as Record<string, unknown>).mode = 'merge';
-  }
+  if (mode === 'replace' && !dangerousActionsEnabled())
+    return res.status(403).json({ error: 'Dangerous media library actions are disabled' });
 
-  const summary = await dictionaryService.importMediaLibrary(payload);
-  return res.json(summary);
+  const groups = Array.isArray((payload as any).groups) ? (payload as any).groups : [];
+  const soloArtists = Array.isArray((payload as any).soloArtists)
+    ? (payload as any).soloArtists
+    : [];
+  const events = Array.isArray((payload as any).events) ? (payload as any).events : [];
+  const total =
+    groups.length +
+    groups.reduce(
+      (acc: number, g: any) => acc + (Array.isArray(g.artists) ? g.artists.length : 0),
+      0,
+    ) +
+    groups.reduce(
+      (acc: number, g: any) =>
+        acc +
+        (Array.isArray(g.artists)
+          ? g.artists.reduce(
+              (a: number, ar: any) => a + (Array.isArray(ar.songs) ? ar.songs.length : 0),
+              0,
+            )
+          : 0),
+      0,
+    ) +
+    groups.reduce((acc: number, g: any) => acc + (Array.isArray(g.songs) ? g.songs.length : 0), 0) +
+    soloArtists.length +
+    soloArtists.reduce(
+      (acc: number, a: any) => acc + (Array.isArray(a.songs) ? a.songs.length : 0),
+      0,
+    ) +
+    events.length;
+
+  const job = mediaLibraryImportJobsService.createJob(total);
+  mediaLibraryImportJobsService.updateJob(job.jobId, {
+    status: 'running',
+    phase: 'validating',
+    message: 'Validating JSON',
+  });
+
+  void (async () => {
+    try {
+      if (mode === 'replace') {
+        mediaLibraryImportJobsService.updateJob(job.jobId, {
+          phase: 'clearing',
+          message: 'Clearing existing dictionary data',
+        });
+        await dictionaryService.clearMediaLibrary();
+      }
+      const summary = await dictionaryService.importMediaLibrary(payload, {
+        onProgress: (progress) =>
+          mediaLibraryImportJobsService.updateJob(job.jobId, {
+            status: 'running',
+            phase: progress.phase,
+            processed: progress.processed,
+            total: progress.total,
+            message: progress.message,
+          }),
+      });
+      mediaLibraryImportJobsService.completeJob(job.jobId, summary);
+    } catch (error: any) {
+      mediaLibraryImportJobsService.failJob(job.jobId, error?.message || 'Unknown import error');
+    }
+  })();
+
+  return res.status(202).json({ jobId: job.jobId });
+});
+
+router.get('/import/:jobId/progress', (req, res) => {
+  const job = mediaLibraryImportJobsService.getJob(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Import job not found' });
+  return res.json(job);
+});
+
+router.get('/import/:jobId/result', (req, res) => {
+  const job = mediaLibraryImportJobsService.getJob(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Import job not found' });
+  if (job.status === 'completed') return res.json(job.summary);
+  if (job.status === 'failed') return res.status(500).json({ error: job.error || 'Import failed' });
+  return res.status(202).json({ status: job.status, percent: job.percent, message: job.message });
 });
 
 export default router;
