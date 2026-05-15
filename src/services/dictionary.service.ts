@@ -196,18 +196,21 @@ export class DictionaryService {
     return query;
   }
 
-  async addOrUpdateArtistMembership(payload: {
-    artist_id: number;
-    group_id: number | null;
-    activity_type: MembershipActivityType;
-    status: MembershipStatus;
-    started_at?: string | null;
-    ended_at?: string | null;
-    is_primary?: boolean;
-  }) {
+  async addOrUpdateArtistMembership(
+    payload: {
+      artist_id: number;
+      group_id: number | null;
+      activity_type: MembershipActivityType;
+      status: MembershipStatus;
+      started_at?: string | null;
+      ended_at?: string | null;
+      is_primary?: boolean;
+    },
+    db: typeof knex = knex,
+  ) {
     const startedAt = payload.started_at ?? null;
 
-    const query = knex('dictionary_artist_memberships')
+    const query = db('dictionary_artist_memberships')
       .where({
         artist_id: payload.artist_id,
         activity_type: payload.activity_type,
@@ -227,21 +230,21 @@ export class DictionaryService {
 
     const existing = await query.first();
     if (existing) {
-      await knex('dictionary_artist_memberships')
+      await db('dictionary_artist_memberships')
         .where({ id: existing.id })
         .update({
           ended_at: payload.ended_at ?? existing.ended_at,
           is_primary: payload.is_primary ?? existing.is_primary,
-          updated_at: knex.fn.now(),
+          updated_at: db.fn.now(),
         });
       return existing.id as number;
     }
 
-    const [id] = await knex('dictionary_artist_memberships').insert({
+    const [id] = await db('dictionary_artist_memberships').insert({
       ...payload,
       started_at: startedAt,
-      created_at: knex.fn.now(),
-      updated_at: knex.fn.now(),
+      created_at: db.fn.now(),
+      updated_at: db.fn.now(),
     });
     return Number(id);
   }
@@ -1207,15 +1210,18 @@ export class DictionaryService {
           } else {
             summary.artists.updated += 1;
           }
-          await this.addOrUpdateArtistMembership({
-            artist_id: artist.id,
-            group_id: group.id,
-            activity_type: 'group',
-            status: (artistPayload.membership?.status || 'active') as MembershipStatus,
-            started_at: artistPayload.membership?.from ?? null,
-            ended_at: artistPayload.membership?.to ?? null,
-            is_primary: artistPayload.membership?.isPrimary ?? false,
-          });
+          await this.addOrUpdateArtistMembership(
+            {
+              artist_id: artist.id,
+              group_id: group.id,
+              activity_type: 'group',
+              status: (artistPayload.membership?.status || 'active') as MembershipStatus,
+              started_at: artistPayload.membership?.from ?? null,
+              ended_at: artistPayload.membership?.to ?? null,
+              is_primary: artistPayload.membership?.isPrimary ?? false,
+            },
+            trx as unknown as DbClient,
+          );
           summary.artists.membershipsInserted += 1;
 
           for (const songPayload of Array.isArray(artistPayload.songs) ? artistPayload.songs : []) {
@@ -1249,15 +1255,18 @@ export class DictionaryService {
           artist = await trx('dictionary_artists').where({ id: artistId }).first();
           summary.artists.inserted += 1;
         } else summary.artists.updated += 1;
-        await this.addOrUpdateArtistMembership({
-          artist_id: artist.id,
-          group_id: null,
-          activity_type: 'solo',
-          status: (soloPayload.membership?.status || 'active') as MembershipStatus,
-          started_at: soloPayload.membership?.from ?? null,
-          ended_at: soloPayload.membership?.to ?? null,
-          is_primary: soloPayload.membership?.isPrimary ?? true,
-        });
+        await this.addOrUpdateArtistMembership(
+          {
+            artist_id: artist.id,
+            group_id: null,
+            activity_type: 'solo',
+            status: (soloPayload.membership?.status || 'active') as MembershipStatus,
+            started_at: soloPayload.membership?.from ?? null,
+            ended_at: soloPayload.membership?.to ?? null,
+            is_primary: soloPayload.membership?.isPrimary ?? true,
+          },
+          trx as unknown as DbClient,
+        );
         summary.artists.membershipsInserted += 1;
       }
 
