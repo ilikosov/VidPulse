@@ -29,9 +29,9 @@ const menuItems = [
   { key: '/channels', label: <Link to="/channels">Channels</Link> },
   { key: '/playlists', label: <Link to="/playlists">Playlists</Link> },
   { key: '/add-video', label: <Link to="/add-video">Add Video</Link> },
+  { key: '/dictionary', label: <Link to="/dictionary/overview">Media Library</Link> },
   { key: '/events', label: <Link to="/events">Activity Log</Link> },
   { key: '/settings', label: <Link to="/settings">Settings</Link> },
-  { key: '/dictionary', label: <Link to="/dictionary/overview">Media Library</Link> },
 ];
 
 function RedirectEntityDetail({ entity }: { entity: 'groups' | 'artists' | 'songs' }) {
@@ -79,8 +79,6 @@ function App() {
           <Route path="/channels/:id" element={<ChannelPage />} />
           <Route path="/playlists" element={<PlaylistsPage />} />
           <Route path="/add-video" element={<AddVideoPage />} />
-          <Route path="/events" element={<EventLogPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
 
           <Route path="/dictionary" element={<MediaLibraryPage />}>
             <Route index element={<Navigate to="overview" replace />} />
@@ -95,6 +93,9 @@ function App() {
             <Route path="events/:id" element={<EventPage />} />
             <Route path="tools" element={<DictionaryToolsPage />} />
           </Route>
+
+          <Route path="/events" element={<EventLogPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
 
           <Route path="/groups" element={<Navigate to="/dictionary/groups" replace />} />
           <Route path="/groups/:id" element={<RedirectEntityDetail entity="groups" />} />
