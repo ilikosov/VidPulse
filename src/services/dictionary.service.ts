@@ -86,7 +86,40 @@ function toTypes(raw?: string): DictionaryGroupType[] {
 
 export class DictionaryService {
   private normalizeName(value: string) {
-    return value.trim().toLowerCase();
+    return value.normalize('NFKC').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  private async addAliasesIfMissing(
+    db: DbClient,
+    entityType: AliasEntityType,
+    entityId: number,
+    aliases: unknown,
+    canonicalName: string,
+  ): Promise<number> {
+    if (!Array.isArray(aliases)) return 0;
+
+    let inserted = 0;
+    const normalizedCanonical = this.normalizeName(canonicalName);
+    for (const rawAlias of aliases) {
+      const alias = String(rawAlias ?? '').trim();
+      if (!alias) continue;
+      if (this.normalizeName(alias) === normalizedCanonical) continue;
+
+      const existingAlias = await db('dictionary_aliases')
+        .where({ entity_type: entityType, entity_id: entityId })
+        .andWhereRaw('LOWER(alias) = ?', [alias.toLowerCase()])
+        .first();
+      if (existingAlias) continue;
+
+      await db('dictionary_aliases').insert({
+        entity_type: entityType,
+        entity_id: entityId,
+        alias,
+      });
+      inserted += 1;
+    }
+
+    return inserted;
   }
 
   private async findGroupByNameOrAlias(trx: DbClient, name: string) {
@@ -185,21 +218,13 @@ export class DictionaryService {
       }
     }
 
-    for (const rawAlias of Array.isArray(songPayload.aliases) ? songPayload.aliases : []) {
-      const alias = String(rawAlias || '').trim();
-      if (!alias || this.normalizeName(alias) === this.normalizeName(title)) continue;
-      const existingAlias = await db('dictionary_aliases')
-        .where({ entity_type: 'song', entity_id: song.id })
-        .andWhereRaw('LOWER(alias) = ?', [this.normalizeName(alias)])
-        .first();
-      if (existingAlias) continue;
-      await db('dictionary_aliases').insert({
-        entity_type: 'song',
-        entity_id: song.id,
-        alias,
-      });
-      summary.songs.aliasesInserted += 1;
-    }
+    summary.songs.aliasesInserted += await this.addAliasesIfMissing(
+      db,
+      'song',
+      song.id,
+      songPayload.aliases,
+      song.title,
+    );
 
     return song;
   }
@@ -1301,6 +1326,13 @@ export class DictionaryService {
         } else {
           summary.groups.updated += 1;
         }
+        summary.groups.aliasesInserted += await this.addAliasesIfMissing(
+          trx as unknown as DbClient,
+          'group',
+          group.id,
+          groupPayload.aliases,
+          group.name,
+        );
         processed += 1;
         emit('groups', `Importing groups: ${groupName}`);
 
@@ -1317,6 +1349,13 @@ export class DictionaryService {
             artist = await trx('dictionary_artists').where({ id: artistId }).first();
             summary.artists.inserted += 1;
           } else summary.artists.updated += 1;
+          summary.artists.aliasesInserted += await this.addAliasesIfMissing(
+            trx as unknown as DbClient,
+            'artist',
+            artist.id,
+            artistPayload.aliases,
+            artist.name,
+          );
           await this.addOrUpdateArtistMembership(
             {
               artist_id: artist.id,
@@ -1363,6 +1402,13 @@ export class DictionaryService {
           artist = await trx('dictionary_artists').where({ id: artistId }).first();
           summary.artists.inserted += 1;
         } else summary.artists.updated += 1;
+        summary.artists.aliasesInserted += await this.addAliasesIfMissing(
+          trx as unknown as DbClient,
+          'artist',
+          artist.id,
+          soloPayload.aliases,
+          artist.name,
+        );
         await this.addOrUpdateArtistMembership(
           {
             artist_id: artist.id,
@@ -1394,6 +1440,13 @@ export class DictionaryService {
           event = await trx('dictionary_events').where({ id }).first();
           summary.events.inserted += 1;
         } else summary.events.updated += 1;
+        summary.events.aliasesInserted += await this.addAliasesIfMissing(
+          trx as unknown as DbClient,
+          'event',
+          event.id,
+          eventPayload.aliases,
+          event.name,
+        );
         processed += 1;
         emit('events', `Importing events: ${name}`);
       }

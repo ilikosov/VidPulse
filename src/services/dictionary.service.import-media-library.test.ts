@@ -263,4 +263,99 @@ describe('DictionaryService.importMediaLibrary', () => {
       state.dictionary_aliases.filter((a) => a.entity_type === 'song' && a.entity_id === 2),
     ).toHaveLength(1);
   });
+
+  it('imports aliases for group, artist, song and event and skips invalid aliases', async () => {
+    const service = new DictionaryService();
+    const payload = {
+      version: 1,
+      mode: 'merge',
+      groups: [
+        {
+          name: 'AESPA',
+          type: 'female',
+          aliases: ['에스파', 'AESPA', '   '],
+          artists: [
+            {
+              name: 'KARINA',
+              aliases: ['카리나', 'KARINA'],
+              membership: { activityType: 'group', status: 'active' },
+              songs: [{ title: 'Next Level', aliases: ['넥스트 레벨', 'Next   Level'] }],
+            },
+          ],
+        },
+      ],
+      events: [{ name: 'KYUNGIL UNIVERSITY FESTIVAL', aliases: ['경일대 축제'] }],
+    };
+
+    const firstImport = await service.importMediaLibrary(payload);
+    const secondImport = await service.importMediaLibrary(payload);
+
+    expect(firstImport.groups.aliasesInserted).toBe(1);
+    expect(firstImport.artists.aliasesInserted).toBe(1);
+    expect(firstImport.songs.aliasesInserted).toBe(1);
+    expect(firstImport.events.aliasesInserted).toBe(1);
+    expect(secondImport.groups.aliasesInserted).toBe(0);
+    expect(secondImport.artists.aliasesInserted).toBe(0);
+    expect(secondImport.songs.aliasesInserted).toBe(0);
+    expect(secondImport.events.aliasesInserted).toBe(0);
+
+    expect(
+      state.dictionary_aliases.filter(
+        (a) => a.entity_type === 'group' && a.entity_id === 1 && a.alias === '에스파',
+      ),
+    ).toHaveLength(1);
+    expect(
+      state.dictionary_aliases.filter(
+        (a) => a.entity_type === 'artist' && a.entity_id === 1 && a.alias === '카리나',
+      ),
+    ).toHaveLength(1);
+    expect(
+      state.dictionary_aliases.filter(
+        (a) => a.entity_type === 'song' && a.entity_id === 1 && a.alias === '넥스트 레벨',
+      ),
+    ).toHaveLength(1);
+    expect(
+      state.dictionary_aliases.filter(
+        (a) => a.entity_type === 'event' && a.entity_id === 1 && a.alias === '경일대 축제',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('imports media-library json end-to-end with nested aliases', async () => {
+    const service = new DictionaryService();
+    await service.importMediaLibrary({
+      version: 1,
+      mode: 'merge',
+      groups: [
+        {
+          name: 'AESPA',
+          type: 'female',
+          aliases: ['에스파'],
+          artists: [
+            {
+              name: 'KARINA',
+              aliases: ['카리나'],
+              membership: { activityType: 'group', status: 'active' },
+              songs: [{ title: 'Dark Arts', aliases: ['다크 아츠'] }],
+            },
+          ],
+        },
+      ],
+      events: [
+        {
+          name: 'PUBG NATIONS CUP 2025 - FINAL STAGE',
+          aliases: ['펍지 네이션스 컵 2025'],
+        },
+      ],
+    });
+
+    expect(state.dictionary_aliases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ entity_type: 'group', alias: '에스파' }),
+        expect.objectContaining({ entity_type: 'artist', alias: '카리나' }),
+        expect.objectContaining({ entity_type: 'song', alias: '다크 아츠' }),
+        expect.objectContaining({ entity_type: 'event', alias: '펍지 네이션스 컵 2025' }),
+      ]),
+    );
+  });
 });
