@@ -178,6 +178,7 @@ export const dictionaryApi = {
     fd.append('file', file);
     return req('/dictionary/import', { method: 'POST', body: fd });
   },
+  clearMediaLibrary: () => req('/dictionary/clear', { method: 'DELETE' }),
   getGroup: (id: number | string) => req<DictionaryGroup>(`/dictionary/groups/${id}`),
   getGroupVideos: (id: number | string, page = 1, limit = 20) =>
     req<VideosResponse>(`/dictionary/groups/${id}/videos?page=${page}&limit=${limit}`),

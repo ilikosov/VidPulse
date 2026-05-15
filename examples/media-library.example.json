@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "mode": "merge",
+  "groups": [
+    {
+      "name": "LE SSERAFIM",
+      "type": "female",
+      "active": true,
+      "aliases": ["르세라핌"],
+      "artists": [
+        {
+          "name": "YUNJIN",
+          "aliases": ["허윤진"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2022-05-02",
+            "to": null,
+            "isPrimary": true
+          },
+          "songs": [
+            {
+              "title": "HOT",
+              "aliases": []
+            }
+          ]
+        }
+      ],
+      "songs": [
+        {
+          "title": "EASY",
+          "aliases": []
+        }
+      ]
+    }
+  ],
+  "soloArtists": [
+    {
+      "name": "SOMI",
+      "aliases": ["전소미"],
+      "membership": {
+        "activityType": "solo",
+        "status": "active",
+        "from": "2019-06-13",
+        "to": null,
+        "isPrimary": true
+      },
+      "songs": [
+        {
+          "title": "DUMB DUMB",
+          "aliases": []
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "KYUNGIL UNIVERSITY FESTIVAL",
+      "aliases": ["경일대 축제", "경일대"]
+    }
+  ]
+}

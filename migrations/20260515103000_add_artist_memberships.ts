@@ -30,7 +30,23 @@ export async function up(knex: Knex): Promise<void> {
       ['artist_id', 'group_id', 'activity_type', 'status'],
       'dictionary_artist_memberships_lookup_idx',
     );
+    t.index(
+      ['artist_id', 'activity_type', 'started_at'],
+      'dictionary_artist_memberships_artist_activity_started_idx',
+    );
   });
+
+  await knex.raw(`
+    ALTER TABLE dictionary_artist_memberships
+    ADD CONSTRAINT dictionary_artist_memberships_activity_type_check
+    CHECK (activity_type IN ('group', 'solo'))
+  `);
+
+  await knex.raw(`
+    ALTER TABLE dictionary_artist_memberships
+    ADD CONSTRAINT dictionary_artist_memberships_status_check
+    CHECK (status IN ('active', 'former', 'hiatus'))
+  `);
 
   await knex.raw(`
     INSERT INTO dictionary_artist_memberships (
