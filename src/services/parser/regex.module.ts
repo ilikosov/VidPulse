@@ -41,6 +41,11 @@ export class RegexModule implements ParserModule {
   }
 
   private extractLastDate(title: string): string | undefined {
+    const leadingDateRange = title.match(/^\s*(\d{6})(?:\s*[-~–—]\s*(?:\d{2}|\d{6}))?\b/);
+    if (leadingDateRange?.[1]) {
+      return leadingDateRange[1];
+    }
+
     const matches = [...title.matchAll(this.datePattern)];
     return matches.length > 0 ? matches[matches.length - 1][1] : undefined;
   }
@@ -131,15 +136,22 @@ export class RegexModule implements ParserModule {
   }
 
   private stripLeadingDate(title: string): string {
-    return title.replace(/^\s*\d{6}\s+/, '').trim();
+    return this.compact(title.replace(/^\s*\d{6}(?:\s*[-~–—]\s*(?:\d{2}|\d{6}))?\s+/, ''));
+  }
+
+  private looksLikeDateToken(value: string): boolean {
+    return /^\d{6}(?:[-~–—](?:\d{2}|\d{6}))?$/.test(value.trim());
   }
 
   private stripTrailingCameraMarkers(value: string): string {
-    return value
-      .replace(/\s*\((?:\d+K\s+)?FAN\s?CAM\)\s*$/i, '')
-      .replace(/\s*\(FACECAM\)\s*$/i, '')
-      .replace(/\s*\[(?:\d+K)\]\s*$/i, '')
-      .trim();
+    return this.compact(
+      value
+        .replace(
+          /\s*[\[(][^\])]*(?:fan\s?cam|face\s?cam|full\s?cam|multi\s?cam|직캠|페이스캠|4k|8k)[^\])]*[\])]\s*$/i,
+          '',
+        )
+        .trim(),
+    );
   }
 
   private extractBareSongBeforeEvent(title: string): string | undefined {
@@ -154,7 +166,7 @@ export class RegexModule implements ParserModule {
       .replace(/^\[[^\]]+\]\s*/g, '')
       .trim();
     const match = cleanedLeft.match(/^([가-힣A-Za-z0-9_&.-]+)\s+([가-힣A-Za-z0-9_&'.-]+)\s+(.+)$/);
-    if (!match?.[3]) {
+    if (!match?.[3] || this.looksLikeDateToken(match[1])) {
       return undefined;
     }
 
@@ -201,7 +213,7 @@ export class RegexModule implements ParserModule {
     const left = beforeAt?.[1]?.trim();
     if (left) {
       const koreanEventFallback = left.match(/^([가-힣A-Za-z0-9_&.-]+)\s+([가-힣]+)\s+.+$/);
-      if (koreanEventFallback) {
+      if (koreanEventFallback && !this.looksLikeDateToken(koreanEventFallback[1])) {
         return {
           group_name: koreanEventFallback[1],
           artist_name: koreanEventFallback[2],

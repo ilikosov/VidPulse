@@ -24,6 +24,19 @@ const parserService = new ParserService([new RegexModule(), dictionaryModule], d
 describe('ParserService.parseTitle table-driven examples', () => {
   const cases: ParseCase[] = [
     {
+      title:
+        '250829-31 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM MULTI CAM)',
+      expected: {
+        perf_date: '250829',
+        group_name: 'AESPA',
+        artist_name: 'KARINA',
+        song_title: 'GOOD STUFF',
+        event: '@AESPA LIVE TOUR -SYNK : AEXIS LINE- IN SEOUL',
+        is_fancam: true,
+        needsReview: false,
+      },
+    },
+    {
       title: "르세라핌 허윤진 직캠 '1-800-hot-n-fun' (LE SSERAFIM YUNJIN FanCam) @Inkigayo 240901",
       expected: {
         perf_date: '240901',
