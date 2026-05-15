@@ -122,7 +122,44 @@ export class RegexModule implements ParserModule {
       return /^[A-Z0-9\s&'.-]+$/.test(leftUpper) ? right : left;
     }
 
+    const bareSong = this.extractBareSongBeforeEvent(title);
+    if (bareSong) {
+      return bareSong;
+    }
+
     return undefined;
+  }
+
+  private stripLeadingDate(title: string): string {
+    return title.replace(/^\s*\d{6}\s+/, '').trim();
+  }
+
+  private stripTrailingCameraMarkers(value: string): string {
+    return value
+      .replace(/\s*\((?:\d+K\s+)?FAN\s?CAM\)\s*$/i, '')
+      .replace(/\s*\(FACECAM\)\s*$/i, '')
+      .replace(/\s*\[(?:\d+K)\]\s*$/i, '')
+      .trim();
+  }
+
+  private extractBareSongBeforeEvent(title: string): string | undefined {
+    const stripped = this.stripLeadingDate(title);
+    const beforeAt = stripped.match(/^(.+?)\s+@/);
+    const left = beforeAt?.[1];
+    if (!left) {
+      return undefined;
+    }
+
+    const cleanedLeft = this.stripTrailingCameraMarkers(left)
+      .replace(/^\[[^\]]+\]\s*/g, '')
+      .trim();
+    const match = cleanedLeft.match(/^([가-힣A-Za-z0-9_&.-]+)\s+([가-힣A-Za-z0-9_&'.-]+)\s+(.+)$/);
+    if (!match?.[3]) {
+      return undefined;
+    }
+
+    const song = this.stripTrailingCameraMarkers(this.compact(match[3]));
+    return song || undefined;
   }
 
   private extractFromEnglishFancamParen(title: string): Partial<ParsedMetadata> {
@@ -157,6 +194,19 @@ export class RegexModule implements ParserModule {
     const koreanCam = source.match(/\b([가-힣A-Za-z0-9]+)\s+([가-힣]+)\s+직캠/);
     if (koreanCam) {
       return { group_name: koreanCam[1], artist_name: koreanCam[2] };
+    }
+
+    const stripped = this.stripLeadingDate(title);
+    const beforeAt = stripped.match(/^(.+?)\s+@/);
+    const left = beforeAt?.[1]?.trim();
+    if (left) {
+      const koreanEventFallback = left.match(/^([가-힣A-Za-z0-9_&.-]+)\s+([가-힣]+)\s+.+$/);
+      if (koreanEventFallback) {
+        return {
+          group_name: koreanEventFallback[1],
+          artist_name: koreanEventFallback[2],
+        };
+      }
     }
 
     return {};
