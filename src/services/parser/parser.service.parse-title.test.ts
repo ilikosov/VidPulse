@@ -182,6 +182,17 @@ describe('parseTitle real-world examples', () => {
         is_fancam: true,
       } as any,
     },
+    {
+      title: '250727 에스파 카리나 Dark Arts @ PUBG NATIONS CUP 2025 - FINAL STAGE (4K FANCAM)',
+      expected: {
+        perf_date: '250727',
+        group_name: 'AESPA',
+        artist_name: 'KARINA',
+        song_title: 'Dark Arts',
+        event: '@PUBG NATIONS CUP 2025 - FINAL STAGE',
+        is_fancam: true,
+      } as any,
+    },
     { title: '[#shorts] 아이브 리즈 직캠', expected: { is_fancam: false } },
     { title: 'Private video', expected: { is_fancam: false, needsReview: true } },
     {
@@ -245,6 +256,13 @@ describe('parseTitle real-world examples', () => {
     }
     if ((expected as any).camera_type !== undefined) {
       expect(result.metadata.camera_type).toBe((expected as any).camera_type);
+    }
+    if (
+      title === '250727 에스파 카리나 Dark Arts @ PUBG NATIONS CUP 2025 - FINAL STAGE (4K FANCAM)'
+    ) {
+      expect(result.metadata.camera_type).toContain('FANCAM');
+      expect(result.metadata.fancam_confidence).toBeGreaterThanOrEqual(0.95);
+      expect(result.needsReview).toBe(false);
     }
     if (title === "[UNFILTERED CAM] KATSEYE Lara(라라) 'PINKY UP' 4K | STUDIO CHOOM ORIGINAL") {
       expect(result.metadata.camera_type).toContain('UNFILTERED CAM');

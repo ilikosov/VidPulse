@@ -40,6 +40,7 @@ interface KpopDictionary {
     group: Record<string, string>;
     artist: Record<string, string>;
     song: Record<string, string>;
+    event: Record<string, string>;
   };
   cameraTypes: Record<string, string>;
 }
@@ -134,7 +135,7 @@ export class DictionaryModule implements ParserModule {
       artistMap[groupName].push(String(a.name));
     }
 
-    const aliasMap: KpopDictionary['aliases'] = { group: {}, artist: {}, song: {} };
+    const aliasMap: KpopDictionary['aliases'] = { group: {}, artist: {}, song: {}, event: {} };
     for (const alias of aliases as any[]) {
       const normalized = this.normalizeLookup(String(alias.alias));
       if (!normalized) {
@@ -151,6 +152,8 @@ export class DictionaryModule implements ParserModule {
         aliasMap.artist[normalized] = resolved.name;
       } else if (alias.entity_type === 'song') {
         aliasMap.song[normalized] = resolved.name;
+      } else if (alias.entity_type === 'event') {
+        aliasMap.event[normalized] = resolved.name;
       }
     }
 
@@ -264,7 +267,7 @@ export class DictionaryModule implements ParserModule {
     if (metadata.event) {
       const eventName = metadata.event.replace('@', '');
       const aliasEvent = this.eventAliasMap[this.normalizeLookup(eventName)];
-      const corrected = this.findBestMatch(eventName, dictionary.events, {});
+      const corrected = this.findBestMatch(eventName, dictionary.events, dictionary.aliases.event);
       const canonicalEvent = aliasEvent || corrected;
       if (canonicalEvent) {
         metadata.event = '@' + canonicalEvent;
