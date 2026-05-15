@@ -202,6 +202,19 @@ export const dictionaryApi = {
   importFile: (file: File): Promise<ImportStartResponse | unknown> =>
     dictionaryApi.importMediaLibraryFile(file),
   clearMediaLibrary: () => req('/dictionary/clear', { method: 'DELETE' }),
+
+  mergeShortTags: () =>
+    req<{
+      shortsTagId: number;
+      legacyShortTagId: number | null;
+      moved: number;
+      removedLegacyTag: boolean;
+    }>('/videos/batch/merge-short-tags', { method: 'POST' }),
+  tagShortsByDuration: () =>
+    req<{ checked: number; eligible: number; tagged: number; alreadyTagged: number }>(
+      '/videos/batch/tag-shorts-by-duration',
+      { method: 'POST' },
+    ),
   getGroup: (id: number | string) => req<DictionaryGroup>(`/dictionary/groups/${id}`),
   getGroupVideos: (id: number | string, page = 1, limit = 20) =>
     req<VideosResponse>(`/dictionary/groups/${id}/videos?page=${page}&limit=${limit}`),

@@ -9,16 +9,23 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
-import { assignAutoTags } from '../services/tag.service';
+import {
+  LEGACY_SHORT_TAG,
+  SHORTS_TAG,
+  assignAutoTags,
+  mergeShortTags,
+  tagShortsByDuration,
+} from '../services/tag.service';
 import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
 import { parseTitleWithLLM } from '../services/ai.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
+import { requireDangerousActionsEnabled } from '../middleware/dangerousActions';
 
 const router = Router();
 
 type BatchValidationResult = { valid: true; videoIds: number[] } | { valid: false; error: string };
 type TagValidationResult = { valid: true; tagName: string } | { valid: false; error: string };
-const PROTECTED_TAGS = new Set(['short', 'private']);
+const PROTECTED_TAGS = new Set([SHORTS_TAG, 'private']);
 
 function validateVideoIds(body: unknown): BatchValidationResult {
   const videoIds = (body as { videoIds?: unknown })?.videoIds;
@@ -91,7 +98,7 @@ function applyVideoFilters(
         .from('videos as v2')
         .join('video_tags as vt', 'vt.video_id', 'v2.id')
         .join('tags as t', 't.id', 'vt.tag_id')
-        .whereIn('t.name', ['short', 'private']);
+        .whereIn('t.name', [SHORTS_TAG, 'private']);
     });
   }
 }
@@ -379,6 +386,34 @@ router.post('/batch/ignore', async (req: Request, res: Response) => {
     errors,
   });
 });
+
+router.post(
+  '/batch/tag-shorts-by-duration',
+  requireDangerousActionsEnabled,
+  async (_req: Request, res: Response) => {
+    try {
+      const summary = await tagShortsByDuration();
+      res.json(summary);
+    } catch (error) {
+      console.error('Error tagging shorts by duration:', error);
+      res.status(500).json({ error: 'Failed to tag shorts by duration' });
+    }
+  },
+);
+
+router.post(
+  '/batch/merge-short-tags',
+  requireDangerousActionsEnabled,
+  async (_req: Request, res: Response) => {
+    try {
+      const summary = await mergeShortTags();
+      res.json(summary);
+    } catch (error) {
+      console.error('Error merging short tags:', error);
+      res.status(500).json({ error: 'Failed to merge short tags' });
+    }
+  },
+);
 
 router.post('/:id/ignore', async (req: Request, res: Response) => {
   try {
@@ -775,7 +810,7 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
 
       const autoTagIds = await trx('tags')
         .select('id')
-        .whereIn('name', ['short', 'private', 'длинное видео']);
+        .whereIn('name', [SHORTS_TAG, LEGACY_SHORT_TAG, 'private', 'длинное видео']);
       if (autoTagIds.length > 0) {
         await trx('video_tags')
           .where('video_id', videoId)
