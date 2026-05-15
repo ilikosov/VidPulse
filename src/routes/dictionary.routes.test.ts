@@ -280,10 +280,38 @@ describe('dictionary media library import', () => {
     });
     const body = await res.json();
     server.close();
-    expect(res.status).toBe(200);
-    const svc = (await import('../services/dictionary.service')).dictionaryService as any;
-    expect(svc.importMediaLibrary).toHaveBeenCalledWith(payload);
-    expect(body.mode).toBe('merge');
+    expect(res.status).toBe(202);
+    expect(body.jobId).toBeTypeOf('string');
+  });
+
+  it('returns job progress and result endpoints', async () => {
+    const app = express();
+    app.use('/api/dictionary', router);
+    const server = app.listen(0);
+    const { port } = server.address() as AddressInfo;
+    const payload = { version: 1, mode: 'merge', groups: [], soloArtists: [], events: [] };
+    const form = new FormData();
+    form.append(
+      'file',
+      new Blob([JSON.stringify(payload)], { type: 'application/json' }),
+      'import.json',
+    );
+    const importRes = await fetch(`http://127.0.0.1:${port}/api/dictionary/import`, {
+      method: 'POST',
+      body: form,
+    });
+    const importBody = await importRes.json();
+    const progressRes = await fetch(
+      `http://127.0.0.1:${port}/api/dictionary/import/${importBody.jobId}/progress`,
+    );
+    const progressBody = await progressRes.json();
+    const resultRes = await fetch(
+      `http://127.0.0.1:${port}/api/dictionary/import/${importBody.jobId}/result`,
+    );
+    server.close();
+    expect(progressRes.status).toBe(200);
+    expect(['queued', 'running', 'completed']).toContain(progressBody.status);
+    expect([200, 202]).toContain(resultRes.status);
   });
 });
 

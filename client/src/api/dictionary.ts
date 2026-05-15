@@ -173,11 +173,31 @@ export const dictionaryApi = {
   updateEvent: (id: number, d: any) =>
     req(`/dictionary/events/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
   deleteEvent: (id: number) => req(`/dictionary/events/${id}`, { method: 'DELETE' }),
-  importFile: (file: File) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    return req('/dictionary/import', { method: 'POST', body: fd });
-  },
+  importMediaLibraryFile: (
+    file: File,
+    onUploadProgress?: (percent: number) => void,
+  ): Promise<{ jobId: string }> =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const fd = new FormData();
+      fd.append('file', file);
+      xhr.open('POST', `${API_BASE}/dictionary/import`);
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        onUploadProgress?.(Math.round((event.loaded / event.total) * 100));
+      };
+      xhr.onload = () => {
+        const response = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+        if (xhr.status >= 200 && xhr.status < 300) resolve(response);
+        else reject(new Error(response.error || `HTTP ${xhr.status}`));
+      };
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.send(fd);
+    }),
+  getImportProgress: (jobId: string) => req(`/dictionary/import/${jobId}/progress`),
+  getImportResult: (jobId: string) => req(`/dictionary/import/${jobId}/result`),
+
+  importFile: (file: File) => dictionaryApi.importMediaLibraryFile(file),
   clearMediaLibrary: () => req('/dictionary/clear', { method: 'DELETE' }),
   getGroup: (id: number | string) => req<DictionaryGroup>(`/dictionary/groups/${id}`),
   getGroupVideos: (id: number | string, page = 1, limit = 20) =>

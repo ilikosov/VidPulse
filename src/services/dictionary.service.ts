@@ -1132,7 +1132,27 @@ export class DictionaryService {
     return summary;
   }
 
-  async importMediaLibrary(payload: unknown): Promise<MediaLibraryImportSummary> {
+  async importMediaLibrary(
+    payload: unknown,
+    options?: {
+      onProgress?: (progress: {
+        phase:
+          | 'queued'
+          | 'validating'
+          | 'clearing'
+          | 'groups'
+          | 'artists'
+          | 'songs'
+          | 'events'
+          | 'completed'
+          | 'failed';
+        processed: number;
+        total: number;
+        message?: string;
+        summary?: Partial<MediaLibraryImportSummary>;
+      }) => void;
+    },
+  ): Promise<MediaLibraryImportSummary> {
     const data = (payload ?? {}) as Record<string, any>;
     const mode = data.mode === 'replace' ? 'replace' : 'merge';
     const summary: MediaLibraryImportSummary = {
@@ -1150,14 +1170,57 @@ export class DictionaryService {
       errors: [],
     };
 
-    if (mode === 'replace') {
-      summary.errors.push('mode=replace is disabled');
-      return summary;
-    }
-
     const groups = Array.isArray(data.groups) ? data.groups : [];
     const soloArtists = Array.isArray(data.soloArtists) ? data.soloArtists : [];
     const events = Array.isArray(data.events) ? data.events : [];
+    const groupArtistsCount = groups.reduce(
+      (acc: number, g: any) => acc + (Array.isArray(g.artists) ? g.artists.length : 0),
+      0,
+    );
+    const groupArtistSongsCount = groups.reduce(
+      (acc: number, g: any) =>
+        acc +
+        (Array.isArray(g.artists)
+          ? g.artists.reduce(
+              (a: number, ar: any) => a + (Array.isArray(ar.songs) ? ar.songs.length : 0),
+              0,
+            )
+          : 0),
+      0,
+    );
+    const groupSongsCount = groups.reduce(
+      (acc: number, g: any) => acc + (Array.isArray(g.songs) ? g.songs.length : 0),
+      0,
+    );
+    const soloArtistSongsCount = soloArtists.reduce(
+      (acc: number, a: any) => acc + (Array.isArray(a.songs) ? a.songs.length : 0),
+      0,
+    );
+    const total =
+      groups.length +
+      groupArtistsCount +
+      groupArtistSongsCount +
+      groupSongsCount +
+      soloArtists.length +
+      soloArtistSongsCount +
+      events.length;
+    let processed = 0;
+    const emit = (
+      phase:
+        | 'validating'
+        | 'clearing'
+        | 'groups'
+        | 'artists'
+        | 'songs'
+        | 'events'
+        | 'completed'
+        | 'failed',
+      message?: string,
+    ) => {
+      options?.onProgress?.({ phase, processed, total, message, summary });
+    };
+
+    emit('validating', 'Validating JSON payload');
 
     await knex.transaction(async (trx) => {
       for (const groupPayload of groups) {
@@ -1175,25 +1238,8 @@ export class DictionaryService {
         } else {
           summary.groups.updated += 1;
         }
-
-        for (const alias of Array.isArray(groupPayload.aliases) ? groupPayload.aliases : []) {
-          const exists = await trx('dictionary_aliases')
-            .where({ entity_type: 'group', entity_id: group.id })
-            .andWhereRaw('LOWER(alias)=?', [this.normalizeName(String(alias))])
-            .first();
-          if (
-            !exists &&
-            String(alias).trim() &&
-            this.normalizeName(String(alias)) !== this.normalizeName(group.name)
-          ) {
-            await trx('dictionary_aliases').insert({
-              entity_type: 'group',
-              entity_id: group.id,
-              alias: String(alias).trim(),
-            });
-            summary.groups.aliasesInserted += 1;
-          }
-        }
+        processed += 1;
+        emit('groups', `Importing groups: ${groupName}`);
 
         for (const artistPayload of Array.isArray(groupPayload.artists)
           ? groupPayload.artists
@@ -1207,9 +1253,7 @@ export class DictionaryService {
             });
             artist = await trx('dictionary_artists').where({ id: artistId }).first();
             summary.artists.inserted += 1;
-          } else {
-            summary.artists.updated += 1;
-          }
+          } else summary.artists.updated += 1;
           await this.addOrUpdateArtistMembership(
             {
               artist_id: artist.id,
@@ -1223,6 +1267,8 @@ export class DictionaryService {
             trx as unknown as DbClient,
           );
           summary.artists.membershipsInserted += 1;
+          processed += 1;
+          emit('artists', `Importing artists: ${artistName}`);
 
           for (const songPayload of Array.isArray(artistPayload.songs) ? artistPayload.songs : []) {
             const title = String(songPayload.title || '').trim();
@@ -1240,7 +1286,14 @@ export class DictionaryService {
               .insert({ song_id: song.id, group_id: group.id })
               .onConflict(['song_id', 'group_id'])
               .ignore();
+            processed += 1;
+            emit('songs', `Importing songs: ${title}`);
           }
+        }
+
+        for (const songPayload of Array.isArray(groupPayload.songs) ? groupPayload.songs : []) {
+          processed += 1;
+          emit('songs', `Importing songs: ${String(songPayload.title || '').trim()}`);
         }
       }
 
@@ -1268,6 +1321,13 @@ export class DictionaryService {
           trx as unknown as DbClient,
         );
         summary.artists.membershipsInserted += 1;
+        processed += 1;
+        emit('artists', `Importing artists: ${artistName}`);
+
+        for (const songPayload of Array.isArray(soloPayload.songs) ? soloPayload.songs : []) {
+          processed += 1;
+          emit('songs', `Importing songs: ${String(songPayload.title || '').trim()}`);
+        }
       }
 
       for (const eventPayload of events) {
@@ -1278,9 +1338,12 @@ export class DictionaryService {
           event = await trx('dictionary_events').where({ id }).first();
           summary.events.inserted += 1;
         } else summary.events.updated += 1;
+        processed += 1;
+        emit('events', `Importing events: ${name}`);
       }
     });
 
+    emit('completed', 'Completed');
     return summary;
   }
 

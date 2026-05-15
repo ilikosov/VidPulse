@@ -1,4 +1,14 @@
-import { Alert, Button, Input, Modal, Space, Typography, Upload, notification } from 'antd';
+import {
+  Alert,
+  Button,
+  Input,
+  Modal,
+  Progress,
+  Space,
+  Typography,
+  Upload,
+  notification,
+} from 'antd';
 import { useState } from 'react';
 import { dictionaryApi } from '../api/dictionary';
 
@@ -9,6 +19,10 @@ export default function DictionaryManagement() {
   const [clearing, setClearing] = useState(false);
   const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadPercent, setUploadPercent] = useState(0);
+  const [importJobId, setImportJobId] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<any>(null);
 
   const dangerousActionsEnabled =
     (import.meta as any).env?.VITE_MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED === 'true';
@@ -85,7 +99,7 @@ export default function DictionaryManagement() {
       <Modal
         open={importModalOpen}
         onCancel={() => {
-          if (!importing) {
+          if (!importing && !uploading) {
             setSelectedImportFile(null);
             setImportModalOpen(false);
           }
@@ -152,6 +166,23 @@ export default function DictionaryManagement() {
           >
             Import
           </Button>
+          {uploading && (
+            <>
+              <Typography.Text>Uploading file</Typography.Text>
+              <Progress percent={uploadPercent} />
+            </>
+          )}
+          {importing && importProgress && (
+            <>
+              <Typography.Text>
+                {importProgress.message || `Phase: ${importProgress.phase}`}
+              </Typography.Text>
+              <Progress
+                percent={importProgress.percent || 0}
+                status={importProgress.status === 'failed' ? 'exception' : undefined}
+              />
+            </>
+          )}
           <div>
             <strong>Download templates:</strong>
             <Space direction="vertical" size={8} style={{ marginTop: 8, width: '100%' }}>
