@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { state, mockedKnex } = vi.hoisted(() => {
+const { state, mockedKnex, ids } = vi.hoisted(() => {
   type Row = Record<string, any>;
   const db = {
     dictionary_groups: [] as Row[],
@@ -79,6 +79,24 @@ const { state, mockedKnex } = vi.hoisted(() => {
       },
       insert(payload: Row) {
         const row = { ...payload };
+        if (tableName === 'dictionary_song_artists') {
+          const exists = db.dictionary_song_artists.some(
+            (item) => item.song_id === row.song_id && item.artist_id === row.artist_id,
+          );
+          if (exists) {
+            (builder as any)._lastInsertId = undefined;
+            return builder;
+          }
+        }
+        if (tableName === 'dictionary_song_groups') {
+          const exists = db.dictionary_song_groups.some(
+            (item) => item.song_id === row.song_id && item.group_id === row.group_id,
+          );
+          if (exists) {
+            (builder as any)._lastInsertId = undefined;
+            return builder;
+          }
+        }
         if (row.id == null && ids[tableName] != null) {
           ids[tableName] += 1;
           row.id = ids[tableName];
@@ -118,7 +136,7 @@ const { state, mockedKnex } = vi.hoisted(() => {
     }
   };
 
-  return { state: db, mockedKnex: knexMock };
+  return { state: db, mockedKnex: knexMock, ids };
 });
 
 vi.mock('../db', () => ({ default: mockedKnex }));
@@ -126,6 +144,51 @@ vi.mock('../db', () => ({ default: mockedKnex }));
 import { DictionaryService } from './dictionary.service';
 
 describe('DictionaryService.importMediaLibrary', () => {
+  beforeEach(() => {
+    state.dictionary_groups.length = 0;
+    state.dictionary_artists.length = 0;
+    state.dictionary_songs.length = 0;
+    state.dictionary_events.length = 0;
+    state.dictionary_aliases.length = 0;
+    state.dictionary_artist_memberships.length = 0;
+    state.dictionary_song_artists.length = 0;
+    state.dictionary_song_groups.length = 0;
+    ids.dictionary_groups = 0;
+    ids.dictionary_artists = 0;
+    ids.dictionary_songs = 0;
+    ids.dictionary_events = 0;
+    ids.dictionary_artist_memberships = 0;
+  });
+  it('imports group-level songs and creates song-group links', async () => {
+    const service = new DictionaryService();
+    await service.importMediaLibrary({
+      mode: 'merge',
+      groups: [{ name: 'ITZY', type: 'female', songs: [{ title: 'LOCO' }] }],
+    });
+
+    expect(state.dictionary_songs).toEqual(
+      expect.arrayContaining([expect.objectContaining({ title: 'LOCO', artist: 'ITZY' })]),
+    );
+    expect(state.dictionary_song_groups).toEqual(
+      expect.arrayContaining([expect.objectContaining({ group_id: 1 })]),
+    );
+  });
+
+  it('imports solo artist songs and creates song-artist links', async () => {
+    const service = new DictionaryService();
+    await service.importMediaLibrary({
+      mode: 'merge',
+      soloArtists: [{ name: 'IU', songs: [{ title: 'Palette' }] }],
+    });
+
+    expect(state.dictionary_songs).toEqual(
+      expect.arrayContaining([expect.objectContaining({ title: 'Palette', artist: 'IU' })]),
+    );
+    expect(state.dictionary_song_artists).toEqual(
+      expect.arrayContaining([expect.objectContaining({ artist_id: 1 })]),
+    );
+  });
+
   it('imports group -> artist -> song and creates membership without KnexTimeoutError', async () => {
     const service = new DictionaryService();
 
@@ -147,11 +210,57 @@ describe('DictionaryService.importMediaLibrary', () => {
     });
 
     expect(result.errors).toEqual([]);
+    expect(state.dictionary_song_artists).toEqual(
+      expect.arrayContaining([expect.objectContaining({ song_id: 1, artist_id: 1 })]),
+    );
+    expect(state.dictionary_song_groups).toEqual(
+      expect.arrayContaining([expect.objectContaining({ song_id: 1, group_id: 1 })]),
+    );
     expect(state.dictionary_artist_memberships).toHaveLength(1);
     expect(state.dictionary_artist_memberships[0]).toMatchObject({
       activity_type: 'group',
       status: 'active',
       is_primary: true,
     });
+  });
+
+  it('imports song aliases and avoids duplicates on repeated import', async () => {
+    const service = new DictionaryService();
+    const payload = {
+      mode: 'merge',
+      groups: [
+        {
+          name: 'BLACKPINK',
+          type: 'female',
+          artists: [{ name: 'JENNIE', songs: [{ title: 'SOLO', aliases: ['솔로', 'solo'] }] }],
+          songs: [{ title: 'Shut Down', aliases: ['셧다운'] }],
+        },
+      ],
+      soloArtists: [{ name: 'TAEYEON', songs: [{ title: 'INVU', aliases: ['아이엔비유'] }] }],
+    };
+
+    await service.importMediaLibrary(payload);
+    await service.importMediaLibrary(payload);
+
+    expect(state.dictionary_songs.filter((s) => s.title === 'SOLO')).toHaveLength(1);
+    expect(state.dictionary_songs.filter((s) => s.title === 'Shut Down')).toHaveLength(1);
+    expect(state.dictionary_songs.filter((s) => s.title === 'INVU')).toHaveLength(1);
+
+    expect(
+      state.dictionary_song_artists.filter((row) => row.song_id === 1 && row.artist_id === 1),
+    ).toHaveLength(1);
+    expect(
+      state.dictionary_song_groups.filter((row) => row.song_id === 1 && row.group_id === 1),
+    ).toHaveLength(1);
+    expect(
+      state.dictionary_song_groups.filter((row) => row.song_id === 2 && row.group_id === 1),
+    ).toHaveLength(1);
+
+    expect(
+      state.dictionary_aliases.filter((a) => a.entity_type === 'song' && a.entity_id === 1),
+    ).toHaveLength(1);
+    expect(
+      state.dictionary_aliases.filter((a) => a.entity_type === 'song' && a.entity_id === 2),
+    ).toHaveLength(1);
   });
 });
