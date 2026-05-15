@@ -11,9 +11,11 @@ import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
 import {
   LEGACY_SHORT_TAG,
+  LONG_VIDEO_TAG,
   SHORTS_TAG,
   assignAutoTags,
   mergeShortTags,
+  tagLongVideosByDuration,
   tagShortsByDuration,
 } from '../services/tag.service';
 import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
@@ -25,7 +27,7 @@ const router = Router();
 
 type BatchValidationResult = { valid: true; videoIds: number[] } | { valid: false; error: string };
 type TagValidationResult = { valid: true; tagName: string } | { valid: false; error: string };
-const PROTECTED_TAGS = new Set([SHORTS_TAG, 'private']);
+const PROTECTED_TAGS = new Set([SHORTS_TAG, LONG_VIDEO_TAG, 'private']);
 
 function validateVideoIds(body: unknown): BatchValidationResult {
   const videoIds = (body as { videoIds?: unknown })?.videoIds;
@@ -397,6 +399,20 @@ router.post(
     } catch (error) {
       console.error('Error tagging shorts by duration:', error);
       res.status(500).json({ error: 'Failed to tag shorts by duration' });
+    }
+  },
+);
+
+router.post(
+  '/batch/tag-long-videos-by-duration',
+  requireDangerousActionsEnabled,
+  async (_req: Request, res: Response) => {
+    try {
+      const summary = await tagLongVideosByDuration();
+      res.json(summary);
+    } catch (error) {
+      console.error('Error tagging long videos by duration:', error);
+      res.status(500).json({ error: 'Failed to tag long videos by duration' });
     }
   },
 );

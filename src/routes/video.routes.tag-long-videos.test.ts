@@ -19,16 +19,16 @@ vi.mock('../services/tag.service', () => ({
   LONG_VIDEO_TAG: 'длинное видео',
   assignAutoTags: vi.fn(),
   tagShortsByDuration: vi.fn(),
-  tagLongVideosByDuration: vi.fn(),
-  mergeShortTags: vi.fn(async () => ({
-    shortsTagId: 2,
-    legacyShortTagId: 1,
-    moved: 5,
-    removedLegacyTag: true,
+  mergeShortTags: vi.fn(),
+  tagLongVideosByDuration: vi.fn(async () => ({
+    checked: 10,
+    eligible: 3,
+    tagged: 2,
+    alreadyTagged: 1,
   })),
 }));
 
-describe('POST /api/videos/batch/merge-short-tags', async () => {
+describe('POST /api/videos/batch/tag-long-videos-by-duration', async () => {
   const { default: router } = await import('./video.routes');
 
   beforeEach(() => {
@@ -41,9 +41,10 @@ describe('POST /api/videos/batch/merge-short-tags', async () => {
     const server = app.listen(0);
     const { port } = server.address() as AddressInfo;
 
-    const res = await fetch(`http://127.0.0.1:${port}/api/videos/batch/merge-short-tags`, {
-      method: 'POST',
-    });
+    const res = await fetch(
+      `http://127.0.0.1:${port}/api/videos/batch/tag-long-videos-by-duration`,
+      { method: 'POST' },
+    );
     server.close();
     expect(res.status).toBe(403);
   });
@@ -55,13 +56,14 @@ describe('POST /api/videos/batch/merge-short-tags', async () => {
     const server = app.listen(0);
     const { port } = server.address() as AddressInfo;
 
-    const res = await fetch(`http://127.0.0.1:${port}/api/videos/batch/merge-short-tags`, {
-      method: 'POST',
-    });
+    const res = await fetch(
+      `http://127.0.0.1:${port}/api/videos/batch/tag-long-videos-by-duration`,
+      { method: 'POST' },
+    );
     const body = await res.json();
     server.close();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ shortsTagId: 2, legacyShortTagId: 1, moved: 5, removedLegacyTag: true });
+    expect(body).toEqual({ checked: 10, eligible: 3, tagged: 2, alreadyTagged: 1 });
   });
 });

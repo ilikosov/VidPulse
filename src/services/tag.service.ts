@@ -4,6 +4,8 @@ import type { Knex } from 'knex';
 export const SHORTS_MAX_DURATION_SECONDS = 90;
 export const SHORTS_TAG = 'shorts';
 export const LEGACY_SHORT_TAG = 'short';
+export const LONG_VIDEO_MIN_DURATION_SECONDS = 20 * 60;
+export const LONG_VIDEO_TAG = 'длинное видео';
 
 async function findOrCreateTagId(
   tagName: string,
@@ -37,8 +39,9 @@ export async function assignAutoTags(
   if (typeof durationSeconds === 'number' && durationSeconds > 0) {
     if (durationSeconds < SHORTS_MAX_DURATION_SECONDS) {
       await addTagToVideo(videoId, SHORTS_TAG);
-    } else {
-      await addTagToVideo(videoId, 'длинное видео');
+    }
+    if (durationSeconds > LONG_VIDEO_MIN_DURATION_SECONDS) {
+      await addTagToVideo(videoId, LONG_VIDEO_TAG);
     }
   }
 
@@ -101,6 +104,64 @@ export async function tagShortsByDuration(): Promise<{
 
     const tagged = existingAfterRows.length - alreadyTagged;
     return { checked, eligible, tagged, alreadyTagged };
+  });
+}
+
+export async function tagLongVideosByDuration(): Promise<{
+  checked: number;
+  eligible: number;
+  tagged: number;
+  alreadyTagged: number;
+}> {
+  return knex.transaction(async (trx) => {
+    const longTagId = await findOrCreateTagId(LONG_VIDEO_TAG, trx);
+
+    const checkedRow = await trx('videos')
+      .whereNotNull('duration_seconds')
+      .count('* as count')
+      .first();
+    const checked = Number(checkedRow?.count ?? 0);
+
+    const eligibleRow = await trx('videos')
+      .whereNotNull('duration_seconds')
+      .where('duration_seconds', '>', LONG_VIDEO_MIN_DURATION_SECONDS)
+      .count('* as count')
+      .first();
+    const eligible = Number(eligibleRow?.count ?? 0);
+
+    const beforeRow = await trx('videos as v')
+      .join('video_tags as vt', 'vt.video_id', 'v.id')
+      .where('vt.tag_id', longTagId)
+      .whereNotNull('v.duration_seconds')
+      .where('v.duration_seconds', '>', LONG_VIDEO_MIN_DURATION_SECONDS)
+      .count('* as count')
+      .first();
+    const before = Number(beforeRow?.count ?? 0);
+
+    await trx.raw(
+      `INSERT OR IGNORE INTO video_tags (video_id, tag_id)
+       SELECT id, ?
+       FROM videos
+       WHERE duration_seconds IS NOT NULL
+         AND duration_seconds > ?`,
+      [longTagId, LONG_VIDEO_MIN_DURATION_SECONDS],
+    );
+
+    const afterRow = await trx('videos as v')
+      .join('video_tags as vt', 'vt.video_id', 'v.id')
+      .where('vt.tag_id', longTagId)
+      .whereNotNull('v.duration_seconds')
+      .where('v.duration_seconds', '>', LONG_VIDEO_MIN_DURATION_SECONDS)
+      .count('* as count')
+      .first();
+    const after = Number(afterRow?.count ?? 0);
+
+    return {
+      checked,
+      eligible,
+      tagged: after - before,
+      alreadyTagged: before,
+    };
   });
 }
 

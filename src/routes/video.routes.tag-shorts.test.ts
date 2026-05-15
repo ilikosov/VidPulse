@@ -24,8 +24,10 @@ const state = {
 vi.mock('../services/tag.service', () => ({
   LEGACY_SHORT_TAG: 'short',
   SHORTS_TAG: 'shorts',
+  LONG_VIDEO_TAG: 'длинное видео',
   assignAutoTags: vi.fn(),
   mergeShortTags: vi.fn(),
+  tagLongVideosByDuration: vi.fn(),
   tagShortsByDuration: vi.fn(async () => {
     const checked = state.videos.filter((v) => v.duration_seconds !== null).length;
     const eligibleIds = state.videos.filter((v) => v.duration_seconds < 90).map((v) => v.id);
