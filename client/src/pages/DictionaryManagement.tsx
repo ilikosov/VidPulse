@@ -7,6 +7,8 @@ export default function DictionaryManagement() {
   const [clearModalOpen, setClearModalOpen] = useState(false);
   const [clearConfirmValue, setClearConfirmValue] = useState('');
   const [clearing, setClearing] = useState(false);
+  const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const dangerousActionsEnabled =
     (import.meta as any).env?.VITE_MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED === 'true';
@@ -82,28 +84,74 @@ export default function DictionaryManagement() {
 
       <Modal
         open={importModalOpen}
-        onCancel={() => setImportModalOpen(false)}
+        onCancel={() => {
+          if (!importing) {
+            setSelectedImportFile(null);
+            setImportModalOpen(false);
+          }
+        }}
         footer={null}
         title="Import Dictionary"
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Typography.Text>
+            Select a hierarchical Media Library JSON file, then click Import.
+          </Typography.Text>
           <Upload
-            showUploadList={false}
-            beforeUpload={async (file) => {
-              try {
-                const r: any = await dictionaryApi.importFile(file as File);
-                notification.success({
-                  message: `Imported: ${r.inserted} inserted, ${r.updated} updated`,
-                });
-                setImportModalOpen(false);
-              } catch (e: any) {
-                notification.error({ message: e.message });
-              }
+            showUploadList
+            accept=".json,application/json"
+            maxCount={1}
+            beforeUpload={(file) => {
+              setSelectedImportFile(file as File);
               return false;
             }}
+            onRemove={() => {
+              setSelectedImportFile(null);
+            }}
           >
-            <Button type="primary">Select File to Import</Button>
+            <Button type="primary" disabled={importing}>
+              Select JSON File
+            </Button>
           </Upload>
+          <Button
+            type="primary"
+            disabled={selectedImportFile === null}
+            loading={importing}
+            onClick={async () => {
+              if (!selectedImportFile) {
+                return;
+              }
+              try {
+                setImporting(true);
+                const response: any = await dictionaryApi.importFile(selectedImportFile);
+                const importDetails: string[] = [];
+                if (response?.summary) {
+                  importDetails.push(
+                    typeof response.summary === 'string'
+                      ? response.summary
+                      : JSON.stringify(response.summary, null, 2),
+                  );
+                }
+                if (response?.errors) {
+                  importDetails.push(
+                    `Errors: ${Array.isArray(response.errors) ? response.errors.join('; ') : JSON.stringify(response.errors, null, 2)}`,
+                  );
+                }
+                notification.success({
+                  message: `Imported: ${response.inserted} inserted, ${response.updated} updated`,
+                  description: importDetails.length ? importDetails.join('\n') : undefined,
+                });
+                setImportModalOpen(false);
+                setSelectedImportFile(null);
+              } catch (error: any) {
+                notification.error({ message: error.message });
+              } finally {
+                setImporting(false);
+              }
+            }}
+          >
+            Import
+          </Button>
           <div>
             <strong>Download templates:</strong>
             <Space direction="vertical" size={8} style={{ marginTop: 8, width: '100%' }}>
