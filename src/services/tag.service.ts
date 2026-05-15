@@ -1,10 +1,14 @@
 import knex from '../db';
+import type { Knex } from 'knex';
 
 export const SHORTS_MAX_DURATION_SECONDS = 90;
 export const SHORTS_TAG = 'shorts';
 export const LEGACY_SHORT_TAG = 'short';
 
-async function findOrCreateTagId(tagName: string, db: typeof knex = knex): Promise<number> {
+async function findOrCreateTagId(
+  tagName: string,
+  db: Knex | Knex.Transaction = knex,
+): Promise<number> {
   const normalizedName = tagName.trim();
   const existingTag = await db('tags').whereRaw('LOWER(name) = LOWER(?)', [normalizedName]).first();
 
@@ -50,13 +54,7 @@ export async function tagShortsByDuration(): Promise<{
   alreadyTagged: number;
 }> {
   return knex.transaction(async (trx) => {
-    const shortsTagId = await (async () => {
-      const existing = await trx('tags').whereRaw('LOWER(name) = LOWER(?)', [SHORTS_TAG]).first();
-      if (existing) return existing.id as number;
-      const inserted = await trx('tags').insert({ name: SHORTS_TAG }).returning('id');
-      const value = Array.isArray(inserted) ? inserted[0] : inserted;
-      return (typeof value === 'object' ? value.id : value) as number;
-    })();
+    const shortsTagId = await findOrCreateTagId(SHORTS_TAG, trx);
 
     const checkedRow = await trx('videos')
       .whereNotNull('duration_seconds')
@@ -79,6 +77,7 @@ export async function tagShortsByDuration(): Promise<{
       .select('video_id')
       .where('tag_id', shortsTagId)
       .whereIn('video_id', eligibleVideoIds)) as Array<{ video_id: number }>;
+    const alreadyTagged = existingRows.length;
 
     const existingSet = new Set(existingRows.map((row) => row.video_id));
     const toInsert = eligibleVideoIds
@@ -86,11 +85,21 @@ export async function tagShortsByDuration(): Promise<{
       .map((videoId) => ({ video_id: videoId, tag_id: shortsTagId }));
 
     if (toInsert.length > 0) {
-      await trx('video_tags').insert(toInsert).onConflict(['video_id', 'tag_id']).ignore();
+      const chunkSize = 200;
+      for (let i = 0; i < toInsert.length; i += chunkSize) {
+        await trx('video_tags')
+          .insert(toInsert.slice(i, i + chunkSize))
+          .onConflict(['video_id', 'tag_id'])
+          .ignore();
+      }
     }
 
-    const tagged = toInsert.length;
-    const alreadyTagged = eligible - tagged;
+    const existingAfterRows = (await trx('video_tags')
+      .select('video_id')
+      .where('tag_id', shortsTagId)
+      .whereIn('video_id', eligibleVideoIds)) as Array<{ video_id: number }>;
+
+    const tagged = existingAfterRows.length - alreadyTagged;
     return { checked, eligible, tagged, alreadyTagged };
   });
 }
@@ -102,7 +111,7 @@ export async function mergeShortTags(): Promise<{
   removedLegacyTag: boolean;
 }> {
   return knex.transaction(async (trx) => {
-    const shortsTagId = await findOrCreateTagId(SHORTS_TAG, trx as unknown as typeof knex);
+    const shortsTagId = await findOrCreateTagId(SHORTS_TAG, trx);
     const legacy = await trx('tags').whereRaw('LOWER(name) = LOWER(?)', [LEGACY_SHORT_TAG]).first();
     if (!legacy) {
       return { shortsTagId, legacyShortTagId: null, moved: 0, removedLegacyTag: false };
