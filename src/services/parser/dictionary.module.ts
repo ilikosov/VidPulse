@@ -129,9 +129,9 @@ export class DictionaryModule implements ParserModule {
 
     const artistMap: Record<string, string[]> = {};
     for (const a of artists) {
-      const groupName = (a as any).group_name || 'SOLO';
+      const groupName = String((a as any).group_name || 'SOLO');
       if (!artistMap[groupName]) artistMap[groupName] = [];
-      artistMap[groupName].push(a.name);
+      artistMap[groupName].push(String(a.name));
     }
 
     const aliasMap: KpopDictionary['aliases'] = { group: {}, artist: {}, song: {} };
@@ -154,16 +154,17 @@ export class DictionaryModule implements ParserModule {
       }
     }
 
-    this.dictionary = {
+    const dictionary: KpopDictionary = {
       groups: groups.map((g: any) => String(g.name)),
       artists: artistMap,
-      songs: songs.map((s) => s.title),
-      events: events.map((e) => e.name),
+      songs: songs.map((s: any) => String(s.title)),
+      events: events.map((e: any) => String(e.name)),
       aliases: aliasMap,
       cameraTypes: this.cameraTypeMap,
     };
 
-    return this.dictionary;
+    this.dictionary = dictionary;
+    return dictionary;
   }
 
   async parse(
