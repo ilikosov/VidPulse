@@ -13,7 +13,11 @@ function splitSongTitles(songTitle?: string, songTitles?: string[]): string[] {
 }
 
 export async function syncVideoSongs(videoId: number, songTitle?: string, songTitles?: string[]) {
-  const titles = splitSongTitles(songTitle, songTitles);
+  const titles = [
+    ...new Map(
+      splitSongTitles(songTitle, songTitles).map((title) => [title.toLowerCase(), title]),
+    ).values(),
+  ];
   if (titles.length === 0) return;
 
   for (const title of titles) {
