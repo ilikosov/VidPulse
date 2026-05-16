@@ -6,6 +6,7 @@ export interface ParsedMetadata {
   group_name?: string;
   artist_name?: string; // For solo fancams
   song_title?: string;
+  song_titles?: string[];
   event?: string; // With @ prefix, e.g. @MCOUNTDOWN
   camera_type?: string; // e.g. vertical fancam, 4K, 입덕직캠
   is_fancam?: boolean;
