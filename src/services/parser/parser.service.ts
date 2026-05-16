@@ -4,6 +4,14 @@ import { DictionaryModule } from './dictionary.module';
 
 const MIN_CONFIDENCE_THRESHOLD = 0.5;
 
+function splitSongTitles(songTitle?: string): string[] {
+  if (!songTitle) return [];
+  return songTitle
+    .split(/\s*\+\s*/)
+    .map((song) => song.trim())
+    .filter(Boolean);
+}
+
 function hasUnresolvedCoreAliases(metadata: Partial<ParsedMetadata>): boolean {
   const identityValues = [metadata.group_name, metadata.artist_name].filter((v): v is string =>
     Boolean(v),
@@ -111,20 +119,44 @@ export class ParserService {
         currentMetadata.event;
     }
 
+    const parsedSongTitles = splitSongTitles(currentMetadata.song_title);
+    if (parsedSongTitles.length > 0) {
+      currentMetadata.song_titles = parsedSongTitles;
+      currentMetadata.song_title = parsedSongTitles[parsedSongTitles.length - 1];
+    }
+
     if (this.dictionaryModule) {
-      const isOwnGroupSong = await this.dictionaryModule.isOwnGroupSong?.(
-        currentMetadata.group_name,
-        currentMetadata.song_title,
+      const songsForOwnership = currentMetadata.song_titles?.length
+        ? currentMetadata.song_titles
+        : currentMetadata.song_title
+          ? [currentMetadata.song_title]
+          : [];
+
+      const ownGroupResults = await Promise.all(
+        songsForOwnership.map((songTitle) =>
+          this.dictionaryModule!.isOwnGroupSong?.(currentMetadata.group_name, songTitle),
+        ),
       );
+      const isOwnGroupSong = ownGroupResults.some((value) => value === true)
+        ? true
+        : ownGroupResults.every((value) => value === false)
+          ? false
+          : undefined;
 
       if (isOwnGroupSong !== undefined) {
         currentMetadata.is_own_group_song = isOwnGroupSong;
       }
 
-      const isOwnArtistSong = await this.dictionaryModule.isOwnArtistSong(
-        currentMetadata.artist_name,
-        currentMetadata.song_title,
+      const ownArtistResults = await Promise.all(
+        songsForOwnership.map((songTitle) =>
+          this.dictionaryModule!.isOwnArtistSong(currentMetadata.artist_name, songTitle),
+        ),
       );
+      const isOwnArtistSong = ownArtistResults.some((value) => value === true)
+        ? true
+        : ownArtistResults.every((value) => value === false)
+          ? false
+          : undefined;
 
       if (isOwnArtistSong !== undefined) {
         currentMetadata.is_own_artist_song = isOwnArtistSong;

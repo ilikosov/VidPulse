@@ -153,6 +153,17 @@ describe('ParserService.parseTitle table-driven examples', () => {
   });
 });
 
+it('should split multiple songs by plus and keep last as song_title', async () => {
+  const result = await parserService.parseTitle(
+    "260514 스테이씨 아이사 선문대 'Bubble + BEAUTIFUL MONSTER + ASAP' 직캠 (STAYC ISA FanCam)",
+  );
+
+  expect(result.metadata.song_titles).toEqual(['Bubble', 'BEAUTIFUL MONSTER', 'ASAP']);
+  expect(result.metadata.song_title).toBe('ASAP');
+  expect(result.metadata.is_own_group_song).toBe(true);
+  expect(result.metadata.is_own_artist_song).toBe(false);
+});
+
 describe('parseTitle real-world examples', () => {
   const examples: ParseCase[] = [
     {
