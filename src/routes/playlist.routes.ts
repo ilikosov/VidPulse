@@ -7,6 +7,7 @@ import {
 } from '../services/parser/metadataResolver.service';
 import { logEvent } from '../services/eventLog.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
+import { syncVideoSongs } from '../services/parser/videoSongs.service';
 
 const router = Router();
 
@@ -107,17 +108,24 @@ router.post('/', async (req: Request, res: Response) => {
           updateData.is_own_group_song = metadata.is_own_group_song ?? null;
           updateData.is_own_artist_song = metadata.is_own_artist_song ?? null;
 
-          await trx('videos').insert({
-            youtube_id: video.videoId,
-            playlist_id: newPlaylist.id,
-            original_title: video.title,
-            published_at: video.publishedAt,
-            status: needsReview || forceReview ? 'needs_review' : 'new',
-            description: null,
-            ...updateData,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
+          const [createdVideo] = await trx('videos')
+            .insert({
+              youtube_id: video.videoId,
+              playlist_id: newPlaylist.id,
+              original_title: video.title,
+              published_at: video.publishedAt,
+              status: needsReview || forceReview ? 'needs_review' : 'new',
+              description: null,
+              ...updateData,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .returning('*');
+          await syncVideoSongs(
+            createdVideo.id,
+            resolved.song_title ?? undefined,
+            metadata.song_titles,
+          );
         }
       }
     });

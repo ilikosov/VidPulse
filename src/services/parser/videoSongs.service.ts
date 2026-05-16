@@ -28,7 +28,7 @@ export async function syncVideoSongs(videoId: number, songTitle?: string, songTi
       songId = Number(typeof inserted[0] === 'object' ? inserted[0].id : inserted[0]);
     }
 
-    await knex('videos_songs')
+    await knex('video_songs')
       .insert({ video_id: videoId, song_id: songId })
       .onConflict(['video_id', 'song_id'])
       .ignore();

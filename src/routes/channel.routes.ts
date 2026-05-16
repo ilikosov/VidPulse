@@ -7,6 +7,7 @@ import { parseTitle } from '../services/parser/parser.service';
 import { assignAutoTags } from '../services/tag.service';
 import { resolveParsedMetadata } from '../services/parser/metadataResolver.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
+import { syncVideoSongs } from '../services/parser/videoSongs.service';
 
 const router = Router();
 
@@ -315,6 +316,11 @@ router.post('/:id/load-more', async (req: Request, res: Response) => {
           .returning('*');
 
         await assignAutoTags(createdVideo.id, details.durationSeconds, details.privacyStatus);
+        await syncVideoSongs(
+          createdVideo.id,
+          resolved.song_title ?? undefined,
+          metadata.song_titles,
+        );
         loaded += 1;
       } catch (videoError: any) {
         errors.push(`${item.videoId}: ${videoError?.message ?? 'Unknown error'}`);
