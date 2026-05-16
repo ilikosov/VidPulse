@@ -1050,7 +1050,7 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
     const updatedVideo = await knex.transaction(async (trx) => {
       // Update the video
       await trx('videos').where('id', id).update(updateData);
-      const effectiveSongTitle =
+      const effectiveSongTitle: string | undefined =
         (updateData.song_title as string | null | undefined) ?? video.song_title ?? undefined;
       const effectiveSongTitles = effectiveSongTitle
         ? effectiveSongTitle
