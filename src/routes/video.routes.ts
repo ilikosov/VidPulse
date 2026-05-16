@@ -1050,7 +1050,9 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
     const updatedVideo = await knex.transaction(async (trx) => {
       // Update the video
       await trx('videos').where('id', id).update(updateData);
-      await syncVideoSongs(Number(id), resolved.song_title ?? undefined, metadata.song_titles);
+      const effectiveSongTitle =
+        (updateData.song_title as string | null | undefined) ?? video.song_title ?? undefined;
+      await syncVideoSongs(Number(id), effectiveSongTitle);
 
       // Record status change if status was updated
       if (updateData.status && updateData.status !== video.status) {
