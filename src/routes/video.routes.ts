@@ -1052,7 +1052,13 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
       await trx('videos').where('id', id).update(updateData);
       const effectiveSongTitle =
         (updateData.song_title as string | null | undefined) ?? video.song_title ?? undefined;
-      await syncVideoSongs(Number(id), effectiveSongTitle);
+      const effectiveSongTitles = effectiveSongTitle
+        ? effectiveSongTitle
+            .split(/\s*\+\s*/)
+            .map((song) => song.trim())
+            .filter(Boolean)
+        : undefined;
+      await syncVideoSongs(Number(id), effectiveSongTitle, effectiveSongTitles);
 
       // Record status change if status was updated
       if (updateData.status && updateData.status !== video.status) {
