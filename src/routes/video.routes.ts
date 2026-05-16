@@ -22,6 +22,7 @@ import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
 import { parseTitleWithLLM } from '../services/ai.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
 import { requireDangerousActionsEnabled } from '../middleware/dangerousActions';
+import { syncVideoSongs } from '../services/parser/videoSongs.service';
 
 const router = Router();
 
@@ -636,6 +637,7 @@ router.post('/add', async (req: Request, res: Response) => {
     insertData.is_own_artist_song = metadata.is_own_artist_song ?? null;
 
     const [createdVideo] = await knex('videos').insert(insertData).returning('*');
+    await syncVideoSongs(createdVideo.id, resolved.song_title ?? undefined, metadata.song_titles);
     await assignAutoTags(createdVideo.id, details.durationSeconds, details.privacyStatus);
 
     await logEvent('video_added_manual', `Manual video added: ${createdVideo.original_title}`, {
@@ -1048,6 +1050,7 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
     const updatedVideo = await knex.transaction(async (trx) => {
       // Update the video
       await trx('videos').where('id', id).update(updateData);
+      await syncVideoSongs(Number(id), resolved.song_title ?? undefined, metadata.song_titles);
 
       // Record status change if status was updated
       if (updateData.status && updateData.status !== video.status) {
