@@ -4,6 +4,7 @@ import {
   hasUnresolvedEntity,
   resolveParsedMetadata,
 } from './services/parser/metadataResolver.service';
+import { syncVideoSongs } from './services/parser/videoSongs.service';
 
 async function batchParse() {
   const videos = await knex('videos').where('status', 'new').whereNull('group_name');
@@ -28,6 +29,7 @@ async function batchParse() {
         fancam_confidence: metadata.fancam_confidence ?? null,
         status: needsReview || forceReview ? 'needs_review' : 'new',
       });
+    await syncVideoSongs(v.id, resolved.song_title ?? undefined, metadata.song_titles);
   }
   console.log('Done');
   process.exit();

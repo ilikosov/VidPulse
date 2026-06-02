@@ -15,6 +15,8 @@ export interface Video {
   group_name: string | null;
   artist_name: string | null;
   song_title: string | null;
+  /** Full set of songs linked to the video (source of truth: video_songs). */
+  songs?: VideoSong[];
   event: string | null;
   camera_type: string | null;
   is_own_group_song?: boolean | null;
@@ -44,6 +46,11 @@ export interface SuggestedMetadata {
 export interface VideoTag {
   id: number;
   name: string;
+}
+
+export interface VideoSong {
+  id: number;
+  title: string;
 }
 
 export interface ParserLog {
@@ -230,6 +237,8 @@ export async function updateMetadata(
     group_name?: string | null;
     artist_name?: string | null;
     song_title?: string | null;
+    /** Full set of song titles; replaces the video's songs (empty array clears). */
+    song_titles?: string[];
     event?: string | null;
     camera_type?: string | null;
   },

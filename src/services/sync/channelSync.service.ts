@@ -7,6 +7,7 @@ import {
   IYouTubeService,
 } from '../../interfaces/services';
 import { parseVideoMetadata } from './metadata.utils';
+import { syncVideoSongs } from '../parser/videoSongs.service';
 
 const SYNC_INTERVAL_HOURS = 1;
 
@@ -37,7 +38,7 @@ export class ChannelSyncService implements IChannelSyncService {
         for (const item of items) {
           if (await this.videos.findByYoutubeId(item.videoId)) continue;
           const details = await this.youtube.getVideoDetails(item.videoId);
-          const { metadata } = await parseVideoMetadata(
+          const { metadata, songTitle, songTitles } = await parseVideoMetadata(
             this.parser,
             details.title || item.title,
             details.publishedAt || item.publishedAt,
@@ -54,6 +55,7 @@ export class ChannelSyncService implements IChannelSyncService {
             created_at: now.toISOString(),
             updated_at: now.toISOString(),
           });
+          await syncVideoSongs(id, songTitle, songTitles);
           await this.tags.assignAutoTags(id, details.durationSeconds, details.privacyStatus);
           newVideosTotal += 1;
         }

@@ -22,7 +22,8 @@ import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
 import { parseTitleWithLLM } from '../services/ai.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
 import { requireDangerousActionsEnabled } from '../middleware/dangerousActions';
-import { syncVideoSongs } from '../services/parser/videoSongs.service';
+import { syncVideoSongs, getVideoSongsMap } from '../services/parser/videoSongs.service';
+import { splitSongTitles } from '../services/parser/songTitles.util';
 
 const router = Router();
 
@@ -180,9 +181,11 @@ router.get('/', async (req: Request, res: Response) => {
     const videos = await query.limit(limit).offset(offset);
     const videoIds = videos.map((video) => video.id);
     const tagsByVideo = videoIds.length > 0 ? await getVideoTagsMap(videoIds) : new Map();
+    const songsByVideo = await getVideoSongsMap(videoIds);
     const videosWithTags = videos.map((video) => ({
       ...video,
       tags: tagsByVideo.get(video.id) ?? [],
+      songs: songsByVideo.get(video.id) ?? [],
     }));
 
     const totalQuery = knex('videos');
@@ -690,9 +693,12 @@ router.get('/:id', async (req: Request, res: Response) => {
       .where('video_tags.video_id', video.id)
       .orderBy('tags.name', 'asc');
 
+    const songs = (await getVideoSongsMap([video.id])).get(video.id) ?? [];
+
     res.json({
       ...video,
       tags,
+      songs,
     });
   } catch (error) {
     console.error('Error fetching video:', error);
@@ -829,6 +835,7 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
       };
 
       await trx('videos').where('id', videoId).update(updateData);
+      await syncVideoSongs(videoId, resolved.song_title ?? undefined, metadata.song_titles, trx);
 
       const autoTagIds = await trx('tags')
         .select('id')
@@ -971,7 +978,8 @@ router.delete('/:id/tags/:tagId', async (req: Request, res: Response) => {
 router.put('/:id/metadata', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { perf_date, group_name, artist_name, song_title, event, camera_type } = req.body;
+    const { perf_date, group_name, artist_name, song_title, song_titles, event, camera_type } =
+      req.body;
 
     // Find the video
     const video = await knex('videos').where('id', id).first();
@@ -1013,8 +1021,21 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
       updateData.artist_name = artist_name || null;
     }
 
-    if (song_title !== undefined) {
-      updateData.song_title = song_title || null;
+    // Determine the full set of songs to link. `video_songs` is the source of
+    // truth: `song_titles` (array) wins and fully replaces the set (an empty
+    // array clears it); otherwise fall back to the legacy `song_title` field
+    // (split on '+'). Leaving both out keeps the existing songs untouched.
+    let songSet: string[] | undefined;
+    if (Array.isArray(song_titles)) {
+      songSet = splitSongTitles(undefined, song_titles);
+    } else if (song_title !== undefined) {
+      songSet = splitSongTitles(song_title || undefined);
+    }
+
+    if (songSet !== undefined) {
+      // @techdebt(2026-06-02): keep the denormalized videos.song_title in sync
+      // for backward compat; drop the column once all readers use video_songs.
+      updateData.song_title = songSet.length ? songSet[songSet.length - 1] : null;
     }
 
     if (event !== undefined) {
@@ -1050,15 +1071,9 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
     const updatedVideo = await knex.transaction(async (trx) => {
       // Update the video
       await trx('videos').where('id', id).update(updateData);
-      const effectiveSongTitle: string | undefined =
-        (updateData.song_title as string | null | undefined) ?? video.song_title ?? undefined;
-      const effectiveSongTitles = effectiveSongTitle
-        ? effectiveSongTitle
-            .split(/\s*\+\s*/)
-            .map((song) => song.trim())
-            .filter(Boolean)
-        : undefined;
-      await syncVideoSongs(Number(id), effectiveSongTitle, effectiveSongTitles);
+      if (songSet !== undefined) {
+        await syncVideoSongs(Number(id), undefined, songSet, trx);
+      }
 
       // Record status change if status was updated
       if (updateData.status && updateData.status !== video.status) {
@@ -1075,6 +1090,7 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
         group_name: updateData.group_name ?? video.group_name,
         artist_name: updateData.artist_name ?? video.artist_name,
         song_title: updateData.song_title ?? video.song_title,
+        song_titles: songSet ?? splitSongTitles(video.song_title ?? undefined),
         event: updateData.event ?? video.event,
         camera_type: updateData.camera_type ?? video.camera_type,
       };
@@ -1169,6 +1185,7 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
     const updatedVideo = await knex.transaction(async (trx) => {
       // Update the video
       await trx('videos').where('id', id).update(updateData);
+      await syncVideoSongs(Number(id), resolved.song_title ?? undefined, metadata.song_titles, trx);
 
       // Record status change
       await trx('status_history').insert({

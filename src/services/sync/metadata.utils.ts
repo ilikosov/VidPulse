@@ -28,5 +28,11 @@ export async function parseVideoMetadata(
   updateData.fancam_confidence = metadata.fancam_confidence ?? null;
   updateData.is_own_group_song = metadata.is_own_group_song ?? null;
   updateData.is_own_artist_song = metadata.is_own_artist_song ?? null;
-  return { metadata: updateData, status: needsReview || forceReview ? 'needs_review' : 'new' };
+  return {
+    metadata: updateData,
+    status: needsReview || forceReview ? 'needs_review' : 'new',
+    // Raw song info so callers can sync the video_songs junction (source of truth).
+    songTitle: resolved.song_title ?? undefined,
+    songTitles: metadata.song_titles,
+  };
 }

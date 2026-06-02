@@ -11,7 +11,7 @@ const { testKnex } = vi.hoisted(() => {
 
 vi.mock('../../db', () => ({ default: testKnex }));
 
-import { syncVideoSongs } from './videoSongs.service';
+import { syncVideoSongs, getVideoSongsMap } from './videoSongs.service';
 
 beforeAll(async () => {
   await testKnex.schema.createTable('videos', (t) => {
@@ -71,5 +71,51 @@ describe('syncVideoSongs', () => {
       { video_id: 7, song_id: asap.id },
       { video_id: 7, song_id: bubble.id },
     ]);
+  });
+
+  it('fully replaces the set, unlinking songs no longer present', async () => {
+    await syncVideoSongs(42, undefined, ['Bubble', 'ASAP']);
+    await syncVideoSongs(42, undefined, ['Bubble', 'BEAUTIFUL MONSTER']);
+
+    const titles = await testKnex('video_songs as vs')
+      .join('dictionary_songs as ds', 'vs.song_id', 'ds.id')
+      .where('vs.video_id', 42)
+      .pluck('ds.title');
+
+    expect(titles.sort()).toEqual(['BEAUTIFUL MONSTER', 'Bubble']);
+  });
+
+  it('removes all links when the new set is empty', async () => {
+    await syncVideoSongs(42, undefined, ['Bubble', 'ASAP']);
+    await syncVideoSongs(42, undefined, []);
+
+    const remaining = await testKnex('video_songs').where('video_id', 42);
+    expect(remaining).toEqual([]);
+  });
+
+  it('scopes writes to a passed transaction', async () => {
+    await testKnex.transaction(async (trx) => {
+      await syncVideoSongs(7, undefined, ['Bubble'], trx);
+    });
+
+    const remaining = await testKnex('video_songs').where('video_id', 7);
+    expect(remaining).toHaveLength(1);
+  });
+});
+
+describe('getVideoSongsMap', () => {
+  it('returns alphabetically ordered songs keyed by video id', async () => {
+    await syncVideoSongs(42, undefined, ['Bubble', 'ASAP']);
+    await syncVideoSongs(7, undefined, ['Bubble']);
+
+    const map = await getVideoSongsMap([42, 7]);
+
+    expect(map.get(42)!.map((s) => s.title)).toEqual(['ASAP', 'Bubble']);
+    expect(map.get(7)!.map((s) => s.title)).toEqual(['Bubble']);
+  });
+
+  it('omits videos without songs and handles empty input', async () => {
+    expect((await getVideoSongsMap([])).size).toBe(0);
+    expect((await getVideoSongsMap([42])).has(42)).toBe(false);
   });
 });

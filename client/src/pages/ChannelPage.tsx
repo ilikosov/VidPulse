@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Avatar, Button, Card, Descriptions, message, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { getChannel, getVideos, loadMoreChannelVideos, type Channel, type Video } from '../api';
+import { SongLinks } from '../components/SongLinks';
 
 type ChannelDetails = Channel & { videoCount: number };
 
@@ -103,18 +104,9 @@ function ChannelPage() {
     {
       title: 'Song',
       dataIndex: 'song_title',
-      render: (_value: string | null | undefined, row: Video) =>
-        row.song_title ? (
-          row.song_id ? (
-            <Link to={`/dictionary/songs/${row.song_id}`} state={{ from }}>
-              {row.song_title}
-            </Link>
-          ) : (
-            row.song_title
-          )
-        ) : (
-          '-'
-        ),
+      render: (_value: string | null | undefined, row: Video) => (
+        <SongLinks video={row} from={from} />
+      ),
     },
     { title: 'Event', dataIndex: 'event', render: (value?: string | null) => value || '-' },
     { title: 'Camera', dataIndex: 'camera_type', render: (value?: string | null) => value || '-' },

@@ -1,4 +1,16 @@
 import knex from '../db';
+import { getVideoSongsMap } from './parser/videoSongs.service';
+
+/**
+ * Attach the full list of songs (from the `video_songs` junction table, the
+ * single source of truth) to each video row.
+ */
+async function attachSongs<T extends { id: number }>(
+  videos: T[],
+): Promise<Array<T & { songs: Array<{ id: number; title: string }> }>> {
+  const songsByVideo = await getVideoSongsMap(videos.map((video) => video.id));
+  return videos.map((video) => ({ ...video, songs: songsByVideo.get(video.id) ?? [] }));
+}
 
 type MembershipActivityType = 'group' | 'solo';
 type MembershipStatus = 'active' | 'former' | 'hiatus';
@@ -583,8 +595,7 @@ export class DictionaryService {
       .clone()
       .leftJoin('dictionary_groups as dg', 'videos.group_name', 'dg.name')
       .leftJoin('dictionary_artists as da', 'videos.artist_name', 'da.name')
-      .leftJoin('dictionary_songs as ds', 'videos.song_title', 'ds.title')
-      .select('videos.*', 'dg.id as group_id', 'da.id as artist_id', 'ds.id as song_id')
+      .select('videos.*', 'dg.id as group_id', 'da.id as artist_id')
       .orderBy('videos.created_at', 'desc')
       .limit(safeLimit)
       .offset(offset);
@@ -592,7 +603,7 @@ export class DictionaryService {
     const total = Number(totalRow?.count || 0);
 
     return {
-      videos,
+      videos: await attachSongs(videos),
       pagination: {
         page: safePage,
         limit: safeLimit,
@@ -611,22 +622,15 @@ export class DictionaryService {
       .clone()
       .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
       .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
-      .leftJoin('dictionary_songs as ds', 'videos.song_id', 'ds.id')
       .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
-      .select(
-        'videos.*',
-        'dg.name as group_name',
-        'da.name as artist_name',
-        'ds.title as song_title',
-        'de.name as event',
-      )
+      .select('videos.*', 'dg.name as group_name', 'da.name as artist_name', 'de.name as event')
       .orderBy('videos.created_at', 'desc')
       .limit(safeLimit)
       .offset(offset);
     const totalRow = await base.clone().count('* as count').first();
     const total = Number(totalRow?.count || 0);
     return {
-      videos,
+      videos: await attachSongs(videos),
       pagination: {
         page: safePage,
         limit: safeLimit,
@@ -645,22 +649,15 @@ export class DictionaryService {
       .clone()
       .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
       .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
-      .leftJoin('dictionary_songs as ds', 'videos.song_id', 'ds.id')
       .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
-      .select(
-        'videos.*',
-        'dg.name as group_name',
-        'da.name as artist_name',
-        'ds.title as song_title',
-        'de.name as event',
-      )
+      .select('videos.*', 'dg.name as group_name', 'da.name as artist_name', 'de.name as event')
       .orderBy('videos.created_at', 'desc')
       .limit(safeLimit)
       .offset(offset);
     const totalRow = await base.clone().count('* as count').first();
     const total = Number(totalRow?.count || 0);
     return {
-      videos,
+      videos: await attachSongs(videos),
       pagination: {
         page: safePage,
         limit: safeLimit,
@@ -674,27 +671,25 @@ export class DictionaryService {
     const safePage = Math.max(1, page);
     const safeLimit = Math.max(1, limit);
     const offset = (safePage - 1) * safeLimit;
-    const base = knex('videos').where('videos.song_id', songId);
+    // Match videos that contain this song among possibly several (source of
+    // truth is the video_songs junction table, not the denormalized column).
+    const base = knex('videos').whereIn(
+      'videos.id',
+      knex('video_songs').select('video_id').where('song_id', songId),
+    );
     const videos = await base
       .clone()
       .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
       .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
-      .leftJoin('dictionary_songs as ds', 'videos.song_id', 'ds.id')
       .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
-      .select(
-        'videos.*',
-        'dg.name as group_name',
-        'da.name as artist_name',
-        'ds.title as song_title',
-        'de.name as event',
-      )
+      .select('videos.*', 'dg.name as group_name', 'da.name as artist_name', 'de.name as event')
       .orderBy('videos.created_at', 'desc')
       .limit(safeLimit)
       .offset(offset);
     const totalRow = await base.clone().count('* as count').first();
     const total = Number(totalRow?.count || 0);
     return {
-      videos,
+      videos: await attachSongs(videos),
       pagination: {
         page: safePage,
         limit: safeLimit,
@@ -713,22 +708,15 @@ export class DictionaryService {
       .clone()
       .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
       .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
-      .leftJoin('dictionary_songs as ds', 'videos.song_id', 'ds.id')
       .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
-      .select(
-        'videos.*',
-        'dg.name as group_name',
-        'da.name as artist_name',
-        'ds.title as song_title',
-        'de.name as event',
-      )
+      .select('videos.*', 'dg.name as group_name', 'da.name as artist_name', 'de.name as event')
       .orderBy('videos.created_at', 'desc')
       .limit(safeLimit)
       .offset(offset);
     const totalRow = await base.clone().count('* as count').first();
     const total = Number(totalRow?.count || 0);
     return {
-      videos,
+      videos: await attachSongs(videos),
       pagination: {
         page: safePage,
         limit: safeLimit,
@@ -814,11 +802,9 @@ export class DictionaryService {
         knex.raw('MIN(g.id) as group_id'),
         knex.raw('MIN(g.name) as group_name'),
       )
-      .countDistinct('v.id as videos_count')
+      .countDistinct('vs.video_id as videos_count')
       .countDistinct('soa.id as aliases_count')
-      .leftJoin('videos as v', function joinVideosBySong() {
-        this.on('v.song_id', '=', 's.id').orOn('v.song_title', '=', 's.title');
-      });
+      .leftJoin('video_songs as vs', 'vs.song_id', 's.id');
 
     if (q) {
       query.where((builder) => {

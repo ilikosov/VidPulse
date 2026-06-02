@@ -7,6 +7,7 @@ import {
   hasUnresolvedEntity,
   resolveParsedMetadata,
 } from '../services/parser/metadataResolver.service';
+import { syncVideoSongs } from '../services/parser/videoSongs.service';
 
 const router = Router();
 
@@ -64,6 +65,7 @@ router.post('/llm-parse/:id', async (req: Request, res: Response) => {
         is_own_artist_song: metadata.is_own_artist_song ?? null,
         updated_at: new Date().toISOString(),
       });
+    await syncVideoSongs(id, resolved.song_title ?? undefined, metadata.song_titles);
 
     return res.json({ updated: 1, metadata });
   } catch (error) {
@@ -109,6 +111,7 @@ router.post('/llm-parse-batch', async (req: Request, res: Response) => {
             is_own_artist_song: metadata.is_own_artist_song ?? null,
             updated_at: new Date().toISOString(),
           });
+        await syncVideoSongs(video.id, resolved.song_title ?? undefined, metadata.song_titles);
         updated += 1;
       } catch (error) {
         console.error(`Error LLM parsing video ${video.id}:`, error);
@@ -175,6 +178,7 @@ router.post('/reparse-all', async (req: Request, res: Response) => {
             ...updateData,
             updated_at: new Date().toISOString(),
           });
+        await syncVideoSongs(video.id, resolved.song_title ?? undefined, metadata.song_titles);
 
         updated += 1;
       } catch (error) {
@@ -265,6 +269,7 @@ router.post('/reparse/:id', async (req: Request, res: Response) => {
           ...updateData,
           updated_at: new Date().toISOString(),
         });
+      await syncVideoSongs(video.id, resolved.song_title ?? undefined, metadata.song_titles, trx);
 
       if (nextStatus !== video.status) {
         await trx('status_history').insert({
@@ -339,6 +344,12 @@ router.post('/reparse-batch', async (req: Request, res: Response) => {
               ...updateData,
               updated_at: new Date().toISOString(),
             });
+          await syncVideoSongs(
+            video.id,
+            resolved.song_title ?? undefined,
+            metadata.song_titles,
+            trx,
+          );
 
           if (nextStatus !== video.status) {
             await trx('status_history').insert({
