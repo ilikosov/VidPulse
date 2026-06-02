@@ -125,6 +125,7 @@ router.post('/', async (req: Request, res: Response) => {
             createdVideo.id,
             resolved.song_title ?? undefined,
             metadata.song_titles,
+            trx,
           );
         }
       }

@@ -25,13 +25,14 @@ import {
   type Video,
 } from '../api';
 import AutocompleteField from './AutocompleteField';
+import SongTitlesField from './SongTitlesField';
 
 interface ReviewVideo extends Video {
   editForm: {
     perf_date: string;
     group_name: string;
     artist_name: string;
-    song_title: string;
+    song_titles: string[];
     event: string;
     camera_type: string;
   };
@@ -51,6 +52,15 @@ function formatDateForEdit(dateString: string | null): string {
   return `${year}${month}${day}`;
 }
 
+function songsToTitles(video: Video): string[] {
+  if (video.songs?.length) return video.songs.map((song) => song.title);
+  if (!video.song_title) return [];
+  return video.song_title
+    .split(/\s*\+\s*/)
+    .map((song) => song.trim())
+    .filter(Boolean);
+}
+
 function ReviewQueue() {
   const [videos, setVideos] = useState<ReviewVideo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +78,7 @@ function ReviewQueue() {
             perf_date: formatDateForEdit(video.perf_date),
             group_name: video.group_name || '',
             artist_name: video.artist_name || '',
-            song_title: video.song_title || '',
+            song_titles: songsToTitles(video),
             event: video.event ? video.event.replace('@', '') : '',
             camera_type: video.camera_type || '',
           },
@@ -98,6 +108,14 @@ function ReviewQueue() {
     );
   };
 
+  const handleSongTitlesChange = (id: number, value: string[]) => {
+    setVideos((prev) =>
+      prev.map((video) =>
+        video.id === id ? { ...video, editForm: { ...video.editForm, song_titles: value } } : video,
+      ),
+    );
+  };
+
   const handleIgnore = async (video: ReviewVideo) => {
     try {
       await ignoreVideo(video.id);
@@ -117,7 +135,7 @@ function ReviewQueue() {
         perf_date: video.editForm.perf_date || null,
         group_name: video.editForm.group_name || null,
         artist_name: video.editForm.artist_name || null,
-        song_title: video.editForm.song_title || null,
+        song_titles: video.editForm.song_titles,
         event: video.editForm.event ? '@' + video.editForm.event.toUpperCase() : null,
         camera_type: video.editForm.camera_type || null,
       });
@@ -153,7 +171,12 @@ function ReviewQueue() {
                   perf_date: suggestion.perf_date ?? '',
                   group_name: suggestion.group_name ?? '',
                   artist_name: suggestion.artist_name ?? '',
-                  song_title: suggestion.song_title ?? '',
+                  song_titles: suggestion.song_title
+                    ? suggestion.song_title
+                        .split(/\s*\+\s*/)
+                        .map((song) => song.trim())
+                        .filter(Boolean)
+                    : [],
                   event: suggestion.event ? suggestion.event.replace('@', '') : '',
                   camera_type: suggestion.camera_type ?? '',
                 },
@@ -307,12 +330,11 @@ function ReviewQueue() {
                 />
               </Col>
               <Col xs={24} md={12} lg={8}>
-                <AutocompleteField
+                <SongTitlesField
                   style={{ width: '100%' }}
-                  label="Song Title"
-                  type="song"
-                  value={video.editForm.song_title}
-                  onChange={(value) => handleFieldChange(video.id, 'song_title', value)}
+                  label="Songs"
+                  value={video.editForm.song_titles}
+                  onChange={(value) => handleSongTitlesChange(video.id, value)}
                 />
               </Col>
               <Col xs={24} md={12} lg={8}>

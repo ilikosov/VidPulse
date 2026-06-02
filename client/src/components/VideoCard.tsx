@@ -34,6 +34,7 @@ import {
   type Video,
 } from '../api';
 import AutocompleteField from './AutocompleteField';
+import SongTitlesField from './SongTitlesField';
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
 import { getBackPath } from '../utils/navigation';
@@ -45,9 +46,18 @@ interface EditForm {
   perf_date: string;
   group_name: string;
   artist_name: string;
-  song_title: string;
+  song_titles: string[];
   event: string;
   camera_type: string;
+}
+
+function songsToTitles(video: Video): string[] {
+  if (video.songs?.length) return video.songs.map((song) => song.title);
+  if (!video.song_title) return [];
+  return video.song_title
+    .split(/\s*\+\s*/)
+    .map((song) => song.trim())
+    .filter(Boolean);
 }
 
 function formatDateForEdit(dateString: string | null) {
@@ -64,7 +74,7 @@ function toForm(video: Video): EditForm {
     perf_date: formatDateForEdit(video.perf_date),
     group_name: video.group_name || '',
     artist_name: video.artist_name || '',
-    song_title: video.song_title || '',
+    song_titles: songsToTitles(video),
     event: video.event ? video.event.replace('@', '') : '',
     camera_type: video.camera_type || '',
   };
@@ -282,7 +292,7 @@ function VideoCard() {
         perf_date: form.perf_date || null,
         group_name: form.group_name || null,
         artist_name: form.artist_name || null,
-        song_title: form.song_title || null,
+        song_titles: form.song_titles,
         event: form.event ? '@' + form.event.toUpperCase() : null,
         camera_type: form.camera_type || null,
       });
@@ -506,13 +516,12 @@ function VideoCard() {
                       />
                     </Col>
                     <Col xs={24} sm={12}>
-                      <AutocompleteField
+                      <SongTitlesField
                         style={{ width: '100%' }}
-                        type="song"
-                        placeholder="Enter song title"
-                        value={form.song_title}
+                        placeholder="Enter song titles"
+                        value={form.song_titles}
                         onChange={(value) =>
-                          setForm((prev) => (prev ? { ...prev, song_title: value } : prev))
+                          setForm((prev) => (prev ? { ...prev, song_titles: value } : prev))
                         }
                       />
                     </Col>
@@ -568,7 +577,9 @@ function VideoCard() {
                   </Descriptions.Item>
                   <Descriptions.Item label="Group">{video.group_name || '-'}</Descriptions.Item>
                   <Descriptions.Item label="Artist">{video.artist_name || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Song">{video.song_title || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="Song">
+                    {songsToTitles(video).join(' + ') || '-'}
+                  </Descriptions.Item>
                   <Descriptions.Item label="Event">{video.event || '-'}</Descriptions.Item>
                   <Descriptions.Item label="Camera Type">
                     {video.camera_type || '-'}

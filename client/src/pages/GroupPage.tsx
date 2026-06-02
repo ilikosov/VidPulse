@@ -6,6 +6,7 @@ import type { Video } from '../api';
 import { dictionaryApi, type DictionaryGroup, type DictionarySong } from '../api/dictionary';
 import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
+import { SongLinks } from '../components/SongLinks';
 
 const defaultVideosLimit = 20;
 const defaultSongsLimit = 10;
@@ -85,14 +86,7 @@ export default function GroupPage() {
       {
         title: 'Song',
         dataIndex: 'song_title',
-        render: (_v, r: any) =>
-          r.song_id ? (
-            <Link to={`/dictionary/songs/${r.song_id}`} state={{ from }}>
-              {r.song_title}
-            </Link>
-          ) : (
-            r.song_title || '-'
-          ),
+        render: (_v, r: any) => <SongLinks video={r} from={from} />,
       },
       { title: 'Event', dataIndex: 'event' },
       { title: 'Camera', dataIndex: 'camera_type' },

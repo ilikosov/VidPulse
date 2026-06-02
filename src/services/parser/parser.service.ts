@@ -1,16 +1,9 @@
 import { ParsedMetadata, ParserModule } from './parser.types';
 import { RegexModule } from './regex.module';
 import { DictionaryModule } from './dictionary.module';
+import { splitSongTitles } from './songTitles.util';
 
 const MIN_CONFIDENCE_THRESHOLD = 0.5;
-
-function splitSongTitles(songTitle?: string): string[] {
-  if (!songTitle) return [];
-  return songTitle
-    .split(/\s*\+\s*/)
-    .map((song) => song.trim())
-    .filter(Boolean);
-}
 
 function hasUnresolvedCoreAliases(metadata: Partial<ParsedMetadata>): boolean {
   const identityValues = [metadata.group_name, metadata.artist_name].filter((v): v is string =>

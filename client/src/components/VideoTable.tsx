@@ -33,6 +33,7 @@ import {
 } from '../api';
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
+import { SongLinks } from './SongLinks';
 
 const statusOptions = [
   { value: '', label: 'All' },
@@ -176,18 +177,7 @@ function VideoTable() {
       title: 'Song',
       dataIndex: 'song_title',
       key: 'song_title',
-      render: (_value: string | null, row: Video) =>
-        row.song_title ? (
-          row.song_id ? (
-            <Link to={`/dictionary/songs/${row.song_id}`} state={{ from }}>
-              {row.song_title}
-            </Link>
-          ) : (
-            row.song_title
-          )
-        ) : (
-          '-'
-        ),
+      render: (_value: string | null, row: Video) => <SongLinks video={row} from={from} />,
     },
     {
       title: 'Tags',

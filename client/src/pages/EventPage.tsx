@@ -6,6 +6,7 @@ import type { Video } from '../api';
 import { dictionaryApi } from '../api/dictionary';
 import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
+import { SongLinks } from '../components/SongLinks';
 
 export default function EventPage() {
   const { id = '' } = useParams();
@@ -34,7 +35,11 @@ export default function EventPage() {
       },
       { title: 'Group', dataIndex: 'group_name' },
       { title: 'Artist', dataIndex: 'artist_name' },
-      { title: 'Song', dataIndex: 'song_title' },
+      {
+        title: 'Song',
+        dataIndex: 'song_title',
+        render: (_v: unknown, r: any) => <SongLinks video={r} from={from} />,
+      },
       { title: 'Status', dataIndex: 'status', render: (v) => <Tag>{v}</Tag> },
     ],
     [from],
