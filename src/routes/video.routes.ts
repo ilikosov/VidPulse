@@ -469,7 +469,7 @@ router.post('/:id/ignore', async (req: Request, res: Response) => {
       });
     }
 
-    const updatedVideo = await knex('videos').where('id', videoId).first();
+    const updatedVideo = await knex('videos_display as videos').where('videos.id', videoId).first();
     return res.json(updatedVideo);
   } catch (error) {
     console.error('Error ignoring video:', error);

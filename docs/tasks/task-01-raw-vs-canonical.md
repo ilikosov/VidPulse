@@ -1,8 +1,9 @@
 # TASK-1 — Variant 1: separate raw parse from canonical references (group / artist / event)
 
-**Status:** [~] in progress — core implemented (resolver raw storage + `videos_display` view +
-read-path joins + list/detail reads + tests). Remaining: `videos_perf_meta_idx` review;
-post-mutation route responses; optional `getVideosBy*Id` COALESCE for secondary fields.
+**Status:** [x] done — resolver stores raw + id; `videos_display` view derives display; list/detail,
+`getVideosBy*Id`, `getVideosByField` and the status-update response read from the view; FK-only joins;
+tests added. Minor leftover (non-blocking): a few transactional post-mutation responses still return the
+base row (the UI refetches list/detail, which use the view).
 **Priority:** high
 **Docs:**
 
@@ -26,11 +27,12 @@ canonical link, and the display value is derived as `COALESCE(dictionary, parse)
 - [x] **Read path** `src/services/dictionary.service.ts`: replace the fragile `OR` join
       (`ON v.group_id = g.id OR v.group_name = g.name`, ~line 404) and the text join in `getVideosByField`
       (~line 596) with FK-only joins; switch video reads/serialization to `videos_display`/the helper.
-- [~] **Consumer routes:** check `src/routes/{video,parser,channel,playlist,dictionary}.routes.ts` — return
-  the display fields.
-- [ ] **Index:** reconsider the composite `videos_perf_meta_idx` (`perf_date, group_name, artist_name,
-song_title, event`) — decide whether to keep it for text search or replace with `*_id` indexes
-      (see ADR 0002 §3 Trade-offs).
+- [x] **Consumer routes:** list + detail, dictionary `getVideosBy*Id`/`getVideosByField`, and the
+      status-update response read from `videos_display`. (A few transactional post-mutation responses
+      still return the base row — the UI refetches list/detail.)
+- [x] **Index:** decision — **keep** `videos_perf_meta_idx` as-is; the FK columns used by the read path
+      (`group_id`/`artist_id`/`event_id`) are already indexed (`videos_*_idx` from the FK migration), so
+      no new indexes are needed (see ADR 0002 §3 Trade-offs).
 - [x] **Backfill (idempotent):** no-op — the view derives display from the dictionary, so existing rows
       (where the stored text already equals the canonical name) display identically; no data migration
       needed (see ADR 0002 §3 Risks: the original raw parse is unrecoverable for historical rows).

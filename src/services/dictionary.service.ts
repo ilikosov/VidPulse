@@ -615,13 +615,12 @@ export class DictionaryService {
     const safePage = Math.max(1, page);
     const safeLimit = Math.max(1, limit);
     const offset = (safePage - 1) * safeLimit;
-    const base = knex('videos').where('videos.group_id', groupId);
+    const base = knex('videos_display as videos').where('videos.group_id', groupId);
     const videos = await base
       .clone()
-      .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
-      .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
-      .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
-      .select('videos.*', 'dg.name as group_name', 'da.name as artist_name', 'de.name as event')
+      // videos_display already exposes display group_name/artist_name/event
+      // (COALESCE(dictionary, raw)), so the dictionary name-joins are redundant.
+      .select('videos.*')
       .orderBy('videos.created_at', 'desc')
       .limit(safeLimit)
       .offset(offset);
@@ -642,13 +641,12 @@ export class DictionaryService {
     const safePage = Math.max(1, page);
     const safeLimit = Math.max(1, limit);
     const offset = (safePage - 1) * safeLimit;
-    const base = knex('videos').where('videos.artist_id', artistId);
+    const base = knex('videos_display as videos').where('videos.artist_id', artistId);
     const videos = await base
       .clone()
-      .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
-      .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
-      .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
-      .select('videos.*', 'dg.name as group_name', 'da.name as artist_name', 'de.name as event')
+      // videos_display already exposes display group_name/artist_name/event
+      // (COALESCE(dictionary, raw)), so the dictionary name-joins are redundant.
+      .select('videos.*')
       .orderBy('videos.created_at', 'desc')
       .limit(safeLimit)
       .offset(offset);
@@ -671,16 +669,15 @@ export class DictionaryService {
     const offset = (safePage - 1) * safeLimit;
     // Match videos that contain this song among possibly several (source of
     // truth is the video_songs junction table, not the denormalized column).
-    const base = knex('videos').whereIn(
+    const base = knex('videos_display as videos').whereIn(
       'videos.id',
       knex('video_songs').select('video_id').where('song_id', songId),
     );
     const videos = await base
       .clone()
-      .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
-      .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
-      .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
-      .select('videos.*', 'dg.name as group_name', 'da.name as artist_name', 'de.name as event')
+      // videos_display already exposes display group_name/artist_name/event
+      // (COALESCE(dictionary, raw)), so the dictionary name-joins are redundant.
+      .select('videos.*')
       .orderBy('videos.created_at', 'desc')
       .limit(safeLimit)
       .offset(offset);
@@ -701,13 +698,12 @@ export class DictionaryService {
     const safePage = Math.max(1, page);
     const safeLimit = Math.max(1, limit);
     const offset = (safePage - 1) * safeLimit;
-    const base = knex('videos').where('videos.event_id', eventId);
+    const base = knex('videos_display as videos').where('videos.event_id', eventId);
     const videos = await base
       .clone()
-      .leftJoin('dictionary_groups as dg', 'videos.group_id', 'dg.id')
-      .leftJoin('dictionary_artists as da', 'videos.artist_id', 'da.id')
-      .leftJoin('dictionary_events as de', 'videos.event_id', 'de.id')
-      .select('videos.*', 'dg.name as group_name', 'da.name as artist_name', 'de.name as event')
+      // videos_display already exposes display group_name/artist_name/event
+      // (COALESCE(dictionary, raw)), so the dictionary name-joins are redundant.
+      .select('videos.*')
       .orderBy('videos.created_at', 'desc')
       .limit(safeLimit)
       .offset(offset);
