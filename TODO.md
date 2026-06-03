@@ -134,7 +134,7 @@ built DB: `idx_videos_status` + `videos_status_index` and `idx_videos_duplicate_
 **Steps:**
 
 - [ ] New migration `npx knex migrate:make drop_duplicate_video_indexes` that `DROP INDEX IF EXISTS
-  idx_videos_status` and `idx_videos_duplicate_group` (keep the builder-created `videos_*_index`).
+idx_videos_status` and `idx_videos_duplicate_group` (keep the builder-created `videos_*_index`).
 - [ ] Add a matching `down` that recreates them.
 
 **Files:** `migrations/`.
@@ -212,6 +212,49 @@ bootstrap documented and working.
 
 **Acceptance:** CHECK constraints defined at table creation; `updated_at` behavior is defined and tested;
 migrations apply and roll back cleanly.
+
+---
+
+## [ ] TASK-8 — Migrate to a proper monorepo
+
+**Priority:** medium
+**Docs:** ADR-0003 (to be created — see step 1)
+
+**Why:** the repo is already two npm packages — backend at the root (`package.json`,
+`kpop-archive-manager`) and frontend in `client/` — but without a workspace manager. Consequences today:
+no single install, scripts shell out with `cd client && …` and `concurrently` (see root `package.json`
+`client:dev`/`client:build`/`launch`/`dev:all`), two independent `tsconfig.json`, and no shared package,
+so API/domain types are duplicated between backend (`src/interfaces`, `src/types`) and frontend
+(`client/src`). A real monorepo gives one install, shared types, and unified tooling.
+
+**Steps:**
+
+- [ ] **Decide & record:** write `docs/adr/0003-monorepo.md` (Status: Proposed) choosing the tool
+      (npm workspaces vs pnpm vs Turborepo/Nx) and the target layout, e.g.
+      `apps/server` + `apps/web` + `packages/shared` (shared types/contracts).
+- [ ] **Restructure:** move backend (`src/`, `migrations/`, `tests/`, configs) into `apps/server` and the
+      current `client/` into `apps/web`; keep import paths working.
+- [ ] **Workspaces:** add `"workspaces"` (or `pnpm-workspace.yaml`) at the root; `private: true`; one
+      lockfile; a single `npm install` bootstraps everything.
+- [ ] **Shared package:** extract cross-cutting types/contracts (API DTOs, dictionary/video shapes) into
+      `packages/shared` consumed by both apps — remove duplication.
+- [ ] **Scripts:** replace `cd client && …` / `concurrently` plumbing with workspace-aware scripts
+      (`npm run -w apps/web …`, root `dev`/`build`/`test` fan-out). Keep `dev:all` working.
+- [ ] **Tooling:** root-level `tsconfig` base + per-app extends; align Prettier/Husky/lint-staged,
+      Vitest and Playwright paths.
+- [ ] **CI/docs:** update [`docs/overview.*`](./docs/overview.en.md) project-structure section,
+      `AGENTS.md`, and any path assumptions (e.g. `--knexfile` path, Playwright `webServer`).
+
+**Files:** repo root (`package.json`, lockfile, `tsconfig.json`), `src/**` → `apps/server/**`,
+`client/**` → `apps/web/**`, new `packages/shared/**`, `playwright.config.ts`, `vitest.config.ts`,
+`docs/**`, `AGENTS.md`.
+
+**Acceptance:** a single `npm install` at the root bootstraps both apps; shared types are imported from
+`packages/shared` (no duplication); `npm run dev:all`, `npm test`, `npm run test:e2e` and the build all
+work from the root; project structure docs updated.
+
+**Notes:** large, mechanical-but-wide change — do it as its own PR, ideally before the schema/data-model
+tasks land to avoid path churn. Re-resolve any open work on top of the new layout.
 
 ---
 
