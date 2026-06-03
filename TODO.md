@@ -31,7 +31,7 @@ acceptance criteria.
 
 ## Code quality (code-review)
 
-- [ ] **TASK-9** (medium) — Remove dead code (`parser_new`) & unused dep (`sqlite3`) — [details](./docs/tasks/task-09-remove-dead-code.md)
+- [x] **TASK-9** (medium) — Remove dead code (`parser_new`) & unused dep (`sqlite3`) — [details](./docs/tasks/task-09-remove-dead-code.md)
 - [ ] **TASK-10** (high) — Central error handling, 404, async wrapper — [details](./docs/tasks/task-10-error-handling.md)
 - [ ] **TASK-11** (medium) — Side-effect-free app bootstrap — [details](./docs/tasks/task-11-bootstrap-side-effects.md)
 - [ ] **TASK-12** (medium) — Consolidate DB access; split god files — [details](./docs/tasks/task-12-consolidate-db-access.md)
@@ -40,10 +40,11 @@ acceptance criteria.
 
 ## Tests (code-review)
 
-- [ ] **TASK-15** (high) — Fix the test suite (DB bootstrap, schema drift, real failures) — [details](./docs/tasks/task-15-fix-tests.md)
+- [x] **TASK-15** (high) — Fix the test suite (DB bootstrap, schema drift, real failures) — [details](./docs/tasks/task-15-fix-tests.md)
+- [ ] **TASK-16** (medium) — Fix parser correctness bugs (apostrophe truncation, name split, solo detection) — [details](./docs/tasks/task-16-parser-correctness.md)
 
 ---
 
 > **Background docs.** Findings behind TASK-4…7 → [`docs/migrations-review.md`](./docs/migrations-review.md);
-> behind TASK-9…15 → [`docs/code-review.md`](./docs/code-review.md). Design decisions →
+> behind TASK-9…16 → [`docs/code-review.md`](./docs/code-review.md). Design decisions →
 > [`docs/adr/`](./docs/adr).
