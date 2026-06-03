@@ -218,7 +218,7 @@ migrations apply and roll back cleanly.
 ## [ ] TASK-8 — Migrate to a proper monorepo
 
 **Priority:** medium
-**Docs:** ADR-0003 (to be created — see step 1)
+**Docs:** [ADR 0003 — Migrate to a monorepo (npm workspaces)](./docs/adr/0003-monorepo.md)
 
 **Why:** the repo is already two npm packages — backend at the root (`package.json`,
 `kpop-archive-manager`) and frontend in `client/` — but without a workspace manager. Consequences today:
@@ -229,9 +229,8 @@ so API/domain types are duplicated between backend (`src/interfaces`, `src/types
 
 **Steps:**
 
-- [ ] **Decide & record:** write `docs/adr/0003-monorepo.md` (Status: Proposed) choosing the tool
-      (npm workspaces vs pnpm vs Turborepo/Nx) and the target layout, e.g.
-      `apps/server` + `apps/web` + `packages/shared` (shared types/contracts).
+- [x] **Decide & record:** [ADR 0003](./docs/adr/0003-monorepo.md) — chosen **npm workspaces** with
+      layout `apps/server` + `apps/web` + `packages/shared` (shared types/contracts).
 - [ ] **Restructure:** move backend (`src/`, `migrations/`, `tests/`, configs) into `apps/server` and the
       current `client/` into `apps/web`; keep import paths working.
 - [ ] **Workspaces:** add `"workspaces"` (or `pnpm-workspace.yaml`) at the root; `private: true`; one
