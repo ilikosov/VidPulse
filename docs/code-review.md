@@ -5,7 +5,7 @@ migrations/DB review in [`migrations-review.md`](./migrations-review.md). Items 
 issues worth fixing, ranked by severity. The pre-existing fragile dictionary read joins are already
 tracked by [TODO TASK-1](../TODO.md) and not repeated here.
 
-> Actionable items are tracked in [`TODO.md`](../TODO.md) (TASK-9…14).
+> Actionable items are tracked in [`TODO.md`](../TODO.md) (TASK-9…15).
 
 ---
 
