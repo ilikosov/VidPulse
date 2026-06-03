@@ -1,6 +1,6 @@
 # TASK-9 — Remove dead code & unused dependency
 
-**Status:** [ ] not started
+**Status:** [x] done (in the TASK-15 PR — `parser_new` deleted, `sqlite3` removed).
 **Priority:** medium
 **Docs:** [Code review → C1](../code-review.md#c1--dead-code-srcservicesparser_new),
 [C3](../code-review.md#c3--unused-dependency-sqlite3)

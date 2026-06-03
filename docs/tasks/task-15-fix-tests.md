@@ -1,6 +1,7 @@
 # TASK-15 — Fix the test suite (DB bootstrap, schema drift, real failures)
 
-**Status:** [ ] not started
+**Status:** [x] done — `npm test` green (65 passed, 3 skipped). The 3 skips are genuine parser bugs
+moved to [TASK-16](./task-16-parser-correctness.md).
 **Priority:** high
 **Docs:** [Code review → C10](../code-review.md#c10--the-dead-parser_new-suite-is-97-of-the-failures),
 [C11](../code-review.md#c11--no-shared-test-db-bootstrap-schema-drift-in-in-memory-tests),

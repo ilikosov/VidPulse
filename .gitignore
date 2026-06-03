@@ -33,3 +33,4 @@ src/db/dev.sqlite3-wal
 test-results
 dev.test.sqlite3-shm
 dev.test.sqlite3-wal
+dev.test.sqlite3

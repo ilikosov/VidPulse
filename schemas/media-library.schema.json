@@ -15,6 +15,10 @@
       "enum": ["merge", "replace"],
       "default": "merge"
     },
+    "exportedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
     "groups": {
       "type": "array",
       "items": {
@@ -68,8 +72,15 @@
           "enum": ["active", "former", "hiatus"]
         },
         "from": {
-          "type": "string",
-          "format": "date"
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "to": {
           "anyOf": [
