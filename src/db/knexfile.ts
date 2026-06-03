@@ -22,9 +22,17 @@ const config: { [key: string]: Knex.Config } = {
 
   test: {
     client: 'better-sqlite3',
-    connection: { filename: path.resolve(__dirname, './dev.sqlite3') },
+    // Dedicated test DB file — never the shared dev database (see TASK-5 / TASK-15).
+    connection: { filename: path.resolve(__dirname, './dev.test.sqlite3') },
     useNullAsDefault: true,
-    migrations: { directory: '../../migrations' },
+    pool: {
+      afterCreate: (conn: any, done: any) => {
+        conn.pragma('foreign_keys = ON');
+        conn.pragma('busy_timeout=5000');
+        done(null, conn);
+      },
+    },
+    migrations: { directory: path.resolve(__dirname, '../../migrations') },
   },
 
   production: {

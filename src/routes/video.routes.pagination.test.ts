@@ -1,32 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import express from 'express';
 import { AddressInfo } from 'net';
+import router from './video.routes';
 
-const mockRows = [{ id: 1 }];
-
-function makeQuery() {
-  const q: any = {
-    leftJoin: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    whereNot: vi.fn().mockReturnThis(),
-    whereNotIn: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    offset: vi.fn().mockResolvedValue(mockRows),
-    count: vi.fn().mockReturnThis(),
-    first: vi.fn().mockResolvedValue({ count: '1' }),
-  };
-  return q;
-}
-
-const knexMock: any = vi.fn((table: string) => makeQuery());
-vi.mock('../db', () => ({ default: knexMock }));
-vi.mock('../models/videoStatus', () => ({ VALID_STATUSES: ['new'], isValidStatus: () => true }));
-
-describe('videos pagination', async () => {
-  const { default: router } = await import('./video.routes');
-
+// Runs against the dedicated, migrated test DB (see tests/vitest.global-setup.ts).
+// With no videos seeded the endpoint still echoes the requested pagination.
+describe('videos pagination', () => {
   it('returns requested page and limit', async () => {
     const app = express();
     app.use('/api/videos', router);
