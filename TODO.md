@@ -1,103 +1,105 @@
-# TODO — backlog реализации
+# TODO — implementation backlog
 
-Этот файл — очередь задач на **реализацию в коде**, выведенных из проектной документации
-(ADR и reference-доков). Документация описывает _что и почему_; здесь — _что сделать_.
+This file is the queue of **code implementation** tasks derived from the project documentation
+(ADRs and reference docs). The docs describe _what & why_; this file is _what to do_.
 
-**Как пользоваться (для Claude Code):**
+**How to use (for Claude Code):**
 
-- Каждая задача самодостаточна: контекст, ссылки на доки, конкретные шаги, файлы, критерии приёмки.
-- Перед началом — прочитать связанные доки из блока **Docs**.
-- Статусы чекбоксов: `[ ]` не начато · `[~]` в работе · `[x]` сделано.
-- Соблюдать конвенции из [`AGENTS.md`](./AGENTS.md) (feature-ветка, Conventional Commits, тонкие роуты / логика в сервисах, миграции через `knex migrate:make`).
-- **Только документация уже зафиксирована — код/схему меняем именно по этим задачам.**
+- Each task is self-contained: context, doc links, concrete steps, files, acceptance criteria.
+- Before starting a task, read the linked docs in its **Docs** block.
+- Checkbox states: `[ ]` not started · `[~]` in progress · `[x]` done.
+- Follow the conventions in [`AGENTS.md`](./AGENTS.md) (feature branch, Conventional Commits, thin routes / logic in services, migrations via `knex migrate:make`).
+- **Only the documentation is fixed so far — code/schema changes happen through these tasks.**
 
 ---
 
-## [ ] TASK-1 — Вариант 1: разделение «сырого парсинга» и канонических ссылок (group / artist / event)
+## [ ] TASK-1 — Variant 1: separate raw parse from canonical references (group / artist / event)
 
 **Priority:** high
 **Docs:**
 
-- [ADR 0002 — Разделение raw parse vs canonical](./docs/adr/0002-raw-parse-vs-canonical-display.md) (особенно §2 Decision и §4 Implementation plan)
+- [ADR 0002 — Raw parse vs canonical references](./docs/adr/0002-raw-parse-vs-canonical-display.md) (especially §2 Decision and §4 Implementation plan)
 - [ADR 0001 — Canonical dictionary entities](./docs/adr/0001-canonical-dictionary-entities.md)
-- [Сущности и связи](./docs/entities.ru.md) → раздел `videos`, заметка «Целевая модель денормализации»
+- [Entities & Relationships](./docs/entities.en.md) → `videos` section, "Target denormalization model" note
 
-**Why:** сейчас `videos.group_name/artist_name/event` и FK `group_id/artist_id/event_id` — двойной
-источник истины (текст перезаписывается каноникой → staleness при переименовании в словаре + потеря
-результата парсинга). Цель: текст = только результат парсинга, FK = канон, отображение = производное
-`COALESCE(словарь, парсинг)` (приоритет у словаря).
+**Why:** today `videos.group_name/artist_name/event` and the FKs `group_id/artist_id/event_id` are a
+dual source of truth (the text is overwritten with the canonical value → staleness when a dictionary
+entry is renamed + loss of the parse result). Goal: text holds only the raw parse result, the FK is the
+canonical link, and the display value is derived as `COALESCE(dictionary, parse)` (dictionary wins).
 
 **Steps:**
 
-- [ ] **Резолвер** `src/services/parser/metadataResolver.service.ts` (~строки 106–109): перестать
-      перезаписывать `*_name` каноникой — писать сырой парсинг (`groupInput || null`) в `*_name` и
-      резолв в `*_id`. Поправить тесты `metadataResolver.service.test.ts`.
-- [ ] **Display-слой:** добавить SQL-VIEW `videos_display` (или единый query-хелпер), вычисляющий
-      `group_display = COALESCE(dg.name, videos.group_name)` и аналогично для artist/event
-      (event — с `@`-нормализацией). Новая миграция через `npx knex migrate:make add_videos_display_view`.
-- [ ] **Read-path** `src/services/dictionary.service.ts`: заменить хрупкий `OR`-джойн
-      (`ON v.group_id = g.id OR v.group_name = g.name`, ~строка 404) и текст-джойн в `getVideosByField`
-      (~строка 596) на джойны строго по FK; перевести чтение/сериализацию видео на `videos_display`/хелпер.
-- [ ] **Роуты-потребители:** проверить `src/routes/{video,parser,channel,playlist,dictionary}.routes.ts` —
-      отдавать display-поля.
-- [ ] **Индекс:** пересмотреть составной `videos_perf_meta_idx` (`perf_date, group_name, artist_name,
-song_title, event`) — решить, оставить для текстового поиска или заменить индексами по `*_id`
-      (см. ADR 0002 §3 Trade-offs).
-- [ ] **Backfill (идемпотентный):** для строк, где текст уже равен канонике, изменений нет; зафиксировать
-      поведение как baseline (см. ADR 0002 §4 п.4 и §3 Risks про невосстановимость исходного парсинга).
-- [ ] **Фронтенд** (`client/`): читать display-поле вместо сырых `*_name`.
+- [ ] **Resolver** `src/services/parser/metadataResolver.service.ts` (~lines 106–109): stop overwriting
+      `*_name` with the canonical value — write the raw parse (`groupInput || null`) into `*_name` and the
+      resolved id into `*_id`. Update tests `metadataResolver.service.test.ts`.
+- [ ] **Display layer:** add a SQL VIEW `videos_display` (or a single query helper) computing
+      `group_display = COALESCE(dg.name, videos.group_name)` and likewise for artist/event
+      (event with `@` normalization). New migration via `npx knex migrate:make add_videos_display_view`.
+- [ ] **Read path** `src/services/dictionary.service.ts`: replace the fragile `OR` join
+      (`ON v.group_id = g.id OR v.group_name = g.name`, ~line 404) and the text join in `getVideosByField`
+      (~line 596) with FK-only joins; switch video reads/serialization to `videos_display`/the helper.
+- [ ] **Consumer routes:** check `src/routes/{video,parser,channel,playlist,dictionary}.routes.ts` — return
+      the display fields.
+- [ ] **Index:** reconsider the composite `videos_perf_meta_idx` (`perf_date, group_name, artist_name,
+  song_title, event`) — decide whether to keep it for text search or replace with `*_id` indexes
+      (see ADR 0002 §3 Trade-offs).
+- [ ] **Backfill (idempotent):** for rows where the text already equals the canonical value there is no
+      change; record current behavior as the baseline (see ADR 0002 §4 step 4 and §3 Risks about the raw
+      parse being unrecoverable for historical rows).
+- [ ] **Frontend** (`client/`): read the display field instead of the raw `*_name`.
 
 **Files:** `src/services/parser/metadataResolver.service.ts`, `src/services/dictionary.service.ts`,
 `src/routes/*.routes.ts`, `migrations/`, `client/src/**`.
 
 **Acceptance:**
 
-- После переименования записи в `dictionary_*` отображение видео меняется **сразу**, а текстовое
-  evidence-поле (`*_name`) — нет.
-- Нет джойнов по тексту/`OR` в read-path; джойны только по FK.
-- `npm test` и `npm run test:e2e` зелёные; добавлен тест на сценарий «rename словаря → display обновился, evidence сохранился».
+- After renaming a `dictionary_*` entry, the video's display value changes **immediately**, while the
+  text evidence field (`*_name`) does not.
+- No text/`OR` joins remain in the read path; joins are FK-only.
+- `npm test` and `npm run test:e2e` are green; a test is added for "rename a dictionary entry → display
+  updates, evidence preserved".
 
-**Out of scope:** песни (см. TASK-2), удаление legacy-колонок (см. TASK-3).
+**Out of scope:** songs (see TASK-2), removing legacy columns (see TASK-3).
 
 ---
 
-## [ ] TASK-2 — Расширить `video_songs` (raw_title + nullable song_id + position) и перенести резолв песен
+## [ ] TASK-2 — Extend `video_songs` (raw_title + nullable song_id + position) and move song resolution there
 
 **Priority:** medium
 **Docs:**
 
-- [ADR 0002 §2 «Песни (важная оговорка)»](./docs/adr/0002-raw-parse-vs-canonical-display.md)
-- [ADR 0001 / Update про M:N](./docs/adr/0001-canonical-dictionary-entities.md)
-- [Сущности и связи → `video_songs`](./docs/entities.ru.md)
+- [ADR 0002 §2 "Songs (important caveat)"](./docs/adr/0002-raw-parse-vs-canonical-display.md)
+- [ADR 0001 / Update on M:N](./docs/adr/0001-canonical-dictionary-entities.md)
+- [Entities & Relationships → `video_songs`](./docs/entities.en.md)
 
-**Why:** у видео несколько песен; сейчас несопоставленные песни «проваливаются» (в `video_songs`
-только matched), а `videos.song_title/song_id` — одиночный legacy snapshot. Цель: `video_songs` хранит
-и сырое, и каноническое, покрывая все песни.
+**Why:** a video can have several songs; today unmatched songs "fall through" (`video_songs` holds only
+matched ones), and `videos.song_title/song_id` is a single legacy snapshot. Goal: `video_songs` stores
+both the raw and the canonical, covering all songs.
 
 **Steps:**
 
-- [ ] Миграция: в `video_songs` добавить `raw_title TEXT`, сделать `song_id` nullable, добавить
-      `position INTEGER`; пересмотреть PK (сейчас `(video_id, song_id)` → напр. `(video_id, position)`,
-      т.к. `song_id` может быть NULL). См. текущую миграцию `migrations/20260516100000_create_videos_songs.ts`.
-- [ ] `src/services/parser/videoSongs.service.ts` (+ `songTitles.util.ts`): писать каждую распознанную
-      песню строкой `video_songs` с `raw_title` и, при совпадении, `song_id`; сохранять порядок (`position`).
-- [ ] Отображение песни = `COALESCE(ds.title, raw_title)`; обновить чтения в `dictionary.service.ts`
-      (`getVideosBySongId` и пр.).
-- [ ] Рассмотреть перенос флагов `is_own_group_song` / `is_own_artist_song` с `videos` на строку
-      `video_songs` (при нескольких песнях на уровне видео они неоднозначны).
-- [ ] Backfill: перенести существующие `videos.song_title/song_id` в `video_songs` как `position=0`.
+- [ ] Migration: add `raw_title TEXT` to `video_songs`, make `song_id` nullable, add `position INTEGER`;
+      reconsider the PK (currently `(video_id, song_id)` → e.g. `(video_id, position)`, since `song_id`
+      may be NULL). See the current migration `migrations/20260516100000_create_videos_songs.ts`.
+- [ ] `src/services/parser/videoSongs.service.ts` (+ `songTitles.util.ts`): write each parsed song as a
+      `video_songs` row with `raw_title` and, when matched, `song_id`; preserve order (`position`).
+- [ ] Display of a song = `COALESCE(ds.title, raw_title)`; update reads in `dictionary.service.ts`
+      (`getVideosBySongId`, etc.).
+- [ ] Consider moving the `is_own_group_song` / `is_own_artist_song` flags from `videos` to the
+      `video_songs` row (with multiple songs they are ambiguous at the video level).
+- [ ] Backfill: migrate existing `videos.song_title/song_id` into `video_songs` as `position=0`.
 
 **Files:** `migrations/`, `src/services/parser/videoSongs.service.ts`,
 `src/services/parser/songTitles.util.ts`, `src/services/dictionary.service.ts`.
 
-**Acceptance:** видео с несколькими песнями (в т.ч. несопоставленными) корректно хранит и отдаёт весь
-набор; тесты `videoSongs.service.test.ts` обновлены и зелёные.
+**Acceptance:** a video with multiple songs (including unmatched ones) stores and returns the full set
+correctly; tests `videoSongs.service.test.ts` updated and green.
 
-**Depends on:** желательно после TASK-1 (общий display-подход).
+**Depends on:** preferably after TASK-1 (shared display approach).
 
 ---
 
-## [ ] TASK-3 — (gated) Судьба legacy-колонок `videos.song_id` / `song_title` (и при желании `*_name`)
+## [ ] TASK-3 — (gated) Fate of legacy columns `videos.song_id` / `song_title` (and optionally `*_name`)
 
 **Priority:** low · **Blocked by:** TASK-1, TASK-2
 **Docs:**
@@ -106,20 +108,20 @@ song_title, event`) — решить, оставить для текстовог
 - [Entity Unification: Final Migration Readiness](./docs/entity-unification-final-migration.md)
 - [Entity Unification: Audit](./docs/entity-unification-audit.md)
 
-**Why:** после стабилизации raw+FK+display и переноса песен в `video_songs` одиночные legacy-колонки
-становятся избыточны. Удаление — **destructive**, делать только по readiness-gate из доков.
+**Why:** once raw+FK+display is stable and songs are moved into `video_songs`, the single-value legacy
+columns become redundant. Removal is **destructive** — do it only behind the readiness gate from the docs.
 
 **Steps:**
 
-- [ ] Снять метрики заполнения `videos.*_id` (SQL из final-migration §2) и достичь порогов (§Phase A).
-- [ ] Убедиться, что ни один read-path не зависит от legacy-колонок напрямую (всё через display/FK/`video_songs`).
-- [ ] Отдельная destructive-миграция (rename-before-drop), применять только после явного approve.
+- [ ] Collect `videos.*_id` fill metrics (SQL from final-migration §2) and reach the thresholds (§Phase A).
+- [ ] Confirm no read path depends on the legacy columns directly (everything via display/FK/`video_songs`).
+- [ ] Separate destructive migration (rename-before-drop), apply only after explicit approval.
 
-**Acceptance:** колонки удалены, приложение и тесты зелёные; есть backup/rollback-план.
+**Acceptance:** columns removed, app and tests green; backup/rollback plan in place.
 
 ---
 
-> **Примечание.** Технические находки из разбора миграций (дублирующиеся индексы на `videos.status`/
-> `duplicate_group_id`, общая dev/test SQLite-БД, явный `PRAGMA foreign_keys=ON` в `afterCreate`) пока
-> **не внесены в документацию**, поэтому здесь не зафиксированы как задачи. Если нужно — добавлю
-> отдельную секцию/доки и заведу под них TODO.
+> **Note.** Technical findings from the migrations review (duplicate indexes on `videos.status` /
+> `duplicate_group_id`, the shared dev/test SQLite DB, an explicit `PRAGMA foreign_keys=ON` in
+> `afterCreate`) are **not yet captured in the documentation**, so they are not tracked here as tasks.
+> If wanted, I can add a separate doc/section and create TODO entries for them.
