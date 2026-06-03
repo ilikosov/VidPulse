@@ -1,442 +1,49 @@
 # TODO — implementation backlog
 
-This file is the queue of **code implementation** tasks derived from the project documentation
-(ADRs and reference docs). The docs describe _what & why_; this file is _what to do_.
+Index of code-implementation tasks derived from the project documentation (ADRs and reference docs).
+Each task has its own file in [`docs/tasks/`](./docs/tasks) with full context, steps, files, and
+acceptance criteria.
 
 **How to use (for Claude Code):**
 
-- Each task is self-contained: context, doc links, concrete steps, files, acceptance criteria.
-- Before starting a task, read the linked docs in its **Docs** block.
-- Checkbox states: `[ ]` not started · `[~]` in progress · `[x]` done.
-- Follow the conventions in [`AGENTS.md`](./AGENTS.md) (feature branch, Conventional Commits, thin routes / logic in services, migrations via `knex migrate:make`).
-- **Only the documentation is fixed so far — code/schema changes happen through these tasks.**
+- Open a task's file (linked below) and read its **Docs** block before starting.
+- Status markers here: `[ ]` not started · `[~]` in progress · `[x]` done — keep them in sync with the
+  task file's own `Status` line.
+- Follow the conventions in [`AGENTS.md`](./AGENTS.md) (feature branch, Conventional Commits, thin routes
+  / logic in services, migrations via `knex migrate:make`).
+
+## Data model (ADR-0001 / ADR-0002)
+
+- [ ] **TASK-1** (high) — Separate raw parse from canonical references (group/artist/event) — [details](./docs/tasks/task-01-raw-vs-canonical.md)
+- [ ] **TASK-2** (medium) — Extend `video_songs` (`raw_title` + nullable `song_id` + `position`) — [details](./docs/tasks/task-02-extend-video-songs.md)
+- [ ] **TASK-3** (low, gated) — Fate of legacy columns `song_id` / `song_title` — [details](./docs/tasks/task-03-legacy-columns.md)
+
+## Migrations & DB hygiene (migrations-review)
+
+- [ ] **TASK-4** (medium) — Remove duplicate indexes on `videos` — [details](./docs/tasks/task-04-duplicate-indexes.md)
+- [ ] **TASK-5** (medium) — Harden `knexfile.ts` (test DB, FK pragma, prod path) — [details](./docs/tasks/task-05-knexfile-hardening.md)
+- [ ] **TASK-6** (low) — Move seed data out of migrations into `seeds/` — [details](./docs/tasks/task-06-seeds-extraction.md)
+- [ ] **TASK-7** (low) — Minor migration robustness (CHECK, `updated_at`, types) — [details](./docs/tasks/task-07-migration-robustness.md)
+
+## Repository structure (ADR-0003)
+
+- [ ] **TASK-8** (medium) — Migrate to a proper monorepo (npm workspaces) — [details](./docs/tasks/task-08-monorepo.md)
+
+## Code quality (code-review)
+
+- [ ] **TASK-9** (medium) — Remove dead code (`parser_new`) & unused dep (`sqlite3`) — [details](./docs/tasks/task-09-remove-dead-code.md)
+- [ ] **TASK-10** (high) — Central error handling, 404, async wrapper — [details](./docs/tasks/task-10-error-handling.md)
+- [ ] **TASK-11** (medium) — Side-effect-free app bootstrap — [details](./docs/tasks/task-11-bootstrap-side-effects.md)
+- [ ] **TASK-12** (medium) — Consolidate DB access; split god files — [details](./docs/tasks/task-12-consolidate-db-access.md)
+- [ ] **TASK-13** (medium) — Standardize request validation (ajv) — [details](./docs/tasks/task-13-request-validation.md)
+- [ ] **TASK-14** (low) — Observability & type-safety polish — [details](./docs/tasks/task-14-observability-types.md)
+
+## Tests (code-review)
+
+- [ ] **TASK-15** (high) — Fix the test suite (DB bootstrap, schema drift, real failures) — [details](./docs/tasks/task-15-fix-tests.md)
 
 ---
 
-## [ ] TASK-1 — Variant 1: separate raw parse from canonical references (group / artist / event)
-
-**Priority:** high
-**Docs:**
-
-- [ADR 0002 — Raw parse vs canonical references](./docs/adr/0002-raw-parse-vs-canonical-display.md) (especially §2 Decision and §4 Implementation plan)
-- [ADR 0001 — Canonical dictionary entities](./docs/adr/0001-canonical-dictionary-entities.md)
-- [Entities & Relationships](./docs/entities.en.md) → `videos` section, "Target denormalization model" note
-
-**Why:** today `videos.group_name/artist_name/event` and the FKs `group_id/artist_id/event_id` are a
-dual source of truth (the text is overwritten with the canonical value → staleness when a dictionary
-entry is renamed + loss of the parse result). Goal: text holds only the raw parse result, the FK is the
-canonical link, and the display value is derived as `COALESCE(dictionary, parse)` (dictionary wins).
-
-**Steps:**
-
-- [ ] **Resolver** `src/services/parser/metadataResolver.service.ts` (~lines 106–109): stop overwriting
-      `*_name` with the canonical value — write the raw parse (`groupInput || null`) into `*_name` and the
-      resolved id into `*_id`. Update tests `metadataResolver.service.test.ts`.
-- [ ] **Display layer:** add a SQL VIEW `videos_display` (or a single query helper) computing
-      `group_display = COALESCE(dg.name, videos.group_name)` and likewise for artist/event
-      (event with `@` normalization). New migration via `npx knex migrate:make add_videos_display_view`.
-- [ ] **Read path** `src/services/dictionary.service.ts`: replace the fragile `OR` join
-      (`ON v.group_id = g.id OR v.group_name = g.name`, ~line 404) and the text join in `getVideosByField`
-      (~line 596) with FK-only joins; switch video reads/serialization to `videos_display`/the helper.
-- [ ] **Consumer routes:** check `src/routes/{video,parser,channel,playlist,dictionary}.routes.ts` — return
-      the display fields.
-- [ ] **Index:** reconsider the composite `videos_perf_meta_idx` (`perf_date, group_name, artist_name,
-song_title, event`) — decide whether to keep it for text search or replace with `*_id` indexes
-      (see ADR 0002 §3 Trade-offs).
-- [ ] **Backfill (idempotent):** for rows where the text already equals the canonical value there is no
-      change; record current behavior as the baseline (see ADR 0002 §4 step 4 and §3 Risks about the raw
-      parse being unrecoverable for historical rows).
-- [ ] **Frontend** (`client/`): read the display field instead of the raw `*_name`.
-
-**Files:** `src/services/parser/metadataResolver.service.ts`, `src/services/dictionary.service.ts`,
-`src/routes/*.routes.ts`, `migrations/`, `client/src/**`.
-
-**Acceptance:**
-
-- After renaming a `dictionary_*` entry, the video's display value changes **immediately**, while the
-  text evidence field (`*_name`) does not.
-- No text/`OR` joins remain in the read path; joins are FK-only.
-- `npm test` and `npm run test:e2e` are green; a test is added for "rename a dictionary entry → display
-  updates, evidence preserved".
-
-**Out of scope:** songs (see TASK-2), removing legacy columns (see TASK-3).
-
----
-
-## [ ] TASK-2 — Extend `video_songs` (raw_title + nullable song_id + position) and move song resolution there
-
-**Priority:** medium
-**Docs:**
-
-- [ADR 0002 §2 "Songs (important caveat)"](./docs/adr/0002-raw-parse-vs-canonical-display.md)
-- [ADR 0001 / Update on M:N](./docs/adr/0001-canonical-dictionary-entities.md)
-- [Entities & Relationships → `video_songs`](./docs/entities.en.md)
-
-**Why:** a video can have several songs; today unmatched songs "fall through" (`video_songs` holds only
-matched ones), and `videos.song_title/song_id` is a single legacy snapshot. Goal: `video_songs` stores
-both the raw and the canonical, covering all songs.
-
-**Steps:**
-
-- [ ] Migration: add `raw_title TEXT` to `video_songs`, make `song_id` nullable, add `position INTEGER`;
-      reconsider the PK (currently `(video_id, song_id)` → e.g. `(video_id, position)`, since `song_id`
-      may be NULL). See the current migration `migrations/20260516100000_create_videos_songs.ts`.
-- [ ] `src/services/parser/videoSongs.service.ts` (+ `songTitles.util.ts`): write each parsed song as a
-      `video_songs` row with `raw_title` and, when matched, `song_id`; preserve order (`position`).
-- [ ] Display of a song = `COALESCE(ds.title, raw_title)`; update reads in `dictionary.service.ts`
-      (`getVideosBySongId`, etc.).
-- [ ] Consider moving the `is_own_group_song` / `is_own_artist_song` flags from `videos` to the
-      `video_songs` row (with multiple songs they are ambiguous at the video level).
-- [ ] Backfill: migrate existing `videos.song_title/song_id` into `video_songs` as `position=0`.
-
-**Files:** `migrations/`, `src/services/parser/videoSongs.service.ts`,
-`src/services/parser/songTitles.util.ts`, `src/services/dictionary.service.ts`.
-
-**Acceptance:** a video with multiple songs (including unmatched ones) stores and returns the full set
-correctly; tests `videoSongs.service.test.ts` updated and green.
-
-**Depends on:** preferably after TASK-1 (shared display approach).
-
----
-
-## [ ] TASK-3 — (gated) Fate of legacy columns `videos.song_id` / `song_title` (and optionally `*_name`)
-
-**Priority:** low · **Blocked by:** TASK-1, TASK-2
-**Docs:**
-
-- [ADR 0001 §4 Phase C/D + §5 Rollback](./docs/adr/0001-canonical-dictionary-entities.md)
-- [Entity Unification: Final Migration Readiness](./docs/entity-unification-final-migration.md)
-- [Entity Unification: Audit](./docs/entity-unification-audit.md)
-
-**Why:** once raw+FK+display is stable and songs are moved into `video_songs`, the single-value legacy
-columns become redundant. Removal is **destructive** — do it only behind the readiness gate from the docs.
-
-**Steps:**
-
-- [ ] Collect `videos.*_id` fill metrics (SQL from final-migration §2) and reach the thresholds (§Phase A).
-- [ ] Confirm no read path depends on the legacy columns directly (everything via display/FK/`video_songs`).
-- [ ] Separate destructive migration (rename-before-drop), apply only after explicit approval.
-
-**Acceptance:** columns removed, app and tests green; backup/rollback plan in place.
-
----
-
-## [ ] TASK-4 — Remove duplicate indexes on `videos`
-
-**Priority:** medium
-**Docs:** [Migrations review → F1](./docs/migrations-review.md#f1--duplicate-indexes-on-videos)
-
-**Why:** `videos.status` and `videos.duplicate_group_id` are each indexed twice — once by the schema
-builder and once by raw `CREATE INDEX` in `migrations/20260423161338_create_tables.ts`. Verified on a
-built DB: `idx_videos_status` + `videos_status_index` and `idx_videos_duplicate_group` +
-`videos_duplicate_group_id_index` both exist. Redundant write overhead and storage.
-
-**Steps:**
-
-- [ ] New migration `npx knex migrate:make drop_duplicate_video_indexes` that `DROP INDEX IF EXISTS
-idx_videos_status` and `idx_videos_duplicate_group` (keep the builder-created `videos_*_index`).
-- [ ] Add a matching `down` that recreates them.
-
-**Files:** `migrations/`.
-
-**Acceptance:** each of `status` / `duplicate_group_id` has exactly one index; migrations apply and roll
-back cleanly; `npm test` green.
-
----
-
-## [ ] TASK-5 — Harden `knexfile.ts` (test DB, FK pragma, prod path)
-
-**Priority:** medium
-**Docs:** [Migrations review → F2](./docs/migrations-review.md#f2--test-and-development-share-the-same-sqlite-file),
-[F4](./docs/migrations-review.md#f4--fk-enforcement-relies-on-the-driver-default),
-[F8](./docs/migrations-review.md#-minor)
-
-**Why:** `test` and `development` share `dev.sqlite3` (risk of corrupting dev data under
-`NODE_ENV=test`); FK enforcement relies on the `better-sqlite3` default because `afterCreate` never sets
-`foreign_keys`; `production.filename` is cwd-relative while dev/test use `path.resolve`.
-
-**Steps:**
-
-- [ ] Point the `test` env at a separate file or `:memory:`; give it the same `pool.afterCreate` pragmas.
-- [ ] Add `conn.pragma('foreign_keys = ON')` to every env's `afterCreate`.
-- [ ] Resolve `production.filename` via `path.resolve(__dirname, …)` for cwd-independence.
-
-**Files:** `src/db/knexfile.ts`.
-
-**Acceptance:** test runs never touch `dev.sqlite3`; FK constraints enforced regardless of driver
-default; prod path is cwd-independent; `npm test` green.
-
----
-
-## [ ] TASK-6 — Move seed data out of migrations into `seeds/`
-
-**Priority:** low
-**Docs:** [Migrations review → F3](./docs/migrations-review.md#f3--schema-and-seed-data-mixed-in-migrations)
-
-**Why:** dictionary/tags/settings seed data is embedded in migrations
-(`20260504110000_dictionary_db.ts`, `20260428123000_add_tags_and_video_duration.ts`,
-`20260428143000_ensure_private_tag.ts`), with hard-coded Russian tag strings and hand-rolled `esc()`
-string-interpolation inserts.
-
-**Steps:**
-
-- [ ] Move seed inserts (groups, artists, events, tags, settings) into Knex `seeds/`.
-- [ ] Use parameterized `knex(...).insert({...})` instead of `esc()` raw interpolation.
-- [ ] De-hardcode UI tag strings (`'длинное видео'`, `'игнорировать видео'`) — drive from config/i18n.
-- [ ] Keep migrations structure-only; ensure a documented bootstrap path still seeds a fresh DB.
-
-**Files:** `migrations/`, new `seeds/`.
-
-**Acceptance:** migrations contain no seed inserts; `seeds/` reproduces the reference data; fresh-DB
-bootstrap documented and working.
-
----
-
-## [ ] TASK-7 — Minor migration robustness (CHECK portability, updated_at, types)
-
-**Priority:** low
-**Docs:** [Migrations review → F5](./docs/migrations-review.md#f5--alter-table--add-constraint-check-is-non-standard-sqlite),
-[F6](./docs/migrations-review.md#f6--updated_at-is-not-auto-updated),
-[F7](./docs/migrations-review.md#-minor), [F9](./docs/migrations-review.md#-minor)
-
-**Why:** small correctness/consistency improvements surfaced by the review.
-
-**Steps:**
-
-- [ ] Define the `dictionary_artist_memberships` CHECK constraints inside `createTable` instead of
-      `ALTER TABLE … ADD CONSTRAINT` (non-standard SQLite syntax; portability risk).
-- [ ] Decide on `updated_at` freshness: add an UPDATE trigger, or enforce repositories set it explicitly.
-- [ ] (Optional) Normalize `string()` vs `text()` usage for consistency.
-- [ ] (F9) De-duplicate the `'private'` tag seed — it is inserted in both
-      `20260428123000_add_tags_and_video_duration.ts` and `20260428143000_ensure_private_tag.ts`
-      (harmless due to the unique constraint / `INSERT OR IGNORE`, but redundant); fold into the seeds
-      work from TASK-6.
-
-**Files:** `migrations/`, `src/repositories/**` (if enforcing `updated_at` in code).
-
-**Acceptance:** CHECK constraints defined at table creation; `updated_at` behavior is defined and tested;
-migrations apply and roll back cleanly.
-
----
-
-## [ ] TASK-8 — Migrate to a proper monorepo
-
-**Priority:** medium
-**Docs:** [ADR 0003 — Migrate to a monorepo (npm workspaces)](./docs/adr/0003-monorepo.md)
-
-**Why:** the repo is already two npm packages — backend at the root (`package.json`,
-`kpop-archive-manager`) and frontend in `client/` — but without a workspace manager. Consequences today:
-no single install, scripts shell out with `cd client && …` and `concurrently` (see root `package.json`
-`client:dev`/`client:build`/`launch`/`dev:all`), two independent `tsconfig.json`, and no shared package,
-so API/domain types are duplicated between backend (`src/interfaces`, `src/types`) and frontend
-(`client/src`). A real monorepo gives one install, shared types, and unified tooling.
-
-**Steps:**
-
-- [x] **Decide & record:** [ADR 0003](./docs/adr/0003-monorepo.md) — chosen **npm workspaces** with
-      layout `apps/server` + `apps/web` + `packages/shared` (shared types/contracts).
-- [ ] **Restructure:** move backend (`src/`, `migrations/`, `tests/`, configs) into `apps/server` and the
-      current `client/` into `apps/web`; keep import paths working.
-- [ ] **Workspaces:** add `"workspaces"` (or `pnpm-workspace.yaml`) at the root; `private: true`; one
-      lockfile; a single `npm install` bootstraps everything.
-- [ ] **Shared package:** extract cross-cutting types/contracts (API DTOs, dictionary/video shapes) into
-      `packages/shared` consumed by both apps — remove duplication.
-- [ ] **Scripts:** replace `cd client && …` / `concurrently` plumbing with workspace-aware scripts
-      (`npm run -w apps/web …`, root `dev`/`build`/`test` fan-out). Keep `dev:all` working.
-- [ ] **Tooling:** root-level `tsconfig` base + per-app extends; align Prettier/Husky/lint-staged,
-      Vitest and Playwright paths.
-- [ ] **CI/docs:** update [`docs/overview.*`](./docs/overview.en.md) project-structure section,
-      `AGENTS.md`, and any path assumptions (e.g. `--knexfile` path, Playwright `webServer`).
-
-**Files:** repo root (`package.json`, lockfile, `tsconfig.json`), `src/**` → `apps/server/**`,
-`client/**` → `apps/web/**`, new `packages/shared/**`, `playwright.config.ts`, `vitest.config.ts`,
-`docs/**`, `AGENTS.md`.
-
-**Acceptance:** a single `npm install` at the root bootstraps both apps; shared types are imported from
-`packages/shared` (no duplication); `npm run dev:all`, `npm test`, `npm run test:e2e` and the build all
-work from the root; project structure docs updated.
-
-**Notes:** large, mechanical-but-wide change — do it as its own PR, ideally before the schema/data-model
-tasks land to avoid path churn. Re-resolve any open work on top of the new layout.
-
----
-
-## [ ] TASK-9 — Remove dead code & unused dependency
-
-**Priority:** medium
-**Docs:** [Code review → C1](./docs/code-review.md#c1--dead-code-srcservicesparser_new),
-[C3](./docs/code-review.md#c3--unused-dependency-sqlite3)
-
-**Why:** `src/services/parser_new/` (~500 LOC) has zero references and shadows the active
-`src/services/parser/`; `package.json` depends on both `sqlite3` and `better-sqlite3` while only
-`better-sqlite3` is used.
-
-**Steps:**
-
-- [ ] Confirm `src/services/parser_new/` is unused (grep across `src/`, scripts, tests) and delete it —
-      or, if it is the intended replacement, wire it in and remove the old parser.
-- [ ] Remove `sqlite3` from `package.json` dependencies; `npm install` to refresh the lockfile.
-
-**Files:** `src/services/parser_new/`, `package.json`, `package-lock.json`.
-
-**Acceptance:** no dead `parser_new`; `sqlite3` gone; `npm test`, `npm run test:e2e` and the build green.
-
-> Note: removing `parser_new` also deletes its failing test suite —
-> ~169 of the current 175 `npm test` failures (see [Code review → C10](./docs/code-review.md#c10--the-dead-parser_new-suite-is-97-of-the-failures)).
-
----
-
-## [ ] TASK-10 — Central error handling, 404, and async wrapper
-
-**Priority:** high
-**Docs:** [Code review → C2](./docs/code-review.md#c2--no-central-error-handling--404-handler)
-
-**Why:** `src/index.ts` has no error-handling middleware and no 404 handler; routes hand-roll `try/catch`
-with inconsistent 500 shapes, and Express 4 won't catch errors thrown in `async` handlers that forget a
-`try/catch`.
-
-**Steps:**
-
-- [ ] Add a terminal error-handling middleware (after all routes) returning a consistent error body
-      `{ error: { message, code? } }` with proper status codes; log via the logger (see TASK-14).
-- [ ] Add a 404 fallthrough for unmatched `/api/*` routes.
-- [ ] Add an `asyncHandler(fn)` wrapper (or `express-async-errors`) and apply it so handlers can drop the
-      boilerplate `try/catch`.
-- [ ] Introduce a small `AppError`/`HttpError` type for intentional 4xx responses.
-
-**Files:** `src/index.ts`, new `src/middleware/errorHandler.ts`, `src/middleware/asyncHandler.ts`,
-`src/routes/*.routes.ts`.
-
-**Acceptance:** thrown/rejected errors yield a consistent JSON error with the right status; unknown routes
-return 404; handlers no longer need manual `try/catch`; tests cover the error + 404 paths.
-
----
-
-## [ ] TASK-11 — Side-effect-free app bootstrap
-
-**Priority:** medium
-**Docs:** [Code review → C4](./docs/code-review.md#c4--import-time-side-effects-in-srcindexts)
-
-**Why:** `createAppContainer()` (opens DB) and `app.listen()` + `runScheduler()` run at import time, so
-importing the app for in-process tests opens a connection and binds a port. Also helps the monorepo move
-([ADR 0003](./docs/adr/0003-monorepo.md)).
-
-**Steps:**
-
-- [ ] Export an app/container factory (e.g. `createApp()`); keep route wiring pure (no listen/connect).
-- [ ] Guard `app.listen()` and `container.syncService.runScheduler()` behind `if (require.main === module)`.
-- [ ] Add an in-process integration test that imports the app without starting a server.
-
-**Files:** `src/index.ts`, `src/compositionRoot.ts`, `tests/`.
-
-**Acceptance:** importing the app has no side effects (no port bind, no scheduler); `npm start` still runs
-the server; an in-process app test exists and is green.
-
----
-
-## [ ] TASK-12 — Consolidate DB access into services/repositories; split god files
-
-**Priority:** medium
-**Docs:** [Code review → C5](./docs/code-review.md#c5--data-access-in-routes-bypasses-the-servicerepository-layer),
-[C6](./docs/code-review.md#c6--god-files)
-
-**Why:** routes import `knex` and query inline (e.g. `src/routes/video.routes.ts`), bypassing
-services/`repositories/` (a single file used only by `compositionRoot`); `dictionary.service.ts` (1620
-LOC) and `video.routes.ts` (1213 LOC) are god files. Contradicts the layered design in `AGENTS.md`.
-
-**Steps:**
-
-- [ ] Move DB access out of routes into services/repositories; keep routes thin (validate input → call
-      service → format response).
-- [ ] Split `dictionary.service.ts` by entity (groups/artists/songs/events/aliases) and
-      `video.routes.ts` into sub-routers (list/detail/metadata/tags/batch).
-- [ ] Establish a consistent repository pattern (extend `src/repositories/knex.repositories.ts`).
-
-**Files:** `src/routes/**`, `src/services/dictionary.service.ts`, `src/repositories/**`.
-
-**Acceptance:** routes contain no direct `knex` queries; the two god files are split into focused modules;
-behavior unchanged; `npm test` green. (Best done after TASK-8 to avoid double path churn.)
-
----
-
-## [ ] TASK-13 — Standardize request validation (ajv)
-
-**Priority:** medium
-**Docs:** [Code review → C7](./docs/code-review.md#c7--no-standardized-request-validation)
-
-**Why:** `ajv` is already a dependency but used only for the media-library schema; API request bodies are
-validated ad-hoc and inconsistently per route.
-
-**Steps:**
-
-- [ ] Add a small `validate(schema)` middleware using `ajv` (+ `ajv-formats`, already present).
-- [ ] Define request schemas for the main write endpoints (videos, dictionary, video-lists, sync,
-      parser); replace hand-written per-route validators.
-- [ ] Return 400 with a consistent error body (aligned with TASK-10).
-
-**Files:** new `src/middleware/validate.ts`, `src/routes/**`, shared schema definitions.
-
-**Acceptance:** write endpoints reject invalid bodies with a consistent 400; no bespoke per-route
-validation left for covered endpoints; tests cover valid/invalid cases.
-
----
-
-## [ ] TASK-14 — Observability & type-safety polish
-
-**Priority:** low
-**Docs:** [Code review → C8](./docs/code-review.md#-minor), [C9](./docs/code-review.md#-minor)
-
-**Why:** ~64 `console.*` calls and no structured logger (only `morgan` for HTTP); ~67 `any` / `as any`
-in non-test code despite `strict: true`.
-
-**Steps:**
-
-- [ ] Introduce a small logger (pino/winston or a thin wrapper) with levels and test-time silencing;
-      replace `console.*` in `src/`.
-- [ ] Reduce `any` / `as any`, especially around knex rows and external API payloads (type knex results,
-      type YouTube/LLM responses).
-
-**Files:** new `src/lib/logger.ts`, `src/**`.
-
-**Acceptance:** no raw `console.*` in `src/` (outside the logger); measurable drop in `any`; tests green.
-
----
-
-## [ ] TASK-15 — Fix the test suite (DB bootstrap, schema drift, real failures)
-
-**Priority:** high
-**Docs:** [Code review → C10](./docs/code-review.md#c10--the-dead-parser_new-suite-is-97-of-the-failures),
-[C11](./docs/code-review.md#c11--no-shared-test-db-bootstrap-schema-drift-in-in-memory-tests),
-[C12](./docs/code-review.md#c12--genuine-failures-to-triage-after-c10c11)
-
-**Why:** `npm test` reports **175 failed / 75 passed**. ~169 come from the dead `parser_new` suite;
-the rest from no shared test-DB bootstrap (tests on the real knex singleton hit an empty/unmigrated
-`dev.sqlite3` → `no such table`), hand-built in-memory schemas that drift from migrations (missing
-`video_songs`), and a handful of genuine parser/pagination assertion failures.
-
-**Steps:**
-
-- [ ] Delete `parser_new` and its test suite (done via TASK-9) → removes ~169 failures.
-- [ ] Add a Vitest `globalSetup`/`setupFiles` (in `vitest.config.ts`) that provisions a **dedicated**
-      test DB via `knex.migrate.latest()` (+ minimal dictionary seeds); use a shared migrated SQLite
-      (file or shared `:memory:`), never `dev.sqlite3` (pairs with TASK-5).
-- [ ] Replace hand-built in-memory schemas in tests with the migrated schema so they can't drift
-      (e.g. the missing `video_songs` in `dictionary.routes.test.ts`).
-- [ ] Triage the genuine failures in `parser/parser.service.test.ts` (event `@SBS INKIGAYO`→`@INKIGAYO`,
-      `camera_type` `FANCAM` vs `페이스캠4K`, apostrophe-splitting `What's`/`Eye-Poppin'`, solo detection
-      `DAYOUNG`→`SOLO` vs `WJSN`) and `video.routes.pagination.test.ts` — fix parser or update stale
-      expectations, one by one.
-
-**Files:** `vitest.config.ts`, new `tests/setup.ts` (or `src/test/setup.ts`), `src/db/knexfile.ts`,
-`src/**/*.test.ts`, `src/services/parser/**`.
-
-**Acceptance:** `npm test` is green (0 failed); no test depends on a pre-existing `dev.sqlite3`; in-memory
-tests use the migrated schema; CI can run the suite from a clean checkout.
-
-**Depends on:** TASK-9 (removes `parser_new`); pairs with TASK-5 (separate test DB).
-
----
-
-> **Note.** The technical findings behind TASK-4…7 are documented in
-> [`docs/migrations-review.md`](./docs/migrations-review.md); those behind TASK-9…15 in
-> [`docs/code-review.md`](./docs/code-review.md).
+> **Background docs.** Findings behind TASK-4…7 → [`docs/migrations-review.md`](./docs/migrations-review.md);
+> behind TASK-9…15 → [`docs/code-review.md`](./docs/code-review.md). Design decisions →
+> [`docs/adr/`](./docs/adr).
