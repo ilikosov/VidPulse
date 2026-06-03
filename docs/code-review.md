@@ -81,3 +81,46 @@ validation middleware — no new dependency needed.
   thin wrapper) for levels, structure, and test-time silencing.
 - **C9 — `any` erodes strictness:** `tsconfig` has `strict: true`, yet there are ~67 `: any` / `as any`
   occurrences in non-test code. Reduce them, especially around knex rows and external API payloads.
+
+---
+
+## Tests
+
+`npm test` (Vitest) currently reports **175 failed / 75 passed (250)**. Breakdown by cause:
+
+### C10 — The dead `parser_new` suite is ~97% of the failures
+
+`src/services/parser_new/parser.service.test.ts` accounts for **169 of the 175 failures** — assertion
+mismatches against the unused experimental parser (a different output shape
+`{ isFancam, group, artist, song, date }`). This is the bulk of "most tests fail". Removing `parser_new`
+(see [TASK-9](../TODO.md) / C1) deletes this suite and drops failures from 175 to ~6.
+
+### C11 — No shared test DB bootstrap; schema drift in in-memory tests
+
+`vitest.config.ts` has **no `globalSetup`/`setupFiles`**. Two consequences:
+
+- Tests that exercise the **real `knex` singleton** (e.g. `parser/parser.service.test.ts` → the parser's
+  dictionary lookups) need a **migrated + seeded** DB. The test env points at `dev.sqlite3` (shared with
+  development — see [migrations-review F2](./migrations-review.md#f2--test-and-development-share-the-same-sqlite-file));
+  in a fresh checkout that file is empty, so every such test fails with `no such table: dictionary_groups`.
+- Tests that build their **own in-memory schema** hand-roll table definitions that drift from the
+  migrations — e.g. `dictionary.routes.test.ts` fails with `no such table: video_songs` (a table added by
+  a later migration but missing from the test's manual schema).
+
+**Fix:** add a Vitest `globalSetup` that provisions a dedicated test DB by running `knex.migrate.latest()`
+(+ minimal seeds) — ideally one shared migrated SQLite (file or shared `:memory:`) — and have all
+DB-touching tests use it instead of hand-built partial schemas. Pairs with
+[TASK-5](../TODO.md) (separate test DB).
+
+### C12 — Genuine failures to triage (after C10/C11)
+
+Independent of the infra issues, the active parser has **5 real assertion failures** in
+`parser/parser.service.test.ts` (with a seeded DB):
+
+- event normalization keeps `@SBS INKIGAYO` instead of the expected `@INKIGAYO`;
+- `camera_type` returns `FANCAM` instead of the expected `페이스캠4K` / `안방1열 직캠4K`;
+- song titles split on an apostrophe (`What's a girl to do` → `What`, `Eye-Poppin'` → `Eye-Poppin`);
+- solo detection: `DAYOUNG` resolves to group `WJSN` where the test expects `SOLO`.
+
+Plus 1 failure in `video.routes.pagination.test.ts`. Each is either a parser bug or a stale expectation
+and must be triaged individually.

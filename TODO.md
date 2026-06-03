@@ -281,6 +281,9 @@ tasks land to avoid path churn. Re-resolve any open work on top of the new layou
 
 **Acceptance:** no dead `parser_new`; `sqlite3` gone; `npm test`, `npm run test:e2e` and the build green.
 
+> Note: removing `parser_new` also deletes its failing test suite —
+> ~169 of the current 175 `npm test` failures (see [Code review → C10](./docs/code-review.md#c10--the-dead-parser_new-suite-is-97-of-the-failures)).
+
 ---
 
 ## [ ] TASK-10 — Central error handling, 404, and async wrapper
@@ -399,6 +402,41 @@ in non-test code despite `strict: true`.
 
 ---
 
+## [ ] TASK-15 — Fix the test suite (DB bootstrap, schema drift, real failures)
+
+**Priority:** high
+**Docs:** [Code review → C10](./docs/code-review.md#c10--the-dead-parser_new-suite-is-97-of-the-failures),
+[C11](./docs/code-review.md#c11--no-shared-test-db-bootstrap-schema-drift-in-in-memory-tests),
+[C12](./docs/code-review.md#c12--genuine-failures-to-triage-after-c10c11)
+
+**Why:** `npm test` reports **175 failed / 75 passed**. ~169 come from the dead `parser_new` suite;
+the rest from no shared test-DB bootstrap (tests on the real knex singleton hit an empty/unmigrated
+`dev.sqlite3` → `no such table`), hand-built in-memory schemas that drift from migrations (missing
+`video_songs`), and a handful of genuine parser/pagination assertion failures.
+
+**Steps:**
+
+- [ ] Delete `parser_new` and its test suite (done via TASK-9) → removes ~169 failures.
+- [ ] Add a Vitest `globalSetup`/`setupFiles` (in `vitest.config.ts`) that provisions a **dedicated**
+      test DB via `knex.migrate.latest()` (+ minimal dictionary seeds); use a shared migrated SQLite
+      (file or shared `:memory:`), never `dev.sqlite3` (pairs with TASK-5).
+- [ ] Replace hand-built in-memory schemas in tests with the migrated schema so they can't drift
+      (e.g. the missing `video_songs` in `dictionary.routes.test.ts`).
+- [ ] Triage the genuine failures in `parser/parser.service.test.ts` (event `@SBS INKIGAYO`→`@INKIGAYO`,
+      `camera_type` `FANCAM` vs `페이스캠4K`, apostrophe-splitting `What's`/`Eye-Poppin'`, solo detection
+      `DAYOUNG`→`SOLO` vs `WJSN`) and `video.routes.pagination.test.ts` — fix parser or update stale
+      expectations, one by one.
+
+**Files:** `vitest.config.ts`, new `tests/setup.ts` (or `src/test/setup.ts`), `src/db/knexfile.ts`,
+`src/**/*.test.ts`, `src/services/parser/**`.
+
+**Acceptance:** `npm test` is green (0 failed); no test depends on a pre-existing `dev.sqlite3`; in-memory
+tests use the migrated schema; CI can run the suite from a clean checkout.
+
+**Depends on:** TASK-9 (removes `parser_new`); pairs with TASK-5 (separate test DB).
+
+---
+
 > **Note.** The technical findings behind TASK-4…7 are documented in
-> [`docs/migrations-review.md`](./docs/migrations-review.md); those behind TASK-9…14 in
+> [`docs/migrations-review.md`](./docs/migrations-review.md); those behind TASK-9…15 in
 > [`docs/code-review.md`](./docs/code-review.md).
