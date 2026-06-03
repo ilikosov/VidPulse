@@ -26,11 +26,11 @@ so API/domain types are duplicated between backend (`src/interfaces`, `src/types
 - [ ] **Tooling:** root-level `tsconfig` base + per-app extends; align Prettier/Husky/lint-staged,
       Vitest and Playwright paths.
 - [ ] **CI/docs:** update [`docs/overview.*`](../overview.en.md) project-structure section,
-      `AGENTS.md`, and any path assumptions (e.g. `--knexfile` path, Playwright `webServer`).
+      `CLAUDE.md`, and any path assumptions (e.g. `--knexfile` path, Playwright `webServer`).
 
 **Files:** repo root (`package.json`, lockfile, `tsconfig.json`), `src/**` → `apps/server/**`,
 `client/**` → `apps/web/**`, new `packages/shared/**`, `playwright.config.ts`, `vitest.config.ts`,
-`docs/**`, `AGENTS.md`.
+`docs/**`, `CLAUDE.md`.
 
 **Acceptance:** a single `npm install` at the root bootstraps both apps; shared types are imported from
 `packages/shared` (no duplication); `npm run dev:all`, `npm test`, `npm run test:e2e` and the build all

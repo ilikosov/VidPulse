@@ -8,7 +8,7 @@ Full-stack приложение для архивации и управлени�
 | ----------------------------------------------------------- | --------------------------------------------------- |
 | [Project Overview (English)](./docs/overview.en.md)         | [Обзор проекта (Русский)](./docs/overview.ru.md)    |
 | [Entities & Relationships (English)](./docs/entities.en.md) | [Сущности и связи (Русский)](./docs/entities.ru.md) |
-| [Contributor Guide](./AGENTS.md)                            | [Руководство контрибьютора](./AGENTS.md)            |
+| [Contributor Guide](./CLAUDE.md)                            | [Руководство контрибьютора](./CLAUDE.md)            |
 
 Additional docs live in [`docs/`](./docs) (ADRs, API notes, audits).
 Implementation backlog derived from the docs: [`TODO.md`](./TODO.md).

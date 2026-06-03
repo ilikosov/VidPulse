@@ -9,7 +9,7 @@ acceptance criteria.
 - Open a task's file (linked below) and read its **Docs** block before starting.
 - Status markers here: `[ ]` not started · `[~]` in progress · `[x]` done — keep them in sync with the
   task file's own `Status` line.
-- Follow the conventions in [`AGENTS.md`](./AGENTS.md) (feature branch, Conventional Commits, thin routes
+- Follow the conventions in [`CLAUDE.md`](./CLAUDE.md) (feature branch, Conventional Commits, thin routes
   / logic in services, migrations via `knex migrate:make`).
 
 ## Data model (ADR-0001 / ADR-0002)

@@ -52,7 +52,7 @@ subprocess.)
 Routes import `knex` directly and run queries inline (e.g. `src/routes/video.routes.ts` imports `../db`
 and queries within handlers). The `src/repositories/` "data-access layer" is a single file
 (`knex.repositories.ts`) used only by `compositionRoot.ts`; services also query knex directly. This
-contradicts the layered design described in [`AGENTS.md`](../AGENTS.md) ("thin routes, logic in
+contradicts the layered design described in [`CLAUDE.md`](../CLAUDE.md) ("thin routes, logic in
 services").
 **Fix:** move DB access out of routes into services/repositories; keep routes thin (parse input → call
 service → format response).
