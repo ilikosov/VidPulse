@@ -70,6 +70,9 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
   scopes like `parser`, `api`, `ui`, `db`, `sync`, `tags`).
 - **Branching:** work on a feature branch; never commit straight to the default branch. Commit/push when
   asked — don't auto-push.
+- **Merged PRs are closed:** never push more commits to a branch whose PR is already merged — they'll be
+  stranded and won't reach the default branch. Open a **new** branch/PR (off the updated default branch)
+  for any follow-up or fix.
 - **Formatting:** run `npm run format` before committing (a Husky pre-commit hook also formats staged files).
 - **Language:** reply to the user in **Russian**; name code entities (branches, files, identifiers) in
   **English**.
