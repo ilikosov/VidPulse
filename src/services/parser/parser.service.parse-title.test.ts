@@ -90,6 +90,11 @@ beforeAll(async () => {
     t.integer('song_id');
     t.string('song_title');
   });
+  await testKnex.schema.createTable('video_songs', (t) => {
+    t.integer('video_id').notNullable();
+    t.integer('song_id').notNullable();
+    t.primary(['video_id', 'song_id']);
+  });
 
   const [groupId] = await testKnex('dictionary_groups').insert({
     name: 'STAYC',

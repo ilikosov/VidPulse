@@ -1,6 +1,6 @@
-import fs from 'fs';
-import path from 'path';
-import Knex from 'knex';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import config from '../src/db/knexfile';
 
 /**
@@ -11,8 +11,7 @@ import config from '../src/db/knexfile';
 export default async function setup() {
   process.env.NODE_ENV = 'test';
 
-  const testConfig = config.test;
-  const filename = (testConfig.connection as { filename: string }).filename;
+  const filename = (config.test.connection as { filename: string }).filename;
 
   // Start from a clean DB so migrations (and their seed data) are deterministic.
   for (const f of [filename, `${filename}-shm`, `${filename}-wal`]) {
@@ -20,10 +19,13 @@ export default async function setup() {
   }
   fs.mkdirSync(path.dirname(filename), { recursive: true });
 
-  const knex = Knex(testConfig);
-  try {
-    await knex.migrate.latest();
-  } finally {
-    await knex.destroy();
-  }
+  // Run migrations through the knex CLI (like `npm run dev:all`). The CLI
+  // auto-registers ts-node, so the TypeScript migration files load correctly.
+  // Calling knex.migrate.latest() in-process relies on the runtime already
+  // handling `.ts` requires, which fails under a clean `npm ci` on CI
+  // (SyntaxError: Unexpected token '{').
+  execFileSync('npx', ['knex', 'migrate:latest', '--knexfile', 'src/db/knexfile.ts'], {
+    stdio: 'inherit',
+    env: { ...process.env, NODE_ENV: 'test' },
+  });
 }

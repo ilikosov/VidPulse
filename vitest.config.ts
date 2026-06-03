@@ -6,6 +6,7 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.{test,spec}.ts'],
     globalSetup: ['./tests/vitest.global-setup.ts'],
+    setupFiles: ['./tests/vitest.setup.ts'],
     // Tests must not depend on the developer's real environment.
     env: {
       NODE_ENV: 'test',
