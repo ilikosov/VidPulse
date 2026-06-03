@@ -197,7 +197,7 @@ bootstrap documented and working.
 **Priority:** low
 **Docs:** [Migrations review → F5](./docs/migrations-review.md#f5--alter-table--add-constraint-check-is-non-standard-sqlite),
 [F6](./docs/migrations-review.md#f6--updated_at-is-not-auto-updated),
-[F7](./docs/migrations-review.md#-minor)
+[F7](./docs/migrations-review.md#-minor), [F9](./docs/migrations-review.md#-minor)
 
 **Why:** small correctness/consistency improvements surfaced by the review.
 
@@ -207,6 +207,10 @@ bootstrap documented and working.
       `ALTER TABLE … ADD CONSTRAINT` (non-standard SQLite syntax; portability risk).
 - [ ] Decide on `updated_at` freshness: add an UPDATE trigger, or enforce repositories set it explicitly.
 - [ ] (Optional) Normalize `string()` vs `text()` usage for consistency.
+- [ ] (F9) De-duplicate the `'private'` tag seed — it is inserted in both
+      `20260428123000_add_tags_and_video_duration.ts` and `20260428143000_ensure_private_tag.ts`
+      (harmless due to the unique constraint / `INSERT OR IGNORE`, but redundant); fold into the seeds
+      work from TASK-6.
 
 **Files:** `migrations/`, `src/repositories/**` (if enforcing `updated_at` in code).
 
