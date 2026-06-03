@@ -1,6 +1,6 @@
 # ADR 0003: Переход на монорепозиторий (npm workspaces)
 
-- **Status:** Proposed
+- **Status:** Accepted (решение принято; реализация в коде — отдельная future-работа, см. [TODO TASK-8](../../TODO.md))
 - **Date:** 2026-06-03
 - **Owners:** Backend team
 - **Tags:** repo-structure, tooling, monorepo, build, dx
