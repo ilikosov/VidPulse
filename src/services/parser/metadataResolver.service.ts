@@ -103,10 +103,15 @@ export async function resolveParsedMetadata(
     artist_id: artist?.id ?? null,
     song_id: song?.id ?? null,
     event_id: event?.id ?? null,
-    group_name: group ? group.canonical : groupInput || null,
-    artist_name: artist ? artist.canonical : artistInput || null,
+    // Text columns hold the RAW parse result (evidence). The canonical value is
+    // referenced via *_id; the display value is derived on read as
+    // COALESCE(dictionary, raw) via the `videos_display` view (ADR 0002 / TASK-1).
+    group_name: groupInput || null,
+    artist_name: artistInput || null,
+    // song_title stays a single-value legacy snapshot (canonical when matched);
+    // the many-to-many song model is TASK-2.
     song_title: song ? song.canonical : songInput || null,
-    event: event ? event.canonical : eventInput || null,
+    event: eventInput || null,
   };
 }
 

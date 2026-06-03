@@ -142,7 +142,10 @@ router.get('/', async (req: Request, res: Response) => {
     const includeIgnored = req.query.includeIgnored === 'true';
     const channelId = req.query.channel_id as string | undefined;
 
-    let query = knex('videos')
+    // Read from the display view so group_name/artist_name/event carry the
+    // COALESCE(dictionary, raw) display value (TASK-1 / ADR 0002). Writes still
+    // target the `videos` base table.
+    let query = knex('videos_display as videos')
       .leftJoin('channels', 'videos.channel_id', 'channels.id')
       .leftJoin('playlists', 'videos.playlist_id', 'playlists.id')
       .select(
@@ -671,7 +674,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const video = await knex('videos')
+    const video = await knex('videos_display as videos')
       .leftJoin('channels', 'videos.channel_id', 'channels.id')
       .leftJoin('playlists', 'videos.playlist_id', 'playlists.id')
       .select(
