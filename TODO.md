@@ -41,7 +41,7 @@ canonical link, and the display value is derived as `COALESCE(dictionary, parse)
 - [ ] **Consumer routes:** check `src/routes/{video,parser,channel,playlist,dictionary}.routes.ts` — return
       the display fields.
 - [ ] **Index:** reconsider the composite `videos_perf_meta_idx` (`perf_date, group_name, artist_name,
-  song_title, event`) — decide whether to keep it for text search or replace with `*_id` indexes
+song_title, event`) — decide whether to keep it for text search or replace with `*_id` indexes
       (see ADR 0002 §3 Trade-offs).
 - [ ] **Backfill (idempotent):** for rows where the text already equals the canonical value there is no
       change; record current behavior as the baseline (see ADR 0002 §4 step 4 and §3 Risks about the raw
@@ -121,7 +121,99 @@ columns become redundant. Removal is **destructive** — do it only behind the r
 
 ---
 
-> **Note.** Technical findings from the migrations review (duplicate indexes on `videos.status` /
-> `duplicate_group_id`, the shared dev/test SQLite DB, an explicit `PRAGMA foreign_keys=ON` in
-> `afterCreate`) are **not yet captured in the documentation**, so they are not tracked here as tasks.
-> If wanted, I can add a separate doc/section and create TODO entries for them.
+## [ ] TASK-4 — Remove duplicate indexes on `videos`
+
+**Priority:** medium
+**Docs:** [Migrations review → F1](./docs/migrations-review.md#f1--duplicate-indexes-on-videos)
+
+**Why:** `videos.status` and `videos.duplicate_group_id` are each indexed twice — once by the schema
+builder and once by raw `CREATE INDEX` in `migrations/20260423161338_create_tables.ts`. Verified on a
+built DB: `idx_videos_status` + `videos_status_index` and `idx_videos_duplicate_group` +
+`videos_duplicate_group_id_index` both exist. Redundant write overhead and storage.
+
+**Steps:**
+
+- [ ] New migration `npx knex migrate:make drop_duplicate_video_indexes` that `DROP INDEX IF EXISTS
+  idx_videos_status` and `idx_videos_duplicate_group` (keep the builder-created `videos_*_index`).
+- [ ] Add a matching `down` that recreates them.
+
+**Files:** `migrations/`.
+
+**Acceptance:** each of `status` / `duplicate_group_id` has exactly one index; migrations apply and roll
+back cleanly; `npm test` green.
+
+---
+
+## [ ] TASK-5 — Harden `knexfile.ts` (test DB, FK pragma, prod path)
+
+**Priority:** medium
+**Docs:** [Migrations review → F2](./docs/migrations-review.md#f2--test-and-development-share-the-same-sqlite-file),
+[F4](./docs/migrations-review.md#f4--fk-enforcement-relies-on-the-driver-default),
+[F8](./docs/migrations-review.md#-minor)
+
+**Why:** `test` and `development` share `dev.sqlite3` (risk of corrupting dev data under
+`NODE_ENV=test`); FK enforcement relies on the `better-sqlite3` default because `afterCreate` never sets
+`foreign_keys`; `production.filename` is cwd-relative while dev/test use `path.resolve`.
+
+**Steps:**
+
+- [ ] Point the `test` env at a separate file or `:memory:`; give it the same `pool.afterCreate` pragmas.
+- [ ] Add `conn.pragma('foreign_keys = ON')` to every env's `afterCreate`.
+- [ ] Resolve `production.filename` via `path.resolve(__dirname, …)` for cwd-independence.
+
+**Files:** `src/db/knexfile.ts`.
+
+**Acceptance:** test runs never touch `dev.sqlite3`; FK constraints enforced regardless of driver
+default; prod path is cwd-independent; `npm test` green.
+
+---
+
+## [ ] TASK-6 — Move seed data out of migrations into `seeds/`
+
+**Priority:** low
+**Docs:** [Migrations review → F3](./docs/migrations-review.md#f3--schema-and-seed-data-mixed-in-migrations)
+
+**Why:** dictionary/tags/settings seed data is embedded in migrations
+(`20260504110000_dictionary_db.ts`, `20260428123000_add_tags_and_video_duration.ts`,
+`20260428143000_ensure_private_tag.ts`), with hard-coded Russian tag strings and hand-rolled `esc()`
+string-interpolation inserts.
+
+**Steps:**
+
+- [ ] Move seed inserts (groups, artists, events, tags, settings) into Knex `seeds/`.
+- [ ] Use parameterized `knex(...).insert({...})` instead of `esc()` raw interpolation.
+- [ ] De-hardcode UI tag strings (`'длинное видео'`, `'игнорировать видео'`) — drive from config/i18n.
+- [ ] Keep migrations structure-only; ensure a documented bootstrap path still seeds a fresh DB.
+
+**Files:** `migrations/`, new `seeds/`.
+
+**Acceptance:** migrations contain no seed inserts; `seeds/` reproduces the reference data; fresh-DB
+bootstrap documented and working.
+
+---
+
+## [ ] TASK-7 — Minor migration robustness (CHECK portability, updated_at, types)
+
+**Priority:** low
+**Docs:** [Migrations review → F5](./docs/migrations-review.md#f5--alter-table--add-constraint-check-is-non-standard-sqlite),
+[F6](./docs/migrations-review.md#f6--updated_at-is-not-auto-updated),
+[F7](./docs/migrations-review.md#-minor)
+
+**Why:** small correctness/consistency improvements surfaced by the review.
+
+**Steps:**
+
+- [ ] Define the `dictionary_artist_memberships` CHECK constraints inside `createTable` instead of
+      `ALTER TABLE … ADD CONSTRAINT` (non-standard SQLite syntax; portability risk).
+- [ ] Decide on `updated_at` freshness: add an UPDATE trigger, or enforce repositories set it explicitly.
+- [ ] (Optional) Normalize `string()` vs `text()` usage for consistency.
+
+**Files:** `migrations/`, `src/repositories/**` (if enforcing `updated_at` in code).
+
+**Acceptance:** CHECK constraints defined at table creation; `updated_at` behavior is defined and tested;
+migrations apply and roll back cleanly.
+
+---
+
+> **Note.** The technical findings above (TASK-4…7) are documented in
+> [`docs/migrations-review.md`](./docs/migrations-review.md).
