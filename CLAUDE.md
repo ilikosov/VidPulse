@@ -74,9 +74,11 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
 - **Language:** reply to the user in **Russian**; name code entities (branches, files, identifiers) in
   **English**.
 - **Tech debt:** mark temporary code with `@todo` / `@techdebt` (date + reason) and add a TODO entry.
-- **Task lifecycle:** each backlog item has its own file in [`docs/tasks/`](docs/tasks). When a task is
-  **done**, delete its `docs/tasks/<task>.md` file and remove its entry from [`TODO.md`](TODO.md) (in the
-  same PR that completes it) — the backlog tracks only open work; the merged change is the record.
+- **Task lifecycle:** each backlog item has its own file in [`docs/tasks/`](docs/tasks). A PR that works
+  on a task **updates that task's status/checkboxes** in the task file and in [`TODO.md`](TODO.md) **within
+  the same PR** (so progress is reviewed with the change). When a task is **done**, delete its
+  `docs/tasks/<task>.md` file and remove its `TODO.md` entry in that PR — the backlog tracks only open
+  work; the merged change is the record.
 
 ## Testing
 
