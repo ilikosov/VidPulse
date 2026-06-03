@@ -257,5 +257,144 @@ tasks land to avoid path churn. Re-resolve any open work on top of the new layou
 
 ---
 
-> **Note.** The technical findings above (TASK-4…7) are documented in
-> [`docs/migrations-review.md`](./docs/migrations-review.md).
+## [ ] TASK-9 — Remove dead code & unused dependency
+
+**Priority:** medium
+**Docs:** [Code review → C1](./docs/code-review.md#c1--dead-code-srcservicesparser_new),
+[C3](./docs/code-review.md#c3--unused-dependency-sqlite3)
+
+**Why:** `src/services/parser_new/` (~500 LOC) has zero references and shadows the active
+`src/services/parser/`; `package.json` depends on both `sqlite3` and `better-sqlite3` while only
+`better-sqlite3` is used.
+
+**Steps:**
+
+- [ ] Confirm `src/services/parser_new/` is unused (grep across `src/`, scripts, tests) and delete it —
+      or, if it is the intended replacement, wire it in and remove the old parser.
+- [ ] Remove `sqlite3` from `package.json` dependencies; `npm install` to refresh the lockfile.
+
+**Files:** `src/services/parser_new/`, `package.json`, `package-lock.json`.
+
+**Acceptance:** no dead `parser_new`; `sqlite3` gone; `npm test`, `npm run test:e2e` and the build green.
+
+---
+
+## [ ] TASK-10 — Central error handling, 404, and async wrapper
+
+**Priority:** high
+**Docs:** [Code review → C2](./docs/code-review.md#c2--no-central-error-handling--404-handler)
+
+**Why:** `src/index.ts` has no error-handling middleware and no 404 handler; routes hand-roll `try/catch`
+with inconsistent 500 shapes, and Express 4 won't catch errors thrown in `async` handlers that forget a
+`try/catch`.
+
+**Steps:**
+
+- [ ] Add a terminal error-handling middleware (after all routes) returning a consistent error body
+      `{ error: { message, code? } }` with proper status codes; log via the logger (see TASK-14).
+- [ ] Add a 404 fallthrough for unmatched `/api/*` routes.
+- [ ] Add an `asyncHandler(fn)` wrapper (or `express-async-errors`) and apply it so handlers can drop the
+      boilerplate `try/catch`.
+- [ ] Introduce a small `AppError`/`HttpError` type for intentional 4xx responses.
+
+**Files:** `src/index.ts`, new `src/middleware/errorHandler.ts`, `src/middleware/asyncHandler.ts`,
+`src/routes/*.routes.ts`.
+
+**Acceptance:** thrown/rejected errors yield a consistent JSON error with the right status; unknown routes
+return 404; handlers no longer need manual `try/catch`; tests cover the error + 404 paths.
+
+---
+
+## [ ] TASK-11 — Side-effect-free app bootstrap
+
+**Priority:** medium
+**Docs:** [Code review → C4](./docs/code-review.md#c4--import-time-side-effects-in-srcindexts)
+
+**Why:** `createAppContainer()` (opens DB) and `app.listen()` + `runScheduler()` run at import time, so
+importing the app for in-process tests opens a connection and binds a port. Also helps the monorepo move
+([ADR 0003](./docs/adr/0003-monorepo.md)).
+
+**Steps:**
+
+- [ ] Export an app/container factory (e.g. `createApp()`); keep route wiring pure (no listen/connect).
+- [ ] Guard `app.listen()` and `container.syncService.runScheduler()` behind `if (require.main === module)`.
+- [ ] Add an in-process integration test that imports the app without starting a server.
+
+**Files:** `src/index.ts`, `src/compositionRoot.ts`, `tests/`.
+
+**Acceptance:** importing the app has no side effects (no port bind, no scheduler); `npm start` still runs
+the server; an in-process app test exists and is green.
+
+---
+
+## [ ] TASK-12 — Consolidate DB access into services/repositories; split god files
+
+**Priority:** medium
+**Docs:** [Code review → C5](./docs/code-review.md#c5--data-access-in-routes-bypasses-the-servicerepository-layer),
+[C6](./docs/code-review.md#c6--god-files)
+
+**Why:** routes import `knex` and query inline (e.g. `src/routes/video.routes.ts`), bypassing
+services/`repositories/` (a single file used only by `compositionRoot`); `dictionary.service.ts` (1620
+LOC) and `video.routes.ts` (1213 LOC) are god files. Contradicts the layered design in `AGENTS.md`.
+
+**Steps:**
+
+- [ ] Move DB access out of routes into services/repositories; keep routes thin (validate input → call
+      service → format response).
+- [ ] Split `dictionary.service.ts` by entity (groups/artists/songs/events/aliases) and
+      `video.routes.ts` into sub-routers (list/detail/metadata/tags/batch).
+- [ ] Establish a consistent repository pattern (extend `src/repositories/knex.repositories.ts`).
+
+**Files:** `src/routes/**`, `src/services/dictionary.service.ts`, `src/repositories/**`.
+
+**Acceptance:** routes contain no direct `knex` queries; the two god files are split into focused modules;
+behavior unchanged; `npm test` green. (Best done after TASK-8 to avoid double path churn.)
+
+---
+
+## [ ] TASK-13 — Standardize request validation (ajv)
+
+**Priority:** medium
+**Docs:** [Code review → C7](./docs/code-review.md#c7--no-standardized-request-validation)
+
+**Why:** `ajv` is already a dependency but used only for the media-library schema; API request bodies are
+validated ad-hoc and inconsistently per route.
+
+**Steps:**
+
+- [ ] Add a small `validate(schema)` middleware using `ajv` (+ `ajv-formats`, already present).
+- [ ] Define request schemas for the main write endpoints (videos, dictionary, video-lists, sync,
+      parser); replace hand-written per-route validators.
+- [ ] Return 400 with a consistent error body (aligned with TASK-10).
+
+**Files:** new `src/middleware/validate.ts`, `src/routes/**`, shared schema definitions.
+
+**Acceptance:** write endpoints reject invalid bodies with a consistent 400; no bespoke per-route
+validation left for covered endpoints; tests cover valid/invalid cases.
+
+---
+
+## [ ] TASK-14 — Observability & type-safety polish
+
+**Priority:** low
+**Docs:** [Code review → C8](./docs/code-review.md#-minor), [C9](./docs/code-review.md#-minor)
+
+**Why:** ~64 `console.*` calls and no structured logger (only `morgan` for HTTP); ~67 `any` / `as any`
+in non-test code despite `strict: true`.
+
+**Steps:**
+
+- [ ] Introduce a small logger (pino/winston or a thin wrapper) with levels and test-time silencing;
+      replace `console.*` in `src/`.
+- [ ] Reduce `any` / `as any`, especially around knex rows and external API payloads (type knex results,
+      type YouTube/LLM responses).
+
+**Files:** new `src/lib/logger.ts`, `src/**`.
+
+**Acceptance:** no raw `console.*` in `src/` (outside the logger); measurable drop in `any`; tests green.
+
+---
+
+> **Note.** The technical findings behind TASK-4…7 are documented in
+> [`docs/migrations-review.md`](./docs/migrations-review.md); those behind TASK-9…14 in
+> [`docs/code-review.md`](./docs/code-review.md).
