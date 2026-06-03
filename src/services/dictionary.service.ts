@@ -400,9 +400,7 @@ export class DictionaryService {
       .countDistinct('ga.id as aliases_count')
       .leftJoin('dictionary_artists as a', 'a.group_id', 'g.id')
       .leftJoin('dictionary_songs as s', 's.artist', 'a.name')
-      .leftJoin('videos as v', function joinVideosByGroup() {
-        this.on('v.group_id', '=', 'g.id').orOn('v.group_name', '=', 'g.name');
-      })
+      .leftJoin('videos as v', 'v.group_id', 'g.id')
       .leftJoin('dictionary_aliases as ga', function joinAliasCount() {
         this.on('ga.entity_id', '=', 'g.id').andOnVal('ga.entity_type', 'group');
       })
@@ -590,12 +588,12 @@ export class DictionaryService {
     const safePage = Math.max(1, page);
     const safeLimit = Math.max(1, limit);
     const offset = (safePage - 1) * safeLimit;
-    const base = knex('videos').where(field, value);
+    // Read from the display view (group_id/artist_id are already columns, so the
+    // old text joins to the dictionary are no longer needed — TASK-1 / ADR 0002).
+    const base = knex('videos_display as videos').where(`videos.${field}`, value);
     const videos = await base
       .clone()
-      .leftJoin('dictionary_groups as dg', 'videos.group_name', 'dg.name')
-      .leftJoin('dictionary_artists as da', 'videos.artist_name', 'da.name')
-      .select('videos.*', 'dg.id as group_id', 'da.id as artist_id')
+      .select('videos.*')
       .orderBy('videos.created_at', 'desc')
       .limit(safeLimit)
       .offset(offset);

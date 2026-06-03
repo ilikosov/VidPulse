@@ -77,7 +77,7 @@ describe('resolveParsedMetadata', () => {
     vi.clearAllMocks();
   });
 
-  it('resolves exact canonical names to ids and canonical values', async () => {
+  it('resolves names to ids but keeps the raw parse in the text fields', async () => {
     const resolved = await resolveParsedMetadata({
       group_name: 'LE SSERAFIM',
       artist_name: 'YUNJIN',
@@ -90,14 +90,15 @@ describe('resolveParsedMetadata', () => {
       artist_id: 10,
       song_id: 20,
       event_id: 30,
+      // text fields = raw parse (evidence); canonical is referenced via *_id
       group_name: 'LE SSERAFIM',
       artist_name: 'YUNJIN',
       song_title: 'DALLA DALLA',
-      event: 'INKIGAYO',
+      event: '@INKIGAYO',
     });
   });
 
-  it('resolves aliases and returns canonical dictionary names', async () => {
+  it('resolves aliases to ids while keeping the raw (alias) parse in text fields', async () => {
     const resolved = await resolveParsedMetadata({
       group_name: '르세라핌',
       artist_name: '허윤진',
@@ -110,10 +111,12 @@ describe('resolveParsedMetadata', () => {
       artist_id: 10,
       song_id: 20,
       event_id: 30,
-      group_name: 'LE SSERAFIM',
-      artist_name: 'YUNJIN',
+      // group/artist/event keep the raw alias the parser saw; only *_id is canonical
+      group_name: '르세라핌',
+      artist_name: '허윤진',
+      // song_title remains a canonical legacy snapshot (TASK-2 covers songs)
       song_title: 'DALLA DALLA',
-      event: 'INKIGAYO',
+      event: '@SBS INKIGAYO',
     });
   });
 

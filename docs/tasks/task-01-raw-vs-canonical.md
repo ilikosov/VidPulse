@@ -1,6 +1,8 @@
 # TASK-1 — Variant 1: separate raw parse from canonical references (group / artist / event)
 
-**Status:** [ ] not started
+**Status:** [~] in progress — core implemented (resolver raw storage + `videos_display` view +
+read-path joins + list/detail reads + tests). Remaining: `videos_perf_meta_idx` review;
+post-mutation route responses; optional `getVideosBy*Id` COALESCE for secondary fields.
 **Priority:** high
 **Docs:**
 
@@ -15,24 +17,25 @@ canonical link, and the display value is derived as `COALESCE(dictionary, parse)
 
 **Steps:**
 
-- [ ] **Resolver** `src/services/parser/metadataResolver.service.ts` (~lines 106–109): stop overwriting
+- [x] **Resolver** `src/services/parser/metadataResolver.service.ts` (~lines 106–109): stop overwriting
       `*_name` with the canonical value — write the raw parse (`groupInput || null`) into `*_name` and the
       resolved id into `*_id`. Update tests `metadataResolver.service.test.ts`.
-- [ ] **Display layer:** add a SQL VIEW `videos_display` (or a single query helper) computing
+- [x] **Display layer:** add a SQL VIEW `videos_display` (or a single query helper) computing
       `group_display = COALESCE(dg.name, videos.group_name)` and likewise for artist/event
       (event with `@` normalization). New migration via `npx knex migrate:make add_videos_display_view`.
-- [ ] **Read path** `src/services/dictionary.service.ts`: replace the fragile `OR` join
+- [x] **Read path** `src/services/dictionary.service.ts`: replace the fragile `OR` join
       (`ON v.group_id = g.id OR v.group_name = g.name`, ~line 404) and the text join in `getVideosByField`
       (~line 596) with FK-only joins; switch video reads/serialization to `videos_display`/the helper.
-- [ ] **Consumer routes:** check `src/routes/{video,parser,channel,playlist,dictionary}.routes.ts` — return
-      the display fields.
+- [~] **Consumer routes:** check `src/routes/{video,parser,channel,playlist,dictionary}.routes.ts` — return
+  the display fields.
 - [ ] **Index:** reconsider the composite `videos_perf_meta_idx` (`perf_date, group_name, artist_name,
-  song_title, event`) — decide whether to keep it for text search or replace with `*_id` indexes
+song_title, event`) — decide whether to keep it for text search or replace with `*_id` indexes
       (see ADR 0002 §3 Trade-offs).
-- [ ] **Backfill (idempotent):** for rows where the text already equals the canonical value there is no
-      change; record current behavior as the baseline (see ADR 0002 §4 step 4 and §3 Risks about the raw
-      parse being unrecoverable for historical rows).
-- [ ] **Frontend** (`client/`): read the display field instead of the raw `*_name`.
+- [x] **Backfill (idempotent):** no-op — the view derives display from the dictionary, so existing rows
+      (where the stored text already equals the canonical name) display identically; no data migration
+      needed (see ADR 0002 §3 Risks: the original raw parse is unrecoverable for historical rows).
+- [x] **Frontend** — no change needed: the API reuses the existing field names (`group_name`/…),
+      now carrying the display value, so the client is untouched.
 
 **Files:** `src/services/parser/metadataResolver.service.ts`, `src/services/dictionary.service.ts`,
 `src/routes/*.routes.ts`, `migrations/`, `client/src/**`.
