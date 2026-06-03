@@ -7,7 +7,7 @@
 
 **Why:** routes import `knex` and query inline (e.g. `src/routes/video.routes.ts`), bypassing
 services/`repositories/` (a single file used only by `compositionRoot`); `dictionary.service.ts` (1620
-LOC) and `video.routes.ts` (1213 LOC) are god files. Contradicts the layered design in `AGENTS.md`.
+LOC) and `video.routes.ts` (1213 LOC) are god files. Contradicts the layered design in `CLAUDE.md`.
 
 **Steps:**
 

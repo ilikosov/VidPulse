@@ -63,7 +63,7 @@
 │       ├── package.json    # имя напр. @vidpulse/shared
 │       └── src/
 ├── docs/                   # остаётся на уровне репозитория
-└── README.md, AGENTS.md, TODO.md
+└── README.md, CLAUDE.md, TODO.md
 ```
 
 Принципы:
@@ -142,7 +142,7 @@
 
 ### Phase 5 — Доки и проверка
 
-- Обновить [`docs/overview.*`](../overview.ru.md) (раздел структуры проекта) и `AGENTS.md`.
+- Обновить [`docs/overview.*`](../overview.ru.md) (раздел структуры проекта) и `CLAUDE.md`.
 - Прогнать `npm install`, `npm run dev:all`, `npm test`, `npm run test:e2e`, `migrate:latest` на чистой БД.
 
 ---

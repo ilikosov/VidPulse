@@ -179,7 +179,7 @@ VidPulse/
 ├── migrations/              # Knex migrations (schema source of truth)
 ├── tests/e2e/               # Playwright E2E tests & page objects
 ├── docs/                    # ADRs, API notes, audits
-└── AGENTS.md                # Contributor conventions & workflow
+└── CLAUDE.md                # Contributor conventions & workflow
 ```
 
 ---
@@ -235,7 +235,7 @@ Unit tests live next to the code (`src/**/*.test.ts`). Tests that exercise the d
 
 ## Conventions
 
-See [`AGENTS.md`](../AGENTS.md) for the full contributor guide. Highlights:
+See [`CLAUDE.md`](../CLAUDE.md) for the full contributor guide. Highlights:
 
 - Work on feature branches; never commit directly to the default branch.
 - **Commits** follow Conventional Commits: `<type>(<scope>): <subject>` (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`).
