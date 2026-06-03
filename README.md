@@ -11,6 +11,7 @@ Full-stack приложение для архивации и управлени�
 | [Contributor Guide](./AGENTS.md)                            | [Руководство контрибьютора](./AGENTS.md)            |
 
 Additional docs live in [`docs/`](./docs) (ADRs, API notes, audits).
+Implementation backlog derived from the docs: [`TODO.md`](./TODO.md).
 
 ## Quick start
 

@@ -5,6 +5,16 @@
 - **Owners:** Backend team
 - **Tags:** database, dictionary, metadata, migration, backward-compatibility
 
+> **Update (2026-06-02): связь видео ↔ песня стала «многие-ко-многим».**
+> Этот ADR описывает отображение `song_title -> song_id` как **одну** песню на видео.
+> С момента введения junction-таблицы **`video_songs`** (`migrations/20260516100000_create_videos_songs.ts`)
+> у одного видео может быть **несколько** песен (например, попурри `Bubble + ASAP`).
+> Поэтому:
+>
+> - **`video_songs` (видео ↔ `dictionary_songs`) — canonical source of truth** для набора песен видео.
+> - `videos.song_id` и `videos.song_title` — **legacy одиночные snapshot-поля** (хранят, как правило, первую/основную песню) и сохраняются только для обратной совместимости.
+>   Решение про canonical-словарь (`dictionary_songs`) остаётся в силе; меняется лишь кардинальность связи `videos`↔`song`: `1:1` → `M:N`.
+
 ## 1) Context
 
 В текущей модели данных `videos` хранит сущности перформанса в строковых полях:
@@ -34,7 +44,7 @@
 2. Таблица `videos` **поэтапно** переходит со строковых полей:
    - `group_name` -> `group_id`
    - `artist_name` -> `artist_id`
-   - `song_title` -> `song_id`
+   - `song_title` -> `song_id` (одиночный snapshot; полный набор песен — в `video_songs`, см. Update выше)
    - `event` -> `event_id`
 3. Строковые поля в `videos` сохраняются временно как:
    - denormalized snapshot (для исторической читаемости записи),

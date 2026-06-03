@@ -97,6 +97,8 @@ YouTube playlists that are tracked for new videos.
 
 The central entity. It carries **denormalized** metadata fields (text), **foreign keys** to the dictionary, and YouTube/processing fields.
 
+> 📐 **Target denormalization model:** today the text fields (`group_name`/`artist_name`/`event`) and the FKs (`group_id`/…) are a dual source of truth. The agreed direction is to keep only the raw parse result in the text columns and derive the display value as `COALESCE(dictionary, parse)`. See [ADR 0002](./adr/0002-raw-parse-vs-canonical-display.md).
+
 | Column                  | Type      | Notes                                          |
 | ----------------------- | --------- | ---------------------------------------------- |
 | `id` 🔑                 | INTEGER   | auto-increment                                 |
