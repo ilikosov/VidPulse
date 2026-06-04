@@ -40,7 +40,6 @@ erDiagram
 
     dictionary_groups  ||--o{ videos : "group_id"
     dictionary_artists ||--o{ videos : "artist_id"
-    dictionary_songs   ||--o{ videos : "song_id (легаси)"
     dictionary_events  ||--o{ videos : "event_id"
 ```
 
@@ -113,7 +112,6 @@ YouTube-плейлисты, отслеживаемые на предмет но�
 | `perf_date`             | TIMESTAMP | дата выступления                                     |
 | `group_name`            | TEXT      | денормализованная группа                             |
 | `artist_name`           | TEXT      | денормализованный артист (сольные fancam)            |
-| `song_title`            | TEXT      | **легаси** денормализованная песня (см. примечание)  |
 | `event`                 | TEXT      | денормализованное событие (напр. `@MCOUNTDOWN`)      |
 | `camera_type`           | TEXT      | напр. fancam, 4K                                     |
 | `description`           | TEXT      | описание YouTube                                     |
@@ -122,7 +120,6 @@ YouTube-плейлисты, отслеживаемые на предмет но�
 | `fancam_confidence`     | REAL      |                                                      |
 | `group_id` 🔗           | INTEGER   | → `dictionary_groups.id` (SET NULL)                  |
 | `artist_id` 🔗          | INTEGER   | → `dictionary_artists.id` (SET NULL)                 |
-| `song_id` 🔗            | INTEGER   | **легаси** → `dictionary_songs.id` (SET NULL)        |
 | `event_id` 🔗           | INTEGER   | → `dictionary_events.id` (SET NULL)                  |
 | `is_own_group_song`     | BOOLEAN   | песня принадлежит разобранной группе                 |
 | `is_own_artist_song`    | BOOLEAN   | песня принадлежит разобранному артисту               |
@@ -133,9 +130,9 @@ YouTube-плейлисты, отслеживаемые на предмет но�
 | `created_at`            | TIMESTAMP | по умолчанию now                                     |
 | `updated_at`            | TIMESTAMP | по умолчанию now                                     |
 
-**Индексы:** `status`, `duplicate_group_id`, `group_id`, `artist_id`, `song_id`, `event_id`, а также составной `videos_perf_meta_idx` по `(perf_date, group_name, artist_name, song_title, event)`.
+**Индексы:** `status`, `duplicate_group_id`, `group_id`, `artist_id`, `event_id`, а также составной `videos_perf_meta_idx` по `(perf_date, group_name, artist_name, event)`.
 
-> ⚠️ **Песни — многие-ко-многим.** `videos.song_id` / `videos.song_title` — **легаси** одиночные колонки, оставленные для обратной совместимости. Авторитетный набор песен видео — junction-таблица **`video_songs`**: у видео может быть несколько песен.
+> ⚠️ **Песни живут только в `video_songs`.** Легаси-колонки `videos.song_id` / `videos.song_title` **удалены** (TASK-3); песни видео — это строки в **`video_songs`** (сырой тайтл + опциональный канон `song_id` + порядок).
 
 ### `duplicate_groups`
 

@@ -93,8 +93,9 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
 
 ## Project-specific gotchas
 
-- **Songs are many-to-many.** `video_songs` is the source of truth; `videos.song_id` / `song_title` are
-  legacy single-value snapshots ([ADR 0001 Update](docs/adr/0001-canonical-dictionary-entities.md)).
+- **Songs live only in `video_songs`.** A video's songs are the rows in `video_songs` (raw title +
+  optional canonical `song_id` + `position`); the legacy `videos.song_id` / `song_title` columns were
+  removed in TASK-3 ([ADR 0002](docs/adr/0002-raw-parse-vs-canonical-display.md)).
 - **Dual source of truth** for group/artist/event: text columns (`group_name`…) vs FKs (`group_id`…).
   Target model & display rule in [ADR 0002](docs/adr/0002-raw-parse-vs-canonical-display.md) / TASK-1.
 - **DB quirks:** FK enforcement currently relies on the `better-sqlite3` default; `test` and `development`

@@ -982,27 +982,17 @@ export class DictionaryService {
   }
 
   async getStats(): Promise<DictionaryStats> {
-    const [
-      groups,
-      artists,
-      songs,
-      events,
-      aliases,
-      hasGroupId,
-      hasArtistId,
-      hasSongId,
-      hasEventId,
-    ] = await Promise.all([
-      this.countGroups(),
-      this.countArtists(),
-      this.countSongs(),
-      this.countEvents(),
-      knex('dictionary_aliases').count('* as count').first(),
-      knex.schema.hasColumn('videos', 'group_id'),
-      knex.schema.hasColumn('videos', 'artist_id'),
-      knex.schema.hasColumn('videos', 'song_id'),
-      knex.schema.hasColumn('videos', 'event_id'),
-    ]);
+    const [groups, artists, songs, events, aliases, hasGroupId, hasArtistId, hasEventId] =
+      await Promise.all([
+        this.countGroups(),
+        this.countArtists(),
+        this.countSongs(),
+        this.countEvents(),
+        knex('dictionary_aliases').count('* as count').first(),
+        knex.schema.hasColumn('videos', 'group_id'),
+        knex.schema.hasColumn('videos', 'artist_id'),
+        knex.schema.hasColumn('videos', 'event_id'),
+      ]);
 
     const [groupLinkedRow, artistLinkedRow, songLinkedRow, eventLinkedRow] = await Promise.all([
       hasGroupId
@@ -1011,9 +1001,8 @@ export class DictionaryService {
       hasArtistId
         ? knex('videos').whereNotNull('artist_id').count('* as count').first()
         : knex('videos').whereNotNull('artist_name').count('* as count').first(),
-      hasSongId
-        ? knex('videos').whereNotNull('song_id').count('* as count').first()
-        : knex('videos').whereNotNull('song_title').count('* as count').first(),
+      // Songs live in video_songs now (TASK-3): count videos with a matched song.
+      knex('video_songs').whereNotNull('song_id').countDistinct('video_id as count').first(),
       hasEventId
         ? knex('videos').whereNotNull('event_id').count('* as count').first()
         : knex('videos').whereNotNull('event').count('* as count').first(),
@@ -1574,14 +1563,14 @@ export class DictionaryService {
         trx('dictionary_song_groups').count<{ count: number }>('song_id as count').first(),
       ]);
 
+      // Songs live in video_songs (TASK-3): unlink them from the cleared dictionary.
+      await trx('video_songs').update({ song_id: null });
       const videosUpdated = await trx('videos').update({
         group_id: null,
         artist_id: null,
-        song_id: null,
         event_id: null,
         group_name: null,
         artist_name: null,
-        song_title: null,
         event: null,
       });
 

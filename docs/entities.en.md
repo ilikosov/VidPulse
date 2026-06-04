@@ -40,7 +40,6 @@ erDiagram
 
     dictionary_groups  ||--o{ videos : "group_id"
     dictionary_artists ||--o{ videos : "artist_id"
-    dictionary_songs   ||--o{ videos : "song_id (legacy)"
     dictionary_events  ||--o{ videos : "event_id"
 ```
 
@@ -113,7 +112,6 @@ The central entity. It carries **denormalized** metadata fields (text), **foreig
 | `perf_date`             | TIMESTAMP | performance date                               |
 | `group_name`            | TEXT      | denormalized group                             |
 | `artist_name`           | TEXT      | denormalized artist (solo fancams)             |
-| `song_title`            | TEXT      | **legacy** denormalized song (see note)        |
 | `event`                 | TEXT      | denormalized event (e.g. `@MCOUNTDOWN`)        |
 | `camera_type`           | TEXT      | e.g. fancam, 4K                                |
 | `description`           | TEXT      | YouTube description                            |
@@ -122,7 +120,6 @@ The central entity. It carries **denormalized** metadata fields (text), **foreig
 | `fancam_confidence`     | REAL      |                                                |
 | `group_id` 🔗           | INTEGER   | → `dictionary_groups.id` (SET NULL)            |
 | `artist_id` 🔗          | INTEGER   | → `dictionary_artists.id` (SET NULL)           |
-| `song_id` 🔗            | INTEGER   | **legacy** → `dictionary_songs.id` (SET NULL)  |
 | `event_id` 🔗           | INTEGER   | → `dictionary_events.id` (SET NULL)            |
 | `is_own_group_song`     | BOOLEAN   | song belongs to the parsed group               |
 | `is_own_artist_song`    | BOOLEAN   | song belongs to the parsed artist              |
@@ -133,9 +130,9 @@ The central entity. It carries **denormalized** metadata fields (text), **foreig
 | `created_at`            | TIMESTAMP | default now                                    |
 | `updated_at`            | TIMESTAMP | default now                                    |
 
-**Indexes:** `status`, `duplicate_group_id`, `group_id`, `artist_id`, `song_id`, `event_id`, and a composite `videos_perf_meta_idx` on `(perf_date, group_name, artist_name, song_title, event)`.
+**Indexes:** `status`, `duplicate_group_id`, `group_id`, `artist_id`, `event_id`, and a composite `videos_perf_meta_idx` on `(perf_date, group_name, artist_name, event)`.
 
-> ⚠️ **Songs are many-to-many.** `videos.song_id` / `videos.song_title` are **legacy** single-value columns kept for backward compatibility. The authoritative set of songs for a video is the **`video_songs`** junction table — a video may have several songs.
+> ⚠️ **Songs live only in `video_songs`.** The legacy single-value `videos.song_id` / `videos.song_title` columns were **removed** (TASK-3); a video's songs are the rows in **`video_songs`** (raw title + optional canonical `song_id` + order).
 
 ### `duplicate_groups`
 

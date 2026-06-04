@@ -17,11 +17,9 @@ export async function parseVideoMetadata(
     ).toISOString();
   updateData.group_id = resolved.group_id;
   updateData.artist_id = resolved.artist_id;
-  updateData.song_id = resolved.song_id;
   updateData.event_id = resolved.event_id;
   updateData.group_name = resolved.group_name;
   updateData.artist_name = resolved.artist_name;
-  updateData.song_title = resolved.song_title;
   updateData.event = resolved.event;
   if (metadata.camera_type !== undefined) updateData.camera_type = metadata.camera_type || null;
   updateData.is_fancam = metadata.is_fancam ?? null;
