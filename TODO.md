@@ -15,7 +15,7 @@ acceptance criteria.
 ## Data model (ADR-0001 / ADR-0002)
 
 - [x] **TASK-1** (high) — Separate raw parse from canonical references (group/artist/event) — [details](./docs/tasks/task-01-raw-vs-canonical.md)
-- [ ] **TASK-2** (medium) — Extend `video_songs` (`raw_title` + nullable `song_id` + `position`) — [details](./docs/tasks/task-02-extend-video-songs.md)
+- [x] **TASK-2** (medium) — Extend `video_songs` (`raw_title` + nullable `song_id` + `position`) — [details](./docs/tasks/task-02-extend-video-songs.md)
 - [ ] **TASK-3** (low, gated) — Fate of legacy columns `song_id` / `song_title` — [details](./docs/tasks/task-03-legacy-columns.md)
 
 ## Migrations & DB hygiene (migrations-review)

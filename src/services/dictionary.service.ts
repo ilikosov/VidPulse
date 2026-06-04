@@ -7,7 +7,7 @@ import { getVideoSongsMap } from './parser/videoSongs.service';
  */
 async function attachSongs<T extends { id: number }>(
   videos: T[],
-): Promise<Array<T & { songs: Array<{ id: number; title: string }> }>> {
+): Promise<Array<T & { songs: Array<{ id: number | null; title: string }> }>> {
   const songsByVideo = await getVideoSongsMap(videos.map((video) => video.id));
   return videos.map((video) => ({ ...video, songs: songsByVideo.get(video.id) ?? [] }));
 }

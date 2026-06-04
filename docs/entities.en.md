@@ -251,13 +251,17 @@ Polymorphic alternate spellings/lookups for any dictionary entity.
 
 ### `video_songs` — videos ↔ songs
 
-The **single source of truth** for which songs appear in a video.
+The **single source of truth** for the ordered set of songs in a video. Each row keeps the raw parsed
+title (evidence) and, when matched, a link to the canonical dictionary song; display =
+`COALESCE(dictionary_songs.title, raw_title)` (TASK-2 / ADR 0002).
 
-| Column           | Type    | Notes                                       |
-| ---------------- | ------- | ------------------------------------------- |
-| `video_id` 🔗 \* | INTEGER | → `videos.id` (CASCADE)                     |
-| `song_id` 🔗 \*  | INTEGER | → `dictionary_songs.id` (CASCADE)           |
-| 🔑               |         | composite primary key `(video_id, song_id)` |
+| Column           | Type    | Notes                                                       |
+| ---------------- | ------- | ----------------------------------------------------------- |
+| `video_id` 🔗 \* | INTEGER | → `videos.id` (CASCADE)                                     |
+| `position` \*    | INTEGER | 0-based order of the song within the video                  |
+| `raw_title` \*   | TEXT    | the raw parsed song title (evidence)                        |
+| `song_id` 🔗     | INTEGER | → `dictionary_songs.id` (SET NULL); **null when unmatched** |
+| 🔑               |         | composite primary key `(video_id, position)`                |
 
 ### `video_tags` — videos ↔ tags
 
