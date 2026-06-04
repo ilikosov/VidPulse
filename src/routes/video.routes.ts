@@ -158,7 +158,6 @@ router.get('/', async (req: Request, res: Response) => {
         'videos.perf_date',
         'videos.group_name',
         'videos.artist_name',
-        'videos.song_title',
         'videos.event',
         'videos.camera_type',
         'videos.duration_seconds',
@@ -630,11 +629,9 @@ router.post('/add', async (req: Request, res: Response) => {
     }
     insertData.group_id = resolved.group_id;
     insertData.artist_id = resolved.artist_id;
-    insertData.song_id = resolved.song_id;
     insertData.event_id = resolved.event_id;
     insertData.group_name = resolved.group_name;
     insertData.artist_name = resolved.artist_name;
-    insertData.song_title = resolved.song_title;
     insertData.event = resolved.event;
     if (metadata.camera_type !== undefined) insertData.camera_type = metadata.camera_type || null;
     insertData.is_fancam = metadata.is_fancam ?? null;
@@ -822,11 +819,9 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
         published_at: details.publishedAt || existingVideo.published_at || null,
         group_id: resolved.group_id,
         artist_id: resolved.artist_id,
-        song_id: resolved.song_id,
         event_id: resolved.event_id,
         group_name: resolved.group_name,
         artist_name: resolved.artist_name,
-        song_title: resolved.song_title,
         event: resolved.event,
         camera_type: metadata.camera_type || null,
         is_fancam: metadata.is_fancam ?? null,
@@ -1035,11 +1030,8 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
       songSet = splitSongTitles(song_title || undefined);
     }
 
-    if (songSet !== undefined) {
-      // @techdebt(2026-06-02): keep the denormalized videos.song_title in sync
-      // for backward compat; drop the column once all readers use video_songs.
-      updateData.song_title = songSet.length ? songSet[songSet.length - 1] : null;
-    }
+    // songSet (when provided) is persisted to `video_songs` below; the legacy
+    // videos.song_title column has been dropped (TASK-3).
 
     if (event !== undefined) {
       // Ensure @ prefix for events
@@ -1087,13 +1079,18 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
         });
       }
 
-      // Insert training data record with the final metadata
+      // Insert training data record with the final metadata. Songs now live in
+      // video_songs (TASK-3): use the new set when provided, else the current set.
+      const finalSongTitles =
+        songSet ??
+        (await getVideoSongsMap([Number(id)], trx)).get(Number(id))?.map((s) => s.title) ??
+        [];
       const finalMetadata = {
         perf_date: updateData.perf_date ? perf_date : video.perf_date,
         group_name: updateData.group_name ?? video.group_name,
         artist_name: updateData.artist_name ?? video.artist_name,
-        song_title: updateData.song_title ?? video.song_title,
-        song_titles: songSet ?? splitSongTitles(video.song_title ?? undefined),
+        song_title: finalSongTitles.length ? finalSongTitles[finalSongTitles.length - 1] : null,
+        song_titles: finalSongTitles,
         event: updateData.event ?? video.event,
         camera_type: updateData.camera_type ?? video.camera_type,
       };
@@ -1164,11 +1161,9 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
 
     updateData.group_id = resolved.group_id;
     updateData.artist_id = resolved.artist_id;
-    updateData.song_id = resolved.song_id;
     updateData.event_id = resolved.event_id;
     updateData.group_name = resolved.group_name;
     updateData.artist_name = resolved.artist_name;
-    updateData.song_title = resolved.song_title;
     updateData.event = resolved.event;
 
     if (metadata.camera_type !== undefined) {

@@ -140,15 +140,7 @@ async function backfill(): Promise<void> {
       }
     }
 
-    if (!video.song_id && video.song_title?.trim()) {
-      const resolved = songMap.get(normalize(video.song_title));
-      if (resolved) {
-        patch.song_id = resolved;
-        matchedSongs++;
-      } else {
-        addUnmatched(unmatched.song, video.song_title);
-      }
-    }
+    // Songs are no longer stored on `videos` (TASK-3) — they live in video_songs.
 
     if (!video.event_id && video.event?.trim()) {
       const resolved = eventMap.get(normalizeEvent(video.event));
