@@ -21,14 +21,23 @@ beforeAll(async () => {
     t.increments('id').primary();
     t.string('title').notNullable();
   });
+  await testKnex.schema.createTable('dictionary_aliases', (t) => {
+    t.increments('id').primary();
+    t.string('entity_type').notNullable();
+    t.integer('entity_id').notNullable();
+    t.string('alias').notNullable();
+  });
   await testKnex.schema.createTable('video_songs', (t) => {
     t.integer('video_id').notNullable();
-    t.integer('song_id').notNullable();
-    t.primary(['video_id', 'song_id']);
+    t.integer('position').notNullable();
+    t.text('raw_title').notNullable();
+    t.integer('song_id').nullable();
+    t.primary(['video_id', 'position']);
   });
 
   await testKnex('videos').insert([{ id: 42 }, { id: 7 }]);
   await testKnex('dictionary_songs').insert({ id: 1, title: 'ASAP' });
+  await testKnex('dictionary_aliases').insert({ entity_type: 'song', entity_id: 1, alias: '아삽' });
 });
 
 beforeEach(async () => {
@@ -41,77 +50,70 @@ afterAll(async () => {
 });
 
 describe('syncVideoSongs', () => {
-  it('creates missing songs and links video to each unique song title', async () => {
+  it('stores every parsed song in order with raw_title; links matched ones, keeps unmatched as null', async () => {
     await syncVideoSongs(42, undefined, ['Bubble', 'ASAP', 'Bubble', ' BEAUTIFUL MONSTER ']);
 
-    const dictionarySongs = await testKnex('dictionary_songs').select('*').orderBy('id', 'asc');
-    const videoSongs = await testKnex('video_songs').select('*').orderBy('song_id', 'asc');
-
-    expect(dictionarySongs.map((s) => s.title)).toEqual(['ASAP', 'Bubble', 'BEAUTIFUL MONSTER']);
-    const asap = dictionarySongs.find((s) => s.title === 'ASAP')!;
-    const bubble = dictionarySongs.find((s) => s.title === 'Bubble')!;
-    const monster = dictionarySongs.find((s) => s.title === 'BEAUTIFUL MONSTER')!;
+    const videoSongs = await testKnex('video_songs').select('*').orderBy('position', 'asc');
     expect(videoSongs).toEqual([
-      { video_id: 42, song_id: asap.id },
-      { video_id: 42, song_id: bubble.id },
-      { video_id: 42, song_id: monster.id },
+      { video_id: 42, position: 0, raw_title: 'Bubble', song_id: null },
+      { video_id: 42, position: 1, raw_title: 'ASAP', song_id: 1 },
+      { video_id: 42, position: 2, raw_title: 'BEAUTIFUL MONSTER', song_id: null },
     ]);
+
+    // It must NOT auto-create dictionary entries for unmatched titles.
+    const dictionaryTitles = await testKnex('dictionary_songs').pluck('title');
+    expect(dictionaryTitles).toEqual(['ASAP']);
+  });
+
+  it('matches a song by alias', async () => {
+    await syncVideoSongs(42, undefined, ['아삽']);
+    const row = await testKnex('video_songs').where('video_id', 42).first();
+    expect(row).toMatchObject({ raw_title: '아삽', song_id: 1 });
   });
 
   it('supports legacy single-field song_title split by plus', async () => {
     await syncVideoSongs(7, 'Bubble + ASAP + Bubble');
-
-    const dictionarySongs = await testKnex('dictionary_songs').select('*').orderBy('id', 'asc');
-    const videoSongs = await testKnex('video_songs').select('*').orderBy('song_id', 'asc');
-
-    expect(dictionarySongs.map((s) => s.title)).toEqual(['ASAP', 'Bubble']);
-    const asap = dictionarySongs.find((s) => s.title === 'ASAP')!;
-    const bubble = dictionarySongs.find((s) => s.title === 'Bubble')!;
+    const videoSongs = await testKnex('video_songs').select('*').orderBy('position', 'asc');
     expect(videoSongs).toEqual([
-      { video_id: 7, song_id: asap.id },
-      { video_id: 7, song_id: bubble.id },
+      { video_id: 7, position: 0, raw_title: 'Bubble', song_id: null },
+      { video_id: 7, position: 1, raw_title: 'ASAP', song_id: 1 },
     ]);
   });
 
-  it('fully replaces the set, unlinking songs no longer present', async () => {
+  it('fully replaces the set, dropping songs no longer present', async () => {
     await syncVideoSongs(42, undefined, ['Bubble', 'ASAP']);
-    await syncVideoSongs(42, undefined, ['Bubble', 'BEAUTIFUL MONSTER']);
+    await syncVideoSongs(42, undefined, ['ASAP', 'BEAUTIFUL MONSTER']);
 
-    const titles = await testKnex('video_songs as vs')
-      .join('dictionary_songs as ds', 'vs.song_id', 'ds.id')
-      .where('vs.video_id', 42)
-      .pluck('ds.title');
-
-    expect(titles.sort()).toEqual(['BEAUTIFUL MONSTER', 'Bubble']);
+    const rows = await testKnex('video_songs').where('video_id', 42).orderBy('position');
+    expect(rows.map((r) => r.raw_title)).toEqual(['ASAP', 'BEAUTIFUL MONSTER']);
   });
 
-  it('removes all links when the new set is empty', async () => {
+  it('removes all rows when the new set is empty', async () => {
     await syncVideoSongs(42, undefined, ['Bubble', 'ASAP']);
     await syncVideoSongs(42, undefined, []);
-
-    const remaining = await testKnex('video_songs').where('video_id', 42);
-    expect(remaining).toEqual([]);
+    expect(await testKnex('video_songs').where('video_id', 42)).toEqual([]);
   });
 
   it('scopes writes to a passed transaction', async () => {
     await testKnex.transaction(async (trx) => {
       await syncVideoSongs(7, undefined, ['Bubble'], trx);
     });
-
-    const remaining = await testKnex('video_songs').where('video_id', 7);
-    expect(remaining).toHaveLength(1);
+    expect(await testKnex('video_songs').where('video_id', 7)).toHaveLength(1);
   });
 });
 
 describe('getVideoSongsMap', () => {
-  it('returns alphabetically ordered songs keyed by video id', async () => {
-    await syncVideoSongs(42, undefined, ['Bubble', 'ASAP']);
-    await syncVideoSongs(7, undefined, ['Bubble']);
+  it('returns songs in position order with display title (canonical or raw)', async () => {
+    await syncVideoSongs(42, undefined, ['Bubble', 'ASAP']); // Bubble unmatched, ASAP -> id 1
+    await syncVideoSongs(7, undefined, ['ASAP']);
 
     const map = await getVideoSongsMap([42, 7]);
 
-    expect(map.get(42)!.map((s) => s.title)).toEqual(['ASAP', 'Bubble']);
-    expect(map.get(7)!.map((s) => s.title)).toEqual(['Bubble']);
+    expect(map.get(42)).toEqual([
+      { id: null, title: 'Bubble' }, // unmatched → raw title, null id
+      { id: 1, title: 'ASAP' }, // matched → canonical title + id
+    ]);
+    expect(map.get(7)).toEqual([{ id: 1, title: 'ASAP' }]);
   });
 
   it('omits videos without songs and handles empty input', async () => {
