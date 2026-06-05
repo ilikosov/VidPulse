@@ -1,4 +1,5 @@
 import type { ParsedMetadata } from './parser/parser.types';
+import { logger } from '../lib/logger';
 
 export interface SuggestedMetadata {
   group_name?: string;
@@ -128,7 +129,7 @@ export class AIService {
       }
 
       const payload = (await response.json()) as LLMResponsePayload;
-      console.log(payload.choices?.[0]?.message);
+      logger.info(payload.choices?.[0]?.message);
       const content = payload.choices?.[0]?.message?.content;
 
       if (!content) {
@@ -137,7 +138,7 @@ export class AIService {
 
       return content;
     } catch (error) {
-      console.error('AIService callLLM failed:', error);
+      logger.error('AIService callLLM failed:', error);
       throw new Error(
         `LM Studio request failed: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -153,7 +154,7 @@ export class AIService {
     try {
       return cleanParsedMetadata(parseJsonContent(content));
     } catch (error) {
-      console.error('AIService parseTitleWithLLM parse failed:', error);
+      logger.error('AIService parseTitleWithLLM parse failed:', error);
       return {};
     }
   }

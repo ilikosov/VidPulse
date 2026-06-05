@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { LRUCache } from 'lru-cache';
+import { logger } from '../lib/logger';
 import type { VideoInfo, VideoDetails } from '../models/youtube.types';
 import { logEvent } from './eventLog.service';
 
@@ -10,13 +11,18 @@ if (!apiKey) {
   throw Error('YOUTUBE_API_KEY is not set in environment variables');
 }
 
-// LRU Cache configuration: max 500 entries, TTL 1 hour (3600000 ms)
 const cache = new LRUCache<string, any>({
   max: 500,
   ttl: 3600000,
 });
 
-function getCacheKey(methodName: string, args: any[]): string {
+const loggedErrors = new WeakSet<object>();
+
+function isLoggedError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && loggedErrors.has(error);
+}
+
+function getCacheKey(methodName: string, args: unknown[]): string {
   return `${methodName}:${JSON.stringify(args)}`;
 }
 
@@ -129,7 +135,7 @@ export class YouTubeService {
     } catch (error) {
       await this.logYouTubeError(method, params, error);
       if (error && typeof error === 'object') {
-        (error as any).__youtubeLogged = true;
+        loggedErrors.add(error);
       }
       throw error;
     }
@@ -227,10 +233,10 @@ export class YouTubeService {
       cache.set(cacheKey, channelId);
       return channelId;
     } catch (error) {
-      if (!(error as any)?.__youtubeLogged) {
+      if (!isLoggedError(error)) {
         await this.logYouTubeError('getChannelIdFromUrl', { url }, error);
       }
-      console.error('Error getting channel ID from URL:', error);
+      logger.error('Error getting channel ID from URL:', error);
       throw error;
     }
   }
@@ -321,10 +327,10 @@ export class YouTubeService {
       cache.set(cacheKey, videos);
       return videos;
     } catch (error) {
-      if (!(error as any)?.__youtubeLogged) {
+      if (!isLoggedError(error)) {
         await this.logYouTubeError('fetchChannelVideos', { channelId, publishedAfter }, error);
       }
-      console.error('Error fetching channel videos:', error);
+      logger.error('Error fetching channel videos:', error);
       throw error;
     }
   }
@@ -388,7 +394,7 @@ export class YouTubeService {
       cache.set(cacheKey, videos);
       return videos;
     } catch (error) {
-      if (!(error as any)?.__youtubeLogged) {
+      if (!isLoggedError(error)) {
         await this.logYouTubeError(
           'fetchChannelVideosOlderThan',
           { channelId, publishedBefore, maxResults },
@@ -443,10 +449,10 @@ export class YouTubeService {
       cache.set(cacheKey, videos);
       return videos;
     } catch (error) {
-      if (!(error as any)?.__youtubeLogged) {
+      if (!isLoggedError(error)) {
         await this.logYouTubeError('fetchPlaylistItems', { playlistId }, error);
       }
-      console.error('Error fetching playlist items:', error);
+      logger.error('Error fetching playlist items:', error);
       throw error;
     }
   }
@@ -507,10 +513,10 @@ export class YouTubeService {
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
-      if (!(error as any)?.__youtubeLogged) {
+      if (!isLoggedError(error)) {
         await this.logYouTubeError('channels.list', { id: [channelId], part: ['snippet'] }, error);
       }
-      console.error('Error getting channel details:', error);
+      logger.error('Error getting channel details:', error);
       throw error;
     }
   }
@@ -548,14 +554,14 @@ export class YouTubeService {
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
-      if (!(error as any)?.__youtubeLogged) {
+      if (!isLoggedError(error)) {
         await this.logYouTubeError(
           'playlists.list',
           { id: [playlistId], part: ['snippet'] },
           error,
         );
       }
-      console.error('Error getting playlist details:', error);
+      logger.error('Error getting playlist details:', error);
       throw error;
     }
   }
@@ -611,7 +617,7 @@ export class YouTubeService {
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
-      if (!(error as any)?.__youtubeLogged) {
+      if (!isLoggedError(error)) {
         await this.logYouTubeError(
           'videos.list',
           {
@@ -623,7 +629,7 @@ export class YouTubeService {
           error,
         );
       }
-      console.error('Error getting video details:', error);
+      logger.error('Error getting video details:', error);
       throw error;
     }
   }

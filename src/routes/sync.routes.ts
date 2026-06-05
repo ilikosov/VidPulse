@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { logger } from '../lib/logger';
 import type { ISyncService } from '../interfaces/services';
 import { createAppContainer } from '../compositionRoot';
 
@@ -9,7 +10,7 @@ export function createSyncRouter(syncService: ISyncService): Router {
       await syncService.syncAll();
       res.json({ message: 'Sync completed successfully' });
     } catch (error) {
-      console.error('Error during sync:', error);
+      logger.error('Error during sync:', error);
       res.status(500).json({ error: 'Sync failed' });
     }
   });

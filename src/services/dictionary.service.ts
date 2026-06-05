@@ -1439,25 +1439,25 @@ export class DictionaryService {
       ]);
 
     const aliasesByEntity = new Map<string, string[]>();
-    for (const a of aliases as any[]) {
+    for (const a of aliases) {
       const key = `${a.entity_type}:${a.entity_id}`;
       if (!aliasesByEntity.has(key)) aliasesByEntity.set(key, []);
       aliasesByEntity.get(key)!.push(a.alias);
     }
 
-    const artistById = new Map((artists as any[]).map((a) => [a.id, a]));
-    const songsById = new Map((songs as any[]).map((s) => [s.id, s]));
-    const songArtistSet = new Set((songArtists as any[]).map((r) => `${r.song_id}:${r.artist_id}`));
-    const songGroupSet = new Set((songGroups as any[]).map((r) => `${r.song_id}:${r.group_id}`));
+    const artistById = new Map(artists.map((a) => [a.id, a]));
+    const songsById = new Map(songs.map((s) => [s.id, s]));
+    const songArtistSet = new Set(songArtists.map((r) => `${r.song_id}:${r.artist_id}`));
+    const songGroupSet = new Set(songGroups.map((r) => `${r.song_id}:${r.group_id}`));
 
-    const groupsPayload = (groups as any[]).map((group) => {
-      const groupMemberships = (memberships as any[]).filter(
+    const groupsPayload = groups.map((group) => {
+      const groupMemberships = memberships.filter(
         (m) => m.group_id === group.id && m.activity_type === 'group',
       );
 
       const artistsPayload = groupMemberships.map((m) => {
         const artist = artistById.get(m.artist_id);
-        const artistSongs = (songs as any[])
+        const artistSongs = songs
           .filter(
             (s) =>
               songArtistSet.has(`${s.id}:${artist.id}`) && songGroupSet.has(`${s.id}:${group.id}`),
@@ -1481,16 +1481,16 @@ export class DictionaryService {
       });
 
       const artistSongIdsInGroup = new Set<number>();
-      for (const s of songs as any[]) {
+      for (const s of songs) {
         if (!songGroupSet.has(`${s.id}:${group.id}`)) continue;
         const hasArtistInGroup = artistsPayload.some((a) => {
-          const ar = (artists as any[]).find((x) => x.name === a.name);
+          const ar = artists.find((x) => x.name === a.name);
           return ar ? songArtistSet.has(`${s.id}:${ar.id}`) : false;
         });
         if (hasArtistInGroup) artistSongIdsInGroup.add(s.id);
       }
 
-      const groupSongs = (songs as any[])
+      const groupSongs = songs
         .filter((s) => songGroupSet.has(`${s.id}:${group.id}`) && !artistSongIdsInGroup.has(s.id))
         .map((s) => ({ title: s.title, aliases: aliasesByEntity.get(`song:${s.id}`) ?? [] }));
 
@@ -1504,13 +1504,13 @@ export class DictionaryService {
       };
     });
 
-    const soloArtistsPayload = (memberships as any[])
+    const soloArtistsPayload = memberships
       .filter((m) => m.activity_type === 'solo')
       .map((m) => {
         const artist = artistById.get(m.artist_id);
-        const soloSongs = (songs as any[])
+        const soloSongs = songs
           .filter((s) => songArtistSet.has(`${s.id}:${artist.id}`))
-          .filter((s) => !(songGroups as any[]).some((sg) => sg.song_id === s.id))
+          .filter((s) => !songGroups.some((sg) => sg.song_id === s.id))
           .map((s) => ({ title: s.title, aliases: aliasesByEntity.get(`song:${s.id}`) ?? [] }));
         return {
           name: artist.name,
@@ -1526,7 +1526,7 @@ export class DictionaryService {
         };
       });
 
-    const eventsPayload = (events as any[]).map((e) => ({
+    const eventsPayload = events.map((e) => ({
       name: e.name,
       aliases: aliasesByEntity.get(`event:${e.id}`) ?? [],
     }));

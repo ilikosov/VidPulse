@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db';
+import { logger } from '../lib/logger';
 import { parseTitle } from '../services/parser/parser.service';
 import { parseTitleWithLLM } from '../services/ai.service';
 import { youtubeService } from '../services/youtube.service';
@@ -67,7 +68,7 @@ router.post('/llm-parse/:id', async (req: Request, res: Response) => {
 
     return res.json({ updated: 1, metadata });
   } catch (error) {
-    console.error('Error in LLM parse:', error);
+    logger.error('Error in LLM parse:', error);
     return res
       .status(500)
       .json({ error: error instanceof Error ? error.message : 'Failed LLM parse' });
@@ -110,13 +111,13 @@ router.post('/llm-parse-batch', async (req: Request, res: Response) => {
         await syncVideoSongs(video.id, resolved.song_title ?? undefined, metadata.song_titles);
         updated += 1;
       } catch (error) {
-        console.error(`Error LLM parsing video ${video.id}:`, error);
+        logger.error(`Error LLM parsing video ${video.id}:`, error);
       }
     }
 
     return res.json({ updated });
   } catch (error) {
-    console.error('Error in batch LLM parse:', error);
+    logger.error('Error in batch LLM parse:', error);
     return res.status(500).json({ error: 'Failed batch LLM parse' });
   }
 });
@@ -176,13 +177,13 @@ router.post('/reparse-all', async (req: Request, res: Response) => {
 
         updated += 1;
       } catch (error) {
-        console.error(`Error re-parsing video ${video.id}:`, error);
+        logger.error(`Error re-parsing video ${video.id}:`, error);
       }
     }
 
     return res.json({ updated });
   } catch (error) {
-    console.error('Error re-parsing videos:', error);
+    logger.error('Error re-parsing videos:', error);
     return res.status(500).json({ error: 'Failed to re-parse videos' });
   }
 });
@@ -275,7 +276,7 @@ router.post('/reparse/:id', async (req: Request, res: Response) => {
     const updatedVideo = await knex('videos').where('id', video.id).first();
     return res.json({ video: updatedVideo, reparseLog });
   } catch (error) {
-    console.error('Error re-parsing single video:', error);
+    logger.error('Error re-parsing single video:', error);
     return res.status(500).json({ error: 'Failed to re-parse video' });
   }
 });
@@ -352,13 +353,13 @@ router.post('/reparse-batch', async (req: Request, res: Response) => {
 
         updated += 1;
       } catch (error) {
-        console.error(`Error re-parsing video ${video.id}:`, error);
+        logger.error(`Error re-parsing video ${video.id}:`, error);
       }
     }
 
     return res.json({ updated });
   } catch (error) {
-    console.error('Error running batch re-parse:', error);
+    logger.error('Error running batch re-parse:', error);
     return res.status(500).json({ error: 'Failed to run batch re-parse' });
   }
 });

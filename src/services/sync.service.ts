@@ -3,6 +3,7 @@ import type {
   IPlaylistSyncService,
   ISyncService,
 } from '../interfaces/services';
+import { logger } from '../lib/logger';
 import { createAppContainer } from '../compositionRoot';
 
 export class SyncService implements ISyncService {
@@ -22,12 +23,12 @@ export class SyncService implements ISyncService {
           try {
             await this.syncAll();
           } catch (error) {
-            console.error('Scheduled sync failed:', error);
+            logger.error('Scheduled sync failed:', error);
           }
         });
-        console.log(`Sync scheduler started with cron pattern: ${cronTime}`);
+        logger.info(`Sync scheduler started with cron pattern: ${cronTime}`);
       })
-      .catch((error) => console.error('Failed to start sync scheduler:', error));
+      .catch((error) => logger.error('Failed to start sync scheduler:', error));
   }
 }
 

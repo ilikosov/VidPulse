@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db/';
+import { logger } from '../lib/logger';
 import { youtubeService } from '../services/youtube.service';
 import {
   hasUnresolvedEntity,
@@ -30,7 +31,7 @@ router.get('/', async (req: Request, res: Response) => {
       pagination: buildPaginationMeta(page, limit, totalCount),
     });
   } catch (error) {
-    console.error('Error fetching playlists:', error);
+    logger.error('Error fetching playlists:', error);
     res.status(500).json({ error: 'Failed to fetch playlists' });
   }
 });
@@ -130,9 +131,9 @@ router.post('/', async (req: Request, res: Response) => {
     });
 
     res.status(201).json(newPlaylist);
-  } catch (error: any) {
-    console.error('Error adding playlist:', error);
-    if (error.message.includes('Could not extract playlist ID')) {
+  } catch (error: unknown) {
+    logger.error('Error adding playlist:', error);
+    if (error instanceof Error && error.message.includes('Could not extract playlist ID')) {
       return res.status(400).json({ error: error.message });
     }
     res.status(500).json({ error: 'Failed to add playlist' });
@@ -163,7 +164,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting playlist:', error);
+    logger.error('Error deleting playlist:', error);
     res.status(500).json({ error: 'Failed to delete playlist' });
   }
 });

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db';
+import { logger } from '../lib/logger';
 import { parseTitle } from '../services/parser/parser.service';
 import {
   hasUnresolvedEntity,
@@ -200,7 +201,7 @@ router.get('/', async (req: Request, res: Response) => {
       pagination: buildPaginationMeta(page, limit, totalCount),
     });
   } catch (error) {
-    console.error('Error fetching videos:', error);
+    logger.error('Error fetching videos:', error);
     res.status(500).json({ error: 'Failed to fetch videos' });
   }
 });
@@ -258,7 +259,7 @@ router.post('/batch/confirm-download', async (req: Request, res: Response) => {
 
       succeeded += 1;
     } catch (error) {
-      console.error(`Error confirming download for video ${videoId}:`, error);
+      logger.error(`Error confirming download for video ${videoId}:`, error);
       errors.push({ videoId, error: 'Internal error while confirming download' });
     }
   }
@@ -327,7 +328,7 @@ router.post('/batch/complete', async (req: Request, res: Response) => {
 
       succeeded += 1;
     } catch (error) {
-      console.error(`Error completing video ${videoId}:`, error);
+      logger.error(`Error completing video ${videoId}:`, error);
       errors.push({ videoId, error: 'Internal error while completing video' });
     }
   }
@@ -382,7 +383,7 @@ router.post('/batch/ignore', async (req: Request, res: Response) => {
 
       succeeded += 1;
     } catch (error) {
-      console.error(`Error ignoring video ${videoId}:`, error);
+      logger.error(`Error ignoring video ${videoId}:`, error);
       errors.push({ videoId, error: 'Internal error while ignoring video' });
     }
   }
@@ -403,7 +404,7 @@ router.post(
       const summary = await tagShortsByDuration();
       res.json(summary);
     } catch (error) {
-      console.error('Error tagging shorts by duration:', error);
+      logger.error('Error tagging shorts by duration:', error);
       res.status(500).json({ error: 'Failed to tag shorts by duration' });
     }
   },
@@ -417,7 +418,7 @@ router.post(
       const summary = await tagLongVideosByDuration();
       res.json(summary);
     } catch (error) {
-      console.error('Error tagging long videos by duration:', error);
+      logger.error('Error tagging long videos by duration:', error);
       res.status(500).json({ error: 'Failed to tag long videos by duration' });
     }
   },
@@ -431,7 +432,7 @@ router.post(
       const summary = await mergeShortTags();
       res.json(summary);
     } catch (error) {
-      console.error('Error merging short tags:', error);
+      logger.error('Error merging short tags:', error);
       res.status(500).json({ error: 'Failed to merge short tags' });
     }
   },
@@ -471,7 +472,7 @@ router.post('/:id/ignore', async (req: Request, res: Response) => {
     const updatedVideo = await knex('videos_display as videos').where('videos.id', videoId).first();
     return res.json(updatedVideo);
   } catch (error) {
-    console.error('Error ignoring video:', error);
+    logger.error('Error ignoring video:', error);
     return res.status(500).json({ error: 'Failed to ignore video' });
   }
 });
@@ -513,7 +514,7 @@ router.post('/batch/tags', async (req: Request, res: Response) => {
           .ignore();
         succeeded += 1;
       } catch (error) {
-        console.error(`Error adding tag for video ${videoId}:`, error);
+        logger.error(`Error adding tag for video ${videoId}:`, error);
         errors.push({ videoId, error: 'Failed to add tag to video' });
       }
     }
@@ -525,7 +526,7 @@ router.post('/batch/tags', async (req: Request, res: Response) => {
       errors,
     });
   } catch (error) {
-    console.error('Error processing batch tag add:', error);
+    logger.error('Error processing batch tag add:', error);
     return res.status(500).json({ error: 'Failed to process batch tag add' });
   }
 });
@@ -568,7 +569,7 @@ router.delete('/batch/tags', async (req: Request, res: Response) => {
         await knex('video_tags').where({ video_id: videoId, tag_id: tag.id }).del();
         succeeded += 1;
       } catch (error) {
-        console.error(`Error removing tag for video ${videoId}:`, error);
+        logger.error(`Error removing tag for video ${videoId}:`, error);
         errors.push({ videoId, error: 'Failed to remove tag from video' });
       }
     }
@@ -580,7 +581,7 @@ router.delete('/batch/tags', async (req: Request, res: Response) => {
       errors,
     });
   } catch (error) {
-    console.error('Error processing batch tag delete:', error);
+    logger.error('Error processing batch tag delete:', error);
     return res.status(500).json({ error: 'Failed to process batch tag delete' });
   }
 });
@@ -650,13 +651,17 @@ router.post('/add', async (req: Request, res: Response) => {
     });
 
     return res.status(201).json(createdVideo);
-  } catch (error: any) {
-    console.error('Error adding manual video:', error);
-
-    if (error?.message?.includes('Video not found')) {
+  } catch (error: unknown) {
+    logger.error('Error adding manual video:', error);
+    if (error instanceof Error && error.message.includes('Video not found')) {
       return res.status(404).json({ error: 'Video not found' });
     }
-    if (error?.code === 'SQLITE_CONSTRAINT' || error?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error.code === 'SQLITE_CONSTRAINT' || error.code === 'SQLITE_CONSTRAINT_UNIQUE')
+    ) {
       return res.status(409).json({ error: 'Video already exists' });
     }
 
@@ -701,7 +706,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       songs,
     });
   } catch (error) {
-    console.error('Error fetching video:', error);
+    logger.error('Error fetching video:', error);
     res.status(500).json({ error: 'Failed to fetch video' });
   }
 });
@@ -874,7 +879,7 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
 
     return res.json({ video: { ...updatedVideo, tags }, resyncLog });
   } catch (error) {
-    console.error(`Error resyncing video ${videoId}:`, error);
+    logger.error(`Error resyncing video ${videoId}:`, error);
     return res.status(500).json({ error: 'Failed to resync video' });
   }
 });
@@ -899,7 +904,7 @@ router.get('/:id/tags', async (req: Request, res: Response) => {
 
     return res.json(tags);
   } catch (error) {
-    console.error(`Error fetching tags for video ${videoId}:`, error);
+    logger.error(`Error fetching tags for video ${videoId}:`, error);
     return res.status(500).json({ error: 'Failed to fetch tags' });
   }
 });
@@ -937,7 +942,7 @@ router.post('/:id/tags', async (req: Request, res: Response) => {
     const tag = await knex('tags').select('id', 'name').where('id', tagId).first();
     return res.status(201).json(tag);
   } catch (error) {
-    console.error(`Error adding tag to video ${videoId}:`, error);
+    logger.error(`Error adding tag to video ${videoId}:`, error);
     return res.status(500).json({ error: 'Failed to add tag' });
   }
 });
@@ -962,7 +967,7 @@ router.delete('/:id/tags/:tagId', async (req: Request, res: Response) => {
     await knex('video_tags').where({ video_id: videoId, tag_id: tagId }).del();
     return res.status(204).send();
   } catch (error) {
-    console.error(`Error removing tag ${tagId} from video ${videoId}:`, error);
+    logger.error(`Error removing tag ${tagId} from video ${videoId}:`, error);
     return res.status(500).json({ error: 'Failed to remove tag' });
   }
 });
@@ -1119,7 +1124,7 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
 
     res.json(updatedVideo);
   } catch (error) {
-    console.error('Error updating video metadata:', error);
+    logger.error('Error updating video metadata:', error);
     res.status(500).json({ error: 'Failed to update video metadata' });
   }
 });
@@ -1203,7 +1208,7 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
       needsReview,
     });
   } catch (error) {
-    console.error('Error re-parsing video title:', error);
+    logger.error('Error re-parsing video title:', error);
     res.status(500).json({ error: 'Failed to re-parse video title' });
   }
 });

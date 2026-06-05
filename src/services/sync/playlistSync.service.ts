@@ -6,6 +6,7 @@ import {
   ITagService,
   IYouTubeService,
 } from '../../interfaces/services';
+import { logger } from '../../lib/logger';
 import { parseVideoMetadata } from './metadata.utils';
 import { syncVideoSongs } from '../parser/videoSongs.service';
 
@@ -53,7 +54,7 @@ export class PlaylistSyncService implements IPlaylistSyncService {
         await this.playlists.updateLastCheckedAt(playlist.id, new Date().toISOString());
         playlistsProcessed += 1;
       } catch (e) {
-        console.error(`Error syncing playlist ${playlist.youtube_id}:`, e);
+        logger.error(`Error syncing playlist ${playlist.youtube_id}:`, e);
       }
     }
     await this.logger.logEvent(
