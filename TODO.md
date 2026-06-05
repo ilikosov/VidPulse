@@ -30,6 +30,10 @@ acceptance criteria.
 
 - [ ] **TASK-8** (medium) — Migrate to a proper monorepo (npm workspaces) — [details](./docs/tasks/task-08-monorepo.md)
 
+## Frontend UX
+
+- [x] **TASK-18** (low) — Clarify dictionary CRUD vs tools UX — [details](./docs/tasks/task-18-dictionary-tools-ux.md)
+
 ## Code quality (code-review)
 
 - [x] **TASK-9** (medium) — Remove dead code (`parser_new`) & unused dep (`sqlite3`) — [details](./docs/tasks/task-09-remove-dead-code.md)
