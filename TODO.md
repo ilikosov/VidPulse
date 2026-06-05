@@ -36,7 +36,7 @@ acceptance criteria.
 - [ ] **TASK-10** (high) — Central error handling, 404, async wrapper — [details](./docs/tasks/task-10-error-handling.md)
 - [ ] **TASK-11** (medium) — Side-effect-free app bootstrap — [details](./docs/tasks/task-11-bootstrap-side-effects.md)
 - [ ] **TASK-12** (medium) — Consolidate DB access; split god files — [details](./docs/tasks/task-12-consolidate-db-access.md)
-- [ ] **TASK-13** (medium) — Standardize request validation (ajv) — [details](./docs/tasks/task-13-request-validation.md)
+- [x] **TASK-13** (medium) — Standardize request validation (ajv) — [details](./docs/tasks/task-13-request-validation.md)
 
 ## Tests (code-review)
 
