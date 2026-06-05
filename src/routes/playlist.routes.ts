@@ -9,6 +9,8 @@ import {
 import { logEvent } from '../services/eventLog.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
 import { syncVideoSongs } from '../services/parser/videoSongs.service';
+import { validateBody } from '../middleware/validate';
+import playlistSchema from '../schemas/request/playlist.schema.json';
 
 const router = Router();
 
@@ -37,13 +39,9 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // POST /api/playlists - Add a new playlist
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', validateBody(playlistSchema), async (req: Request, res: Response) => {
   try {
-    const { url } = req.body;
-
-    if (!url) {
-      return res.status(400).json({ error: 'URL is required' });
-    }
+    const { url } = req.body as { url: string };
 
     // Extract playlist ID from URL
     const playlistId = youtubeService.getPlaylistIdFromUrl(url);

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/request/params-id.schema.json",
+  "title": "Route params: :id",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id"],
+  "properties": {
+    "id": { "type": "integer", "minimum": 1 }
+  }
+}

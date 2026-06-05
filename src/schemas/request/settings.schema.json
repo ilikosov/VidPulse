@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/request/settings.schema.json",
+  "title": "Settings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["key", "value"],
+  "properties": {
+    "key": { "type": "string", "minLength": 1 },
+    "value": { "type": "string" }
+  }
+}

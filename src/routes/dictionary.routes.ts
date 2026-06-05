@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { logger } from '../lib/logger';
-import { dictionaryService } from '../services/dictionary.service';
+import { dictionaryService, type DictionaryGroupType } from '../services/dictionary.service';
 import { mediaLibraryImportJobsService } from '../services/mediaLibraryImportJobs.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
 import { validateMediaLibraryPayload } from '../services/mediaLibrarySchema.service';
@@ -9,6 +9,15 @@ import {
   dangerousActionsEnabled,
   requireDangerousActionsEnabled,
 } from '../middleware/dangerousActions';
+import { validateBody, validateParams } from '../middleware/validate';
+import dictionaryGroupSchema from '../schemas/request/dictionary-group.schema.json';
+import dictionaryArtistSchema from '../schemas/request/dictionary-artist.schema.json';
+import dictionarySongSchema from '../schemas/request/dictionary-song.schema.json';
+import dictionaryEventSchema from '../schemas/request/dictionary-event.schema.json';
+import dictionaryAliasSchema from '../schemas/request/dictionary-alias.schema.json';
+import paramsIdSchema from '../schemas/request/params-id.schema.json';
+import paramsEntitySchema from '../schemas/request/params-entity.schema.json';
+import paramsEntityAliasSchema from '../schemas/request/params-entity-alias.schema.json';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -48,9 +57,12 @@ router.get('/groups/list', async (req, res) => {
   ]);
   return res.json({ groups, pagination: buildPaginationMeta(page, limit, total) });
 });
-router.post('/groups', async (req, res) => {
-  const { name, type, active } = req.body;
-  if (!name || !type) return res.status(400).json({ error: 'name and type are required' });
+router.post('/groups', validateBody(dictionaryGroupSchema), async (req, res) => {
+  const { name, type, active } = req.body as {
+    name: string;
+    type: DictionaryGroupType;
+    active?: boolean;
+  };
   await dictionaryService.createGroup({ name, type, active });
   res.status(201).json({ ok: true });
 });
@@ -72,10 +84,9 @@ router.get('/artists/list', async (req, res) => {
   ]);
   return res.json({ artists, pagination: buildPaginationMeta(page, limit, total) });
 });
-router.post('/artists', async (req, res) => {
-  const { name, group_id } = req.body;
-  if (!name || !group_id) return res.status(400).json({ error: 'name and group_id are required' });
-  await dictionaryService.createArtist({ name, group_id: Number(group_id) });
+router.post('/artists', validateBody(dictionaryArtistSchema), async (req, res) => {
+  const { name, group_id } = req.body as { name: string; group_id: number };
+  await dictionaryService.createArtist({ name, group_id });
   res.status(201).json({ ok: true });
 });
 router.put('/artists/:id', async (req, res) => {
@@ -98,9 +109,13 @@ router.get('/songs/list', async (req, res) => {
   ]);
   return res.json({ songs, pagination: buildPaginationMeta(page, limit, total) });
 });
-router.post('/songs', async (req, res) => {
-  const { title, artist, artist_ids, group_ids } = req.body;
-  if (!title || !artist) return res.status(400).json({ error: 'title and artist are required' });
+router.post('/songs', validateBody(dictionarySongSchema), async (req, res) => {
+  const { title, artist, artist_ids, group_ids } = req.body as {
+    title: string;
+    artist: string;
+    artist_ids?: number[];
+    group_ids?: number[];
+  };
   await dictionaryService.createSong({ title, artist, artist_ids, group_ids });
   res.status(201).json({ ok: true });
 });
@@ -197,36 +212,50 @@ router.get('/songs/:id/videos', async (req, res) => {
   return res.json(await dictionaryService.getVideosBySongId(Number(req.params.id), page, limit));
 });
 
-router.get('/:entityType/:entityId/aliases', async (req, res) => {
-  const entityType = aliasEntityMap[req.params.entityType];
-  const entityId = Number(req.params.entityId);
-  if (!entityType || !entityId) return res.status(400).json({ error: 'Invalid entity parameters' });
-  return res.json(await dictionaryService.getAliases(entityType, entityId));
-});
+router.get(
+  '/:entityType/:entityId/aliases',
+  validateParams(paramsEntitySchema),
+  async (req, res) => {
+    const entityType = aliasEntityMap[req.params.entityType as string];
+    const entityId = Number(req.params.entityId);
+    if (!entityType || !entityId)
+      return res.status(400).json({ error: 'Invalid entity parameters' });
+    return res.json(await dictionaryService.getAliases(entityType, entityId));
+  },
+);
 
-router.post('/:entityType/:entityId/aliases', async (req, res) => {
-  const entityType = aliasEntityMap[req.params.entityType];
-  const entityId = Number(req.params.entityId);
-  const alias = String(req.body?.alias ?? '').trim();
-  if (!entityType || !entityId) return res.status(400).json({ error: 'Invalid entity parameters' });
-  if (!alias) return res.status(400).json({ error: 'alias is required' });
-  const existing = await dictionaryService.getAliases(entityType, entityId);
-  if (existing.some((item) => item.alias.toLowerCase() === alias.toLowerCase())) {
-    return res.status(409).json({ error: 'Alias already exists' });
-  }
-  const created = await dictionaryService.addAlias(entityType, entityId, alias);
-  return res.status(201).json(created);
-});
+router.post(
+  '/:entityType/:entityId/aliases',
+  validateParams(paramsEntitySchema),
+  validateBody(dictionaryAliasSchema),
+  async (req, res) => {
+    const entityType = aliasEntityMap[req.params.entityType as string];
+    const entityId = Number(req.params.entityId);
+    const alias: string = req.body.alias;
+    if (!entityType || !entityId)
+      return res.status(400).json({ error: 'Invalid entity parameters' });
+    const existing = await dictionaryService.getAliases(entityType, entityId);
+    if (existing.some((item) => item.alias.toLowerCase() === alias.toLowerCase())) {
+      return res.status(409).json({ error: 'Alias already exists' });
+    }
+    const created = await dictionaryService.addAlias(entityType, entityId, alias);
+    return res.status(201).json(created);
+  },
+);
 
-router.delete('/:entityType/:entityId/aliases/:aliasId', async (req, res) => {
-  const entityType = aliasEntityMap[req.params.entityType];
-  const entityId = Number(req.params.entityId);
-  const aliasId = Number(req.params.aliasId);
-  if (!entityType || !entityId || !aliasId)
-    return res.status(400).json({ error: 'Invalid entity parameters' });
-  await dictionaryService.removeAlias(entityType, entityId, aliasId);
-  return res.status(204).send();
-});
+router.delete(
+  '/:entityType/:entityId/aliases/:aliasId',
+  validateParams(paramsEntityAliasSchema),
+  async (req, res) => {
+    const entityType = aliasEntityMap[req.params.entityType as string];
+    const entityId = Number(req.params.entityId);
+    const aliasId = Number(req.params.aliasId);
+    if (!entityType || !entityId || !aliasId)
+      return res.status(400).json({ error: 'Invalid entity parameters' });
+    await dictionaryService.removeAlias(entityType, entityId, aliasId);
+    return res.status(204).send();
+  },
+);
 
 router.get('/stats', async (_req, res) => {
   return res.json(await dictionaryService.getStats());
@@ -240,9 +269,9 @@ router.get('/events/list', async (req, res) => {
   ]);
   return res.json({ events, pagination: buildPaginationMeta(page, limit, total) });
 });
-router.post('/events', async (req, res) => {
-  if (!req.body.name) return res.status(400).json({ error: 'name is required' });
-  await dictionaryService.createEvent({ name: req.body.name });
+router.post('/events', validateBody(dictionaryEventSchema), async (req, res) => {
+  const { name } = req.body as { name: string };
+  await dictionaryService.createEvent({ name });
   res.status(201).json({ ok: true });
 });
 router.put('/events/:id', async (req, res) => {

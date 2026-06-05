@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/request/dictionary-artist.schema.json",
+  "title": "Dictionary Artist",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "group_id"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "group_id": { "type": "integer", "minimum": 1 }
+  }
+}

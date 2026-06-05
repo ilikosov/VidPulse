@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/request/channel-load-more.schema.json",
+  "title": "Channel Load More",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "count": { "type": "integer", "minimum": 1 }
+  }
+}
