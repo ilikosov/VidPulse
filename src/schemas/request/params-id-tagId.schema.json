@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/request/params-id-tagId.schema.json",
+  "title": "Route params: :id and :tagId",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "tagId"],
+  "properties": {
+    "id": { "type": "integer", "minimum": 1 },
+    "tagId": { "type": "integer", "minimum": 1 }
+  }
+}

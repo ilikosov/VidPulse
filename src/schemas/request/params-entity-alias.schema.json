@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/request/params-entity-alias.schema.json",
+  "title": "Route params: :entityType, :entityId, :aliasId",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entityType", "entityId", "aliasId"],
+  "properties": {
+    "entityType": {
+      "type": "string",
+      "enum": ["group", "groups", "artist", "artists", "song", "songs", "event", "events"]
+    },
+    "entityId": { "type": "integer", "minimum": 1 },
+    "aliasId": { "type": "integer", "minimum": 1 }
+  }
+}

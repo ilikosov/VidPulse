@@ -25,39 +25,18 @@ import { buildPaginationMeta, getPaginationParams } from './pagination';
 import { requireDangerousActionsEnabled } from '../middleware/dangerousActions';
 import { syncVideoSongs, getVideoSongsMap } from '../services/parser/videoSongs.service';
 import { splitSongTitles } from '../services/parser/songTitles.util';
+import { validateBody, validateParams } from '../middleware/validate';
+import batchVideoIdsSchema from '../schemas/request/batch-video-ids.schema.json';
+import batchTagsSchema from '../schemas/request/batch-tags.schema.json';
+import videoAddSchema from '../schemas/request/video-add.schema.json';
+import videoTagsSchema from '../schemas/request/video-tags.schema.json';
+import videoMetadataSchema from '../schemas/request/video-metadata.schema.json';
+import paramsIdSchema from '../schemas/request/params-id.schema.json';
+import paramsIdTagIdSchema from '../schemas/request/params-id-tagId.schema.json';
 
 const router = Router();
 
-type BatchValidationResult = { valid: true; videoIds: number[] } | { valid: false; error: string };
-type TagValidationResult = { valid: true; tagName: string } | { valid: false; error: string };
 const PROTECTED_TAGS = new Set([SHORTS_TAG, LONG_VIDEO_TAG, 'private']);
-
-function validateVideoIds(body: unknown): BatchValidationResult {
-  const videoIds = (body as { videoIds?: unknown })?.videoIds;
-  if (!Array.isArray(videoIds) || videoIds.length === 0) {
-    return { valid: false, error: 'videoIds must be a non-empty array of numbers' };
-  }
-
-  if (!videoIds.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
-    return { valid: false, error: 'videoIds must contain only positive integers' };
-  }
-
-  return { valid: true, videoIds };
-}
-
-function validateTagName(value: unknown): TagValidationResult {
-  if (typeof value !== 'string') {
-    return { valid: false, error: 'tagName must be a string' };
-  }
-  const tagName = value.trim();
-  if (!tagName) {
-    return { valid: false, error: 'tagName cannot be empty' };
-  }
-  if (tagName.length > 100) {
-    return { valid: false, error: 'tagName must be 100 characters or less' };
-  }
-  return { valid: true, tagName };
-}
 
 async function findOrCreateTagId(tagName: string): Promise<number> {
   const existingTag = await knex('tags').whereRaw('LOWER(name) = LOWER(?)', [tagName]).first();
@@ -106,30 +85,6 @@ function applyVideoFilters(
         .whereIn('t.name', [SHORTS_TAG, 'private']);
     });
   }
-}
-
-function extractVideoIdFromUrl(url: string): string | null {
-  const trimmed = url.trim();
-  const directIdMatch = trimmed.match(/^[a-zA-Z0-9_-]{11}$/);
-  if (directIdMatch) {
-    return directIdMatch[0];
-  }
-
-  const patterns = [
-    /[?&]v=([a-zA-Z0-9_-]{11})/,
-    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = trimmed.match(pattern);
-    if (match) {
-      return match[1];
-    }
-  }
-
-  return null;
 }
 
 /**
@@ -206,195 +161,198 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/batch/confirm-download', async (req: Request, res: Response) => {
-  const validation = validateVideoIds(req.body);
-  if (!validation.valid) {
-    return res.status(400).json({ error: validation.error });
-  }
+router.post(
+  '/batch/confirm-download',
+  validateBody(batchVideoIdsSchema),
+  async (req: Request, res: Response) => {
+    const videoIds: number[] = req.body.videoIds;
 
-  const errors: Array<{ videoId: number; error: string }> = [];
-  let succeeded = 0;
+    const errors: Array<{ videoId: number; error: string }> = [];
+    let succeeded = 0;
 
-  for (const videoId of validation.videoIds) {
-    try {
-      const video = await knex('videos').where('id', videoId).first();
-      if (!video) {
-        errors.push({ videoId, error: 'Video not found' });
-        continue;
-      }
+    for (const videoId of videoIds) {
+      try {
+        const video = await knex('videos').where('id', videoId).first();
+        if (!video) {
+          errors.push({ videoId, error: 'Video not found' });
+          continue;
+        }
 
-      if (video.status !== 'new') {
-        errors.push({ videoId, error: `Invalid status '${video.status}'. Expected 'new'.` });
-        continue;
-      }
+        if (video.status !== 'new') {
+          errors.push({ videoId, error: `Invalid status '${video.status}'. Expected 'new'.` });
+          continue;
+        }
 
-      const filePath = path.join(process.cwd(), 'downloads', video.youtube_id, 'original.mp4');
-      if (!fs.existsSync(filePath)) {
-        errors.push({ videoId, error: `Download file missing at ${filePath}` });
-        continue;
-      }
+        const filePath = path.join(process.cwd(), 'downloads', video.youtube_id, 'original.mp4');
+        if (!fs.existsSync(filePath)) {
+          errors.push({ videoId, error: `Download file missing at ${filePath}` });
+          continue;
+        }
 
-      await knex.transaction(async (trx) => {
-        await trx('videos').where('id', videoId).update({
-          status: 'downloaded',
-          file_path: filePath,
-          updated_at: new Date().toISOString(),
+        await knex.transaction(async (trx) => {
+          await trx('videos').where('id', videoId).update({
+            status: 'downloaded',
+            file_path: filePath,
+            updated_at: new Date().toISOString(),
+          });
+          await trx('status_history').insert({
+            video_id: videoId,
+            old_status: video.status,
+            new_status: 'downloaded',
+          });
         });
-        await trx('status_history').insert({
-          video_id: videoId,
-          old_status: video.status,
-          new_status: 'downloaded',
-        });
-      });
 
-      await logEvent(
-        'video_download_confirmed',
-        `Download confirmed for video ${video.youtube_id}`,
-        {
+        await logEvent(
+          'video_download_confirmed',
+          `Download confirmed for video ${video.youtube_id}`,
+          {
+            video_id: videoId,
+            youtube_id: video.youtube_id,
+            file_path: filePath,
+          },
+        );
+
+        succeeded += 1;
+      } catch (error) {
+        logger.error(`Error confirming download for video ${videoId}:`, error);
+        errors.push({ videoId, error: 'Internal error while confirming download' });
+      }
+    }
+
+    return res.json({
+      processed: videoIds.length,
+      succeeded,
+      failed: videoIds.length - succeeded,
+      errors,
+    });
+  },
+);
+
+router.post(
+  '/batch/complete',
+  validateBody(batchVideoIdsSchema),
+  async (req: Request, res: Response) => {
+    const videoIds: number[] = req.body.videoIds;
+
+    const errors: Array<{ videoId: number; error: string }> = [];
+    let succeeded = 0;
+    const allowedStatuses = ['thumbnails_generated', 'ready_for_upload'];
+
+    for (const videoId of videoIds) {
+      try {
+        const video = await knex('videos').where('id', videoId).first();
+        if (!video) {
+          errors.push({ videoId, error: 'Video not found' });
+          continue;
+        }
+
+        if (!allowedStatuses.includes(video.status)) {
+          errors.push({
+            videoId,
+            error: `Invalid status '${video.status}'. Expected one of: ${allowedStatuses.join(', ')}`,
+          });
+          continue;
+        }
+
+        const downloadDir = path.join(process.cwd(), 'downloads', video.youtube_id);
+        const previewDir = path.join(process.cwd(), 'previews', video.youtube_id);
+
+        if (fs.existsSync(downloadDir)) {
+          fs.rmSync(downloadDir, { recursive: true, force: true });
+        }
+        if (fs.existsSync(previewDir)) {
+          fs.rmSync(previewDir, { recursive: true, force: true });
+        }
+
+        await knex.transaction(async (trx) => {
+          await trx('videos').where('id', videoId).update({
+            status: 'completed',
+            updated_at: new Date().toISOString(),
+          });
+          await trx('status_history').insert({
+            video_id: videoId,
+            old_status: video.status,
+            new_status: 'completed',
+          });
+        });
+
+        await logEvent('video_completed', `Video marked completed: ${video.youtube_id}`, {
           video_id: videoId,
           youtube_id: video.youtube_id,
-          file_path: filePath,
-        },
-      );
-
-      succeeded += 1;
-    } catch (error) {
-      logger.error(`Error confirming download for video ${videoId}:`, error);
-      errors.push({ videoId, error: 'Internal error while confirming download' });
-    }
-  }
-
-  return res.json({
-    processed: validation.videoIds.length,
-    succeeded,
-    failed: validation.videoIds.length - succeeded,
-    errors,
-  });
-});
-
-router.post('/batch/complete', async (req: Request, res: Response) => {
-  const validation = validateVideoIds(req.body);
-  if (!validation.valid) {
-    return res.status(400).json({ error: validation.error });
-  }
-
-  const errors: Array<{ videoId: number; error: string }> = [];
-  let succeeded = 0;
-  const allowedStatuses = ['thumbnails_generated', 'ready_for_upload'];
-
-  for (const videoId of validation.videoIds) {
-    try {
-      const video = await knex('videos').where('id', videoId).first();
-      if (!video) {
-        errors.push({ videoId, error: 'Video not found' });
-        continue;
-      }
-
-      if (!allowedStatuses.includes(video.status)) {
-        errors.push({
-          videoId,
-          error: `Invalid status '${video.status}'. Expected one of: ${allowedStatuses.join(', ')}`,
-        });
-        continue;
-      }
-
-      const downloadDir = path.join(process.cwd(), 'downloads', video.youtube_id);
-      const previewDir = path.join(process.cwd(), 'previews', video.youtube_id);
-
-      if (fs.existsSync(downloadDir)) {
-        fs.rmSync(downloadDir, { recursive: true, force: true });
-      }
-      if (fs.existsSync(previewDir)) {
-        fs.rmSync(previewDir, { recursive: true, force: true });
-      }
-
-      await knex.transaction(async (trx) => {
-        await trx('videos').where('id', videoId).update({
-          status: 'completed',
-          updated_at: new Date().toISOString(),
-        });
-        await trx('status_history').insert({
-          video_id: videoId,
           old_status: video.status,
-          new_status: 'completed',
         });
-      });
 
-      await logEvent('video_completed', `Video marked completed: ${video.youtube_id}`, {
-        video_id: videoId,
-        youtube_id: video.youtube_id,
-        old_status: video.status,
-      });
-
-      succeeded += 1;
-    } catch (error) {
-      logger.error(`Error completing video ${videoId}:`, error);
-      errors.push({ videoId, error: 'Internal error while completing video' });
-    }
-  }
-
-  return res.json({
-    processed: validation.videoIds.length,
-    succeeded,
-    failed: validation.videoIds.length - succeeded,
-    errors,
-  });
-});
-
-router.post('/batch/ignore', async (req: Request, res: Response) => {
-  const validation = validateVideoIds(req.body);
-  if (!validation.valid) {
-    return res.status(400).json({ error: validation.error });
-  }
-
-  const errors: Array<{ videoId: number; error: string }> = [];
-  let succeeded = 0;
-
-  for (const videoId of validation.videoIds) {
-    try {
-      const video = await knex('videos').where('id', videoId).first();
-      if (!video) {
-        errors.push({ videoId, error: 'Video not found' });
-        continue;
-      }
-
-      if (video.status === 'completed') {
-        errors.push({ videoId, error: "Cannot ignore videos with status 'completed'" });
-        continue;
-      }
-
-      if (video.status === 'ignored') {
         succeeded += 1;
-        continue;
+      } catch (error) {
+        logger.error(`Error completing video ${videoId}:`, error);
+        errors.push({ videoId, error: 'Internal error while completing video' });
       }
-
-      await knex.transaction(async (trx) => {
-        await trx('videos').where('id', videoId).update({
-          status: 'ignored',
-          updated_at: new Date().toISOString(),
-        });
-
-        await trx('status_history').insert({
-          video_id: videoId,
-          old_status: video.status,
-          new_status: 'ignored',
-        });
-      });
-
-      succeeded += 1;
-    } catch (error) {
-      logger.error(`Error ignoring video ${videoId}:`, error);
-      errors.push({ videoId, error: 'Internal error while ignoring video' });
     }
-  }
 
-  return res.json({
-    processed: validation.videoIds.length,
-    succeeded,
-    failed: validation.videoIds.length - succeeded,
-    errors,
-  });
-});
+    return res.json({
+      processed: videoIds.length,
+      succeeded,
+      failed: videoIds.length - succeeded,
+      errors,
+    });
+  },
+);
+
+router.post(
+  '/batch/ignore',
+  validateBody(batchVideoIdsSchema),
+  async (req: Request, res: Response) => {
+    const videoIds: number[] = req.body.videoIds;
+
+    const errors: Array<{ videoId: number; error: string }> = [];
+    let succeeded = 0;
+
+    for (const videoId of videoIds) {
+      try {
+        const video = await knex('videos').where('id', videoId).first();
+        if (!video) {
+          errors.push({ videoId, error: 'Video not found' });
+          continue;
+        }
+
+        if (video.status === 'completed') {
+          errors.push({ videoId, error: "Cannot ignore videos with status 'completed'" });
+          continue;
+        }
+
+        if (video.status === 'ignored') {
+          succeeded += 1;
+          continue;
+        }
+
+        await knex.transaction(async (trx) => {
+          await trx('videos').where('id', videoId).update({
+            status: 'ignored',
+            updated_at: new Date().toISOString(),
+          });
+
+          await trx('status_history').insert({
+            video_id: videoId,
+            old_status: video.status,
+            new_status: 'ignored',
+          });
+        });
+
+        succeeded += 1;
+      } catch (error) {
+        logger.error(`Error ignoring video ${videoId}:`, error);
+        errors.push({ videoId, error: 'Internal error while ignoring video' });
+      }
+    }
+
+    return res.json({
+      processed: videoIds.length,
+      succeeded,
+      failed: videoIds.length - succeeded,
+      errors,
+    });
+  },
+);
 
 router.post(
   '/batch/tag-shorts-by-duration',
@@ -477,30 +435,26 @@ router.post('/:id/ignore', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/batch/tags', async (req: Request, res: Response) => {
-  const validation = validateVideoIds(req.body);
-  if (!validation.valid) {
-    return res.status(400).json({ error: validation.error });
-  }
+router.post('/batch/tags', validateBody(batchTagsSchema), async (req: Request, res: Response) => {
+  const { videoIds, tagName, confirm } = req.body as {
+    videoIds: number[];
+    tagName: string;
+    confirm?: boolean;
+  };
 
-  const tagValidation = validateTagName((req.body as { tagName?: unknown }).tagName);
-  if (!tagValidation.valid) {
-    return res.status(400).json({ error: tagValidation.error });
-  }
-  const { confirm } = req.body as { confirm?: boolean };
-  if (isConfirmationRequired(tagValidation.tagName) && confirm !== true) {
+  if (isConfirmationRequired(tagName) && confirm !== true) {
     return res.status(400).json({
-      error: `Adding "${tagValidation.tagName}" tag requires confirmation`,
+      error: `Adding "${tagName}" tag requires confirmation`,
       requiresConfirmation: true,
     });
   }
 
   try {
-    const tagId = await findOrCreateTagId(tagValidation.tagName);
+    const tagId = await findOrCreateTagId(tagName);
     const errors: Array<{ videoId: number; error: string }> = [];
     let succeeded = 0;
 
-    for (const videoId of validation.videoIds) {
+    for (const videoId of videoIds) {
       try {
         const video = await knex('videos').where('id', videoId).first();
         if (!video) {
@@ -520,9 +474,9 @@ router.post('/batch/tags', async (req: Request, res: Response) => {
     }
 
     return res.json({
-      processed: validation.videoIds.length,
+      processed: videoIds.length,
       succeeded,
-      failed: validation.videoIds.length - succeeded,
+      failed: videoIds.length - succeeded,
       errors,
     });
   } catch (error) {
@@ -531,25 +485,15 @@ router.post('/batch/tags', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/batch/tags', async (req: Request, res: Response) => {
-  const validation = validateVideoIds(req.body);
-  if (!validation.valid) {
-    return res.status(400).json({ error: validation.error });
-  }
-
-  const tagValidation = validateTagName((req.body as { tagName?: unknown }).tagName);
-  if (!tagValidation.valid) {
-    return res.status(400).json({ error: tagValidation.error });
-  }
+router.delete('/batch/tags', validateBody(batchTagsSchema), async (req: Request, res: Response) => {
+  const { videoIds, tagName } = req.body as { videoIds: number[]; tagName: string };
 
   try {
-    const tag = await knex('tags')
-      .whereRaw('LOWER(name) = LOWER(?)', [tagValidation.tagName])
-      .first();
+    const tag = await knex('tags').whereRaw('LOWER(name) = LOWER(?)', [tagName]).first();
     if (!tag) {
       return res.json({
-        processed: validation.videoIds.length,
-        succeeded: validation.videoIds.length,
+        processed: videoIds.length,
+        succeeded: videoIds.length,
         failed: 0,
         errors: [],
       });
@@ -558,7 +502,7 @@ router.delete('/batch/tags', async (req: Request, res: Response) => {
     const errors: Array<{ videoId: number; error: string }> = [];
     let succeeded = 0;
 
-    for (const videoId of validation.videoIds) {
+    for (const videoId of videoIds) {
       try {
         const video = await knex('videos').where('id', videoId).first();
         if (!video) {
@@ -575,9 +519,9 @@ router.delete('/batch/tags', async (req: Request, res: Response) => {
     }
 
     return res.json({
-      processed: validation.videoIds.length,
+      processed: videoIds.length,
       succeeded,
-      failed: validation.videoIds.length - succeeded,
+      failed: videoIds.length - succeeded,
       errors,
     });
   } catch (error) {
@@ -590,14 +534,18 @@ router.delete('/batch/tags', async (req: Request, res: Response) => {
  * POST /api/videos/add - Add a single video by YouTube URL
  * Body: { url: string }
  */
-router.post('/add', async (req: Request, res: Response) => {
+router.post('/add', validateBody(videoAddSchema), async (req: Request, res: Response) => {
   try {
-    const { url } = req.body as { url?: string };
-    if (!url || typeof url !== 'string') {
-      return res.status(400).json({ error: 'URL is required' });
-    }
+    const { url } = req.body as { url: string };
 
-    const videoId = extractVideoIdFromUrl(url);
+    const trimmed = url.trim();
+    const videoId =
+      trimmed.match(/^[a-zA-Z0-9_-]{11}$/)?.[0] ??
+      trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/)?.[1] ??
+      trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)?.[1] ??
+      trimmed.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/)?.[1] ??
+      trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/)?.[1];
+
     if (!videoId) {
       return res.status(400).json({ error: 'Invalid YouTube video URL' });
     }
@@ -909,43 +857,41 @@ router.get('/:id/tags', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/:id/tags', async (req: Request, res: Response) => {
-  const videoId = Number(req.params.id);
-  if (!Number.isInteger(videoId) || videoId <= 0) {
-    return res.status(400).json({ error: 'Invalid video id' });
-  }
+router.post(
+  '/:id/tags',
+  validateParams(paramsIdSchema),
+  validateBody(videoTagsSchema),
+  async (req: Request, res: Response) => {
+    const videoId = Number(req.params.id);
+    const { name: tagName, confirm } = req.body as { name: string; confirm?: boolean };
 
-  const tagValidation = validateTagName((req.body as { name?: unknown }).name);
-  if (!tagValidation.valid) {
-    return res.status(400).json({ error: tagValidation.error.replace('tagName', 'name') });
-  }
-  const { confirm } = req.body as { confirm?: boolean };
-  if (isConfirmationRequired(tagValidation.tagName) && confirm !== true) {
-    return res.status(400).json({
-      error: `Adding "${tagValidation.tagName}" tag requires confirmation`,
-      requiresConfirmation: true,
-    });
-  }
-
-  try {
-    const video = await knex('videos').where('id', videoId).first();
-    if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
+    if (isConfirmationRequired(tagName) && confirm !== true) {
+      return res.status(400).json({
+        error: `Adding "${tagName}" tag requires confirmation`,
+        requiresConfirmation: true,
+      });
     }
 
-    const tagId = await findOrCreateTagId(tagValidation.tagName);
-    await knex('video_tags')
-      .insert({ video_id: videoId, tag_id: tagId })
-      .onConflict(['video_id', 'tag_id'])
-      .ignore();
+    try {
+      const video = await knex('videos').where('id', videoId).first();
+      if (!video) {
+        return res.status(404).json({ error: 'Video not found' });
+      }
 
-    const tag = await knex('tags').select('id', 'name').where('id', tagId).first();
-    return res.status(201).json(tag);
-  } catch (error) {
-    logger.error(`Error adding tag to video ${videoId}:`, error);
-    return res.status(500).json({ error: 'Failed to add tag' });
-  }
-});
+      const tagId = await findOrCreateTagId(tagName);
+      await knex('video_tags')
+        .insert({ video_id: videoId, tag_id: tagId })
+        .onConflict(['video_id', 'tag_id'])
+        .ignore();
+
+      const tag = await knex('tags').select('id', 'name').where('id', tagId).first();
+      return res.status(201).json(tag);
+    } catch (error) {
+      logger.error(`Error adding tag to video ${videoId}:`, error);
+      return res.status(500).json({ error: 'Failed to add tag' });
+    }
+  },
+);
 
 router.delete('/:id/tags/:tagId', async (req: Request, res: Response) => {
   const videoId = Number(req.params.id);

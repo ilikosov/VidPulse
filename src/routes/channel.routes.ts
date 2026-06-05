@@ -9,6 +9,10 @@ import { assignAutoTags } from '../services/tag.service';
 import { resolveParsedMetadata } from '../services/parser/metadataResolver.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
 import { syncVideoSongs } from '../services/parser/videoSongs.service';
+import { validateBody, validateParams } from '../middleware/validate';
+import channelSchema from '../schemas/request/channel.schema.json';
+import channelLoadMoreSchema from '../schemas/request/channel-load-more.schema.json';
+import paramsIdSchema from '../schemas/request/params-id.schema.json';
 
 const router = Router();
 
@@ -124,13 +128,9 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // POST /api/channels - Add a new channel
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', validateBody(channelSchema), async (req: Request, res: Response) => {
   try {
-    const { url } = req.body;
-
-    if (!url) {
-      return res.status(400).json({ error: 'URL is required' });
-    }
+    const { url } = req.body as { url: string };
 
     const newChannel = await addChannelByUrl(url);
     res.status(201).json(newChannel);
@@ -338,9 +338,9 @@ router.post('/:id/load-more', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/channels/:id - Delete a channel
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', validateParams(paramsIdSchema), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
     const removeVideos = req.query.removeVideos === 'true';
 
     const channel = await knex('channels').where('id', id).first();

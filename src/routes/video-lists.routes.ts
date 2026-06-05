@@ -1,6 +1,11 @@
 import { Request, Response, Router } from 'express';
 import knex from '../db';
 import { logger } from '../lib/logger';
+import { validateBody, validateParams } from '../middleware/validate';
+import videoListSchema from '../schemas/request/video-list.schema.json';
+import videoListVideosSchema from '../schemas/request/video-list-videos.schema.json';
+import videoListPatchSchema from '../schemas/request/video-list-patch.schema.json';
+import paramsIdSchema from '../schemas/request/params-id.schema.json';
 
 const router = Router();
 const COLORS = [
@@ -18,13 +23,6 @@ const COLORS = [
 ];
 const MAX_VIDEO_LIST_ITEMS = Number(process.env.MAX_VIDEO_LIST_ITEMS || '100');
 
-const validateVideoIds = (body: unknown): number[] | null => {
-  const videoIds = (body as { videoIds?: unknown })?.videoIds;
-  if (!Array.isArray(videoIds) || !videoIds.every((id) => Number.isInteger(id) && id > 0))
-    return null;
-  return videoIds;
-};
-
 async function ensureVideosCanBeAssigned(videoIds: number[], listId?: number) {
   if (videoIds.length === 0) return { ok: true as const };
   const rows = await knex('videos').select('id', 'video_list_id').whereIn('id', videoIds);
@@ -36,15 +34,14 @@ async function ensureVideosCanBeAssigned(videoIds: number[], listId?: number) {
   return { ok: true as const };
 }
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', validateBody(videoListSchema), async (req: Request, res: Response) => {
   try {
-    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
-    const videoIds = validateVideoIds(req.body) ?? [];
-    if (!name) return res.status(400).json({ error: 'name is required' });
-    if (videoIds.length > MAX_VIDEO_LIST_ITEMS)
+    const { name, videoIds } = req.body as { name: string; videoIds?: number[] };
+    const ids = videoIds ?? [];
+    if (ids.length > MAX_VIDEO_LIST_ITEMS)
       return res.status(409).json({ error: 'Video list limit exceeded' });
 
-    const assignCheck = await ensureVideosCanBeAssigned(videoIds);
+    const assignCheck = await ensureVideosCanBeAssigned(ids);
     if (!assignCheck.ok) return res.status(409).json({ error: assignCheck.error });
 
     const usedColors = (await knex('video_lists').select('color')).map((row) => row.color);
@@ -56,13 +53,13 @@ router.post('/', async (req: Request, res: Response) => {
       .returning(['id', 'name', 'color', 'created_at', 'updated_at']);
     const created = Array.isArray(result) ? result[0] : result;
 
-    if (videoIds.length > 0) {
+    if (ids.length > 0) {
       await knex('videos')
-        .whereIn('id', videoIds)
+        .whereIn('id', ids)
         .update({ video_list_id: created.id, updated_at: new Date().toISOString() });
     }
 
-    return res.status(201).json({ ...created, countVideos: videoIds.length });
+    return res.status(201).json({ ...created, countVideos: ids.length });
   } catch (error) {
     logger.error('Error creating video list:', error);
     return res.status(500).json({ error: 'Failed to create video list' });
@@ -111,45 +108,55 @@ router.get('/:id', async (req, res) => {
   res.json({ ...list, videos: Array.from(byId.values()) });
 });
 
-router.post('/:id/videos', async (req, res) => {
-  const id = Number(req.params.id);
-  const videoIds = validateVideoIds(req.body);
-  if (!videoIds || videoIds.length === 0)
-    return res.status(400).json({ error: 'videoIds must be non-empty' });
-  const currentCountRow = await knex('videos')
-    .where({ video_list_id: id })
-    .count<{ count: string }>('id as count')
-    .first();
-  const currentCount = Number(currentCountRow?.count || 0);
-  if (currentCount + videoIds.length > MAX_VIDEO_LIST_ITEMS)
-    return res.status(409).json({ error: 'Video list limit exceeded' });
-  const assignCheck = await ensureVideosCanBeAssigned(videoIds, id);
-  if (!assignCheck.ok) return res.status(409).json({ error: assignCheck.error });
-  await knex('videos')
-    .whereIn('id', videoIds)
-    .update({ video_list_id: id, updated_at: new Date().toISOString() });
-  return res.json({ processed: videoIds.length, succeeded: videoIds.length });
-});
+router.post(
+  '/:id/videos',
+  validateParams(paramsIdSchema),
+  validateBody(videoListVideosSchema),
+  async (req, res) => {
+    const id = Number(req.params.id);
+    const videoIds: number[] = req.body.videoIds;
+    const currentCountRow = await knex('videos')
+      .where({ video_list_id: id })
+      .count<{ count: string }>('id as count')
+      .first();
+    const currentCount = Number(currentCountRow?.count || 0);
+    if (currentCount + videoIds.length > MAX_VIDEO_LIST_ITEMS)
+      return res.status(409).json({ error: 'Video list limit exceeded' });
+    const assignCheck = await ensureVideosCanBeAssigned(videoIds, id);
+    if (!assignCheck.ok) return res.status(409).json({ error: assignCheck.error });
+    await knex('videos')
+      .whereIn('id', videoIds)
+      .update({ video_list_id: id, updated_at: new Date().toISOString() });
+    return res.json({ processed: videoIds.length, succeeded: videoIds.length });
+  },
+);
 
-router.delete('/:id/videos', async (req, res) => {
-  const id = Number(req.params.id);
-  const videoIds = validateVideoIds(req.body);
-  if (!videoIds || videoIds.length === 0)
-    return res.status(400).json({ error: 'videoIds must be non-empty' });
-  await knex('videos')
-    .where({ video_list_id: id })
-    .whereIn('id', videoIds)
-    .update({ video_list_id: null, updated_at: new Date().toISOString() });
-  return res.json({ processed: videoIds.length });
-});
+router.delete(
+  '/:id/videos',
+  validateParams(paramsIdSchema),
+  validateBody(videoListVideosSchema),
+  async (req, res) => {
+    const id = Number(req.params.id);
+    const videoIds: number[] = req.body.videoIds;
+    await knex('videos')
+      .where({ video_list_id: id })
+      .whereIn('id', videoIds)
+      .update({ video_list_id: null, updated_at: new Date().toISOString() });
+    return res.json({ processed: videoIds.length });
+  },
+);
 
-router.patch('/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
-  if (!name) return res.status(400).json({ error: 'name is required' });
-  await knex('video_lists').where({ id }).update({ name, updated_at: new Date().toISOString() });
-  return res.json({ ok: true });
-});
+router.patch(
+  '/:id',
+  validateParams(paramsIdSchema),
+  validateBody(videoListPatchSchema),
+  async (req, res) => {
+    const id = Number(req.params.id);
+    const name: string = req.body.name;
+    await knex('video_lists').where({ id }).update({ name, updated_at: new Date().toISOString() });
+    return res.json({ ok: true });
+  },
+);
 
 router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
@@ -163,8 +170,12 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/batch', async (req, res) => {
   const id = Number(req.params.id);
   const operation = req.body?.operation;
-  const videoIds = validateVideoIds(req.body);
-  if (!videoIds || videoIds.length === 0)
+  const videoIds = req.body?.videoIds;
+  if (
+    !Array.isArray(videoIds) ||
+    videoIds.length === 0 ||
+    !videoIds.every((id: unknown) => Number.isInteger(id) && (id as number) > 0)
+  )
     return res.status(400).json({ error: 'videoIds must be non-empty' });
   if (operation === 'removeFromList') {
     await knex('videos')

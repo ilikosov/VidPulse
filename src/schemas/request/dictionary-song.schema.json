@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/request/dictionary-song.schema.json",
+  "title": "Dictionary Song",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "artist"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1 },
+    "artist": { "type": "string", "minLength": 1 },
+    "artist_ids": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1 }
+    },
+    "group_ids": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1 }
+    }
+  }
+}

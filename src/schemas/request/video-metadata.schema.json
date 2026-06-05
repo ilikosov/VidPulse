@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/request/video-metadata.schema.json",
+  "title": "Update Video Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "perf_date": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])$" }
+      ]
+    },
+    "group_name": { "type": "string" },
+    "artist_name": { "type": "string" },
+    "song_title": { "type": "string" },
+    "song_titles": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "event": { "type": "string" },
+    "camera_type": { "type": "string" },
+    "video_category": { "type": "string" }
+  }
+}

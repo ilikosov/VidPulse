@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/request/dictionary-alias.schema.json",
+  "title": "Dictionary Alias",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["alias"],
+  "properties": {
+    "alias": { "type": "string", "minLength": 1 }
+  }
+}
