@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import knex from '../db';
+import { logger } from '../lib/logger';
 
 const router = Router();
 
@@ -35,7 +36,7 @@ router.get('/', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching event log:', error);
+    logger.error('Error fetching event log:', error);
     res.status(500).json({ error: 'Failed to fetch event log' });
   }
 });

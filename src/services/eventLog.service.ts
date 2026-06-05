@@ -1,4 +1,5 @@
 import knex from '../db';
+import { logger } from '../lib/logger';
 
 export async function logEvent(
   eventType: string,
@@ -13,6 +14,6 @@ export async function logEvent(
       created_at: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Failed to log event:', error);
+    logger.error('Failed to log event:', error);
   }
 }

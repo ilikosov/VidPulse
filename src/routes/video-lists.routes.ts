@@ -1,5 +1,6 @@
 import { Request, Response, Router } from 'express';
 import knex from '../db';
+import { logger } from '../lib/logger';
 
 const router = Router();
 const COLORS = [
@@ -63,7 +64,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     return res.status(201).json({ ...created, countVideos: videoIds.length });
   } catch (error) {
-    console.error('Error creating video list:', error);
+    logger.error('Error creating video list:', error);
     return res.status(500).json({ error: 'Failed to create video list' });
   }
 });

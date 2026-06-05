@@ -1,6 +1,7 @@
 import { ParsedMetadata, ParserModule } from './parser.types';
 import { RegexModule } from './regex.module';
 import { DictionaryModule } from './dictionary.module';
+import { logger } from '../../lib/logger';
 import { splitSongTitles } from './songTitles.util';
 
 const MIN_CONFIDENCE_THRESHOLD = 0.5;
@@ -91,7 +92,7 @@ export class ParserService {
           }
         }
       } catch (error) {
-        console.warn('Parser module failed:', error);
+        logger.warn('Parser module failed:', error);
       }
     }
 

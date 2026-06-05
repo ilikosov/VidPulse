@@ -6,6 +6,7 @@ import {
   ITagService,
   IYouTubeService,
 } from '../../interfaces/services';
+import { logger } from '../../lib/logger';
 import { parseVideoMetadata } from './metadata.utils';
 import { syncVideoSongs } from '../parser/videoSongs.service';
 
@@ -62,7 +63,7 @@ export class ChannelSyncService implements IChannelSyncService {
         await this.channels.updateLastCheckedAt(channel.id, now.toISOString());
         channelsProcessed += 1;
       } catch (e) {
-        console.error(`Error syncing channel ${channel.youtube_id}:`, e);
+        logger.error(`Error syncing channel ${channel.youtube_id}:`, e);
       }
     }
     await this.logger.logEvent(

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import knex from '../db/';
+import { logger } from '../lib/logger';
 import { youtubeService } from '../services/youtube.service';
 import { logEvent } from '../services/eventLog.service';
 import { parseTitle } from '../services/parser/parser.service';
@@ -117,7 +118,7 @@ router.get('/', async (req: Request, res: Response) => {
       pagination: buildPaginationMeta(page, limit, totalCount),
     });
   } catch (error) {
-    console.error('Error fetching channels:', error);
+    logger.error('Error fetching channels:', error);
     res.status(500).json({ error: 'Failed to fetch channels' });
   }
 });
@@ -133,12 +134,12 @@ router.post('/', async (req: Request, res: Response) => {
 
     const newChannel = await addChannelByUrl(url);
     res.status(201).json(newChannel);
-  } catch (error: any) {
-    console.error('Error adding channel:', error);
+  } catch (error: unknown) {
+    logger.error('Error adding channel:', error);
     if (error instanceof DuplicateChannelError) {
       return res.status(409).json({ error: 'Channel already exists' });
     }
-    if (error.message.includes('Could not extract channel ID')) {
+    if (error instanceof Error && error.message.includes('Could not extract channel ID')) {
       return res.status(400).json({ error: error.message });
     }
     res.status(500).json({ error: 'Failed to add channel' });
@@ -184,11 +185,13 @@ router.post('/import', (req: Request, res: Response) => {
         try {
           await addChannelByUrl(url);
           added += 1;
-        } catch (error: any) {
+        } catch (error: unknown) {
           if (error instanceof DuplicateChannelError) {
             skipped += 1;
           } else {
-            errors.push(`Line ${index + 1}: ${url} - ${error?.message ?? 'Unknown error'}`);
+            errors.push(
+              `Line ${index + 1}: ${url} - ${error instanceof Error ? error.message : 'Unknown error'}`,
+            );
           }
         }
 
@@ -203,9 +206,9 @@ router.post('/import', (req: Request, res: Response) => {
         skipped,
         errors,
       });
-    } catch (error: any) {
-      console.error('Error importing channels:', error);
-      if (error?.message) {
+    } catch (error: unknown) {
+      logger.error('Error importing channels:', error);
+      if (error instanceof Error && error.message) {
         return res.status(400).json({ error: error.message });
       }
 
@@ -229,7 +232,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     return res.json({ ...channel, videoCount });
   } catch (error) {
-    console.error('Error fetching channel details:', error);
+    logger.error('Error fetching channel details:', error);
     return res.status(500).json({ error: 'Failed to fetch channel details' });
   }
 });
@@ -326,10 +329,10 @@ router.post('/:id/load-more', async (req: Request, res: Response) => {
     }
 
     return res.json({ loaded, total: fetchedVideos.length, errors });
-  } catch (error: any) {
-    console.error('Error loading older channel videos:', error);
+  } catch (error: unknown) {
+    logger.error('Error loading older channel videos:', error);
     return res.status(500).json({
-      error: error?.message || 'Failed to load older videos',
+      error: error instanceof Error ? error.message : 'Failed to load older videos',
     });
   }
 });
@@ -358,7 +361,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting channel:', error);
+    logger.error('Error deleting channel:', error);
     res.status(500).json({ error: 'Failed to delete channel' });
   }
 });

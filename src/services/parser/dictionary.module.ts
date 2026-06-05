@@ -131,13 +131,13 @@ export class DictionaryModule implements ParserModule {
 
     const artistMap: Record<string, string[]> = {};
     for (const a of artists) {
-      const groupName = String((a as any).group_name || 'SOLO');
+      const groupName = String(a.group_name || 'SOLO');
       if (!artistMap[groupName]) artistMap[groupName] = [];
       artistMap[groupName].push(String(a.name));
     }
 
     const aliasMap: KpopDictionary['aliases'] = { group: {}, artist: {}, song: {}, event: {} };
-    for (const alias of aliases as any[]) {
+    for (const alias of aliases) {
       const normalized = this.normalizeLookup(String(alias.alias));
       if (!normalized) {
         continue;

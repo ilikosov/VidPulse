@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
+import { logger } from '../lib/logger';
 import { dictionaryService } from '../services/dictionary.service';
 import { mediaLibraryImportJobsService } from '../services/mediaLibraryImportJobs.service';
 import { buildPaginationMeta, getPaginationParams } from './pagination';
@@ -328,11 +329,10 @@ router.post('/import', upload.single('file'), async (req: Request, res: Response
   if (mode === 'replace' && !dangerousActionsEnabled())
     return res.status(403).json({ error: 'Dangerous media library actions are disabled' });
 
-  const groups = Array.isArray((payload as any).groups) ? (payload as any).groups : [];
-  const soloArtists = Array.isArray((payload as any).soloArtists)
-    ? (payload as any).soloArtists
-    : [];
-  const events = Array.isArray((payload as any).events) ? (payload as any).events : [];
+  const p = payload as Record<string, unknown>;
+  const groups = Array.isArray(p.groups) ? p.groups : [];
+  const soloArtists = Array.isArray(p.soloArtists) ? p.soloArtists : [];
+  const events = Array.isArray(p.events) ? p.events : [];
   const total =
     groups.length +
     groups.reduce(
@@ -385,8 +385,11 @@ router.post('/import', upload.single('file'), async (req: Request, res: Response
           }),
       });
       mediaLibraryImportJobsService.completeJob(job.jobId, summary);
-    } catch (error: any) {
-      mediaLibraryImportJobsService.failJob(job.jobId, error?.message || 'Unknown import error');
+    } catch (error: unknown) {
+      mediaLibraryImportJobsService.failJob(
+        job.jobId,
+        error instanceof Error ? error.message : 'Unknown import error',
+      );
     }
   })();
 
