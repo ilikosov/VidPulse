@@ -37,7 +37,6 @@ acceptance criteria.
 - [ ] **TASK-11** (medium) — Side-effect-free app bootstrap — [details](./docs/tasks/task-11-bootstrap-side-effects.md)
 - [ ] **TASK-12** (medium) — Consolidate DB access; split god files — [details](./docs/tasks/task-12-consolidate-db-access.md)
 - [ ] **TASK-13** (medium) — Standardize request validation (ajv) — [details](./docs/tasks/task-13-request-validation.md)
-- [ ] **TASK-14** (low) — Observability & type-safety polish — [details](./docs/tasks/task-14-observability-types.md)
 
 ## Tests (code-review)
 
