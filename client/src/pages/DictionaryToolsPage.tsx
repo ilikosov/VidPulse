@@ -1,5 +1,6 @@
 import { Alert, Button, Card, Input, Modal, Space, Typography, Upload, notification } from 'antd';
 import { useState } from 'react';
+import { apiUrl, toErrorMessage } from '../api/client';
 import { dictionaryApi } from '../api/dictionary';
 
 type ImportSummary = {
@@ -53,8 +54,6 @@ const normalizeImportSummary = (value: unknown): ImportSummary | null => {
   };
 };
 
-const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api';
-
 export default function DictionaryToolsPage() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -96,13 +95,13 @@ export default function DictionaryToolsPage() {
 
       <Card title="Downloads">
         <Space wrap>
-          <Button type="link" href={`${API_BASE}/dictionary/schema`} download>
+          <Button type="link" href={apiUrl('/dictionary/schema')} download>
             Download JSON Schema
           </Button>
-          <Button type="link" href={`${API_BASE}/dictionary/example`} download>
+          <Button type="link" href={apiUrl('/dictionary/example')} download>
             Download Example JSON
           </Button>
-          <Button type="link" href={`${API_BASE}/dictionary/export`} download>
+          <Button type="link" href={apiUrl('/dictionary/export')} download>
             Export Media Library JSON
           </Button>
         </Space>
@@ -225,8 +224,8 @@ export default function DictionaryToolsPage() {
                 notification.warning({ message: 'Import response did not include summary' });
               }
               setImportModalOpen(false);
-            } catch (error: any) {
-              notification.error({ message: error.message || 'Import failed' });
+            } catch (error: unknown) {
+              notification.error({ message: toErrorMessage(error) || 'Import failed' });
             }
             return false;
           }}
@@ -247,8 +246,8 @@ export default function DictionaryToolsPage() {
             notification.success({ message: 'Media library cleared' });
             setClearModalOpen(false);
             setClearConfirmValue('');
-          } catch (error: any) {
-            notification.error({ message: error.message || 'Clear failed' });
+          } catch (error: unknown) {
+            notification.error({ message: toErrorMessage(error) || 'Clear failed' });
           }
         }}
         okButtonProps={{ danger: true, disabled: clearConfirmValue !== 'CLEAR' }}
@@ -283,8 +282,8 @@ export default function DictionaryToolsPage() {
             });
             setTagShortsModalOpen(false);
             setTagShortsConfirmValue('');
-          } catch (error: any) {
-            notification.error({ message: error.message || 'Shorts tagging failed' });
+          } catch (error: unknown) {
+            notification.error({ message: toErrorMessage(error) || 'Shorts tagging failed' });
           } finally {
             setTaggingShorts(false);
           }
@@ -329,8 +328,8 @@ export default function DictionaryToolsPage() {
             });
             setTagLongVideosModalOpen(false);
             setTagLongVideosConfirmValue('');
-          } catch (error: any) {
-            notification.error({ message: error.message || 'Long video tagging failed' });
+          } catch (error: unknown) {
+            notification.error({ message: toErrorMessage(error) || 'Long video tagging failed' });
           } finally {
             setTaggingLongVideos(false);
           }
@@ -374,8 +373,8 @@ export default function DictionaryToolsPage() {
             });
             setMergeShortModalOpen(false);
             setMergeShortConfirmValue('');
-          } catch (error: any) {
-            notification.error({ message: error.message || 'Merge failed' });
+          } catch (error: unknown) {
+            notification.error({ message: toErrorMessage(error) || 'Merge failed' });
           } finally {
             setMergingShortTags(false);
           }
