@@ -1,6 +1,6 @@
 # TASK-13 — Standardize request validation (ajv)
 
-**Status:** [ ] not started
+**Status:** [x] done
 **Priority:** medium
 **Docs:** [Code review → C7](../code-review.md#c7--no-standardized-request-validation)
 
