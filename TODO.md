@@ -28,8 +28,6 @@ acceptance criteria.
 
 ## Repository structure (ADR-0003)
 
-- [ ] **TASK-8** (medium) — Migrate to a proper monorepo (npm workspaces) — [details](./docs/tasks/task-08-monorepo.md)
-
 ## Code quality (code-review)
 
 - [x] **TASK-9** (medium) — Remove dead code (`parser_new`) & unused dep (`sqlite3`) — [details](./docs/tasks/task-09-remove-dead-code.md)

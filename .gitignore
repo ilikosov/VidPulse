@@ -26,9 +26,9 @@ target/
 Thumbs.db
 ```
 check_scripts/*
-src/db/dev.sqlite3
-src/db/dev.sqlite3-shm
-src/db/dev.sqlite3-wal
+apps/server/src/db/dev.sqlite3
+apps/server/src/db/dev.sqlite3-shm
+apps/server/src/db/dev.sqlite3-wal
 
 test-results
 dev.test.sqlite3-shm

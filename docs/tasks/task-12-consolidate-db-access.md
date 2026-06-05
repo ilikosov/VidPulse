@@ -20,8 +20,8 @@ LOC) and `video.routes.ts` (1213 LOC) are god files. Contradicts the layered des
 **Files:** `src/routes/**`, `src/services/dictionary.service.ts`, `src/repositories/**`.
 
 **Acceptance:** routes contain no direct `knex` queries; the two god files are split into focused modules;
-behavior unchanged; `npm test` green. (Best done after [TASK-8](./task-08-monorepo.md) to avoid double
-path churn.)
+behavior unchanged; `npm test` green. (TASK-8 — monorepo — is done, so double path churn
+is no longer a concern.)
 
 ---
 
