@@ -35,6 +35,7 @@ acceptance criteria.
 - [x] **TASK-9** (medium) — Remove dead code (`parser_new`) & unused dep (`sqlite3`) — [details](./docs/tasks/task-09-remove-dead-code.md)
 - [ ] **TASK-10** (high) — Central error handling, 404, async wrapper — [details](./docs/tasks/task-10-error-handling.md)
 - [ ] **TASK-11** (medium) — Side-effect-free app bootstrap — [details](./docs/tasks/task-11-bootstrap-side-effects.md)
+- [ ] **TASK-11A** (medium) — Centralize runtime configuration parsing and validation — [details](./docs/tasks/task-11a-central-config.md)
 - [ ] **TASK-12** (medium) — Consolidate DB access; split god files — [details](./docs/tasks/task-12-consolidate-db-access.md)
 - [x] **TASK-13** (medium) — Standardize request validation (ajv) — [details](./docs/tasks/task-13-request-validation.md)
 
