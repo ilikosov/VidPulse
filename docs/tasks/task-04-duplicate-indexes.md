@@ -12,7 +12,7 @@ built DB: `idx_videos_status` + `videos_status_index` and `idx_videos_duplicate_
 **Steps:**
 
 - [ ] New migration `npx knex migrate:make drop_duplicate_video_indexes` that `DROP INDEX IF EXISTS
-  idx_videos_status` and `idx_videos_duplicate_group` (keep the builder-created `videos_*_index`).
+idx_videos_status` and `idx_videos_duplicate_group` (keep the builder-created `videos_*_index`).
 - [ ] Add a matching `down` that recreates them.
 
 **Files:** `migrations/`.
