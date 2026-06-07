@@ -199,7 +199,7 @@ describe('dictionary media library import', () => {
     const body = await res.json();
     server.close();
     expect(res.status).toBe(403);
-    expect(body.error).toBe('Dangerous media library actions are disabled');
+    expect(body.error.message).toBe('Dangerous media library actions are disabled');
   });
 
   it('returns 400 for csv import', async () => {
@@ -216,7 +216,7 @@ describe('dictionary media library import', () => {
     const body = await res.json();
     server.close();
     expect(res.status).toBe(400);
-    expect(body).toEqual({ error: 'Only media library JSON files are supported' });
+    expect(body.error.message).toBe('Only media library JSON files are supported');
   });
 
   it('returns 400 for json array import', async () => {
@@ -237,7 +237,7 @@ describe('dictionary media library import', () => {
     const body = await res.json();
     server.close();
     expect(res.status).toBe(400);
-    expect(body.error).toBe('Invalid media library JSON');
+    expect(body.error.message).toBe('Invalid media library JSON');
   });
 
   it('returns 400 with details for invalid schema', async () => {
@@ -258,8 +258,8 @@ describe('dictionary media library import', () => {
     const body = await res.json();
     server.close();
     expect(res.status).toBe(400);
-    expect(body.error).toBe('Invalid media library JSON');
-    expect(Array.isArray(body.details)).toBe(true);
+    expect(body.error.message).toBe('Invalid media library JSON');
+    expect(Array.isArray(body.error.details)).toBe(true);
   });
 
   it('calls importMediaLibrary for valid json payload', async () => {
@@ -326,7 +326,7 @@ describe('dictionary clear endpoint', () => {
     const body = await res.json();
     server.close();
     expect(res.status).toBe(403);
-    expect(body.error).toBe('Dangerous media library actions are disabled');
+    expect(body.error.message).toBe('Dangerous media library actions are disabled');
   });
 });
 

@@ -6,7 +6,9 @@ export function dangerousActionsEnabled(): boolean {
 
 export function requireDangerousActionsEnabled(_req: Request, res: Response, next: NextFunction) {
   if (!dangerousActionsEnabled()) {
-    return res.status(403).json({ error: 'Dangerous media library actions are disabled' });
+    return res
+      .status(403)
+      .json({ error: { message: 'Dangerous media library actions are disabled' } });
   }
   return next();
 }

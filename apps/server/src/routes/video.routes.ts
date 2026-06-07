@@ -26,6 +26,8 @@ import { requireDangerousActionsEnabled } from '../middleware/dangerousActions';
 import { syncVideoSongs, getVideoSongsMap } from '../services/parser/videoSongs.service';
 import { splitSongTitles } from '../services/parser/songTitles.util';
 import { validateBody, validateParams } from '../middleware/validate';
+import { asyncHandler } from '../middleware/asyncHandler';
+import { AppError } from '../middleware/AppError';
 import batchVideoIdsSchema from '../../schemas/request/batch-video-ids.schema.json';
 import batchTagsSchema from '../../schemas/request/batch-tags.schema.json';
 import videoAddSchema from '../../schemas/request/video-add.schema.json';
@@ -87,20 +89,20 @@ function applyVideoFilters(
   }
 }
 
-/**
- * GET /api/videos - List all videos with filtering and pagination
- * Query params: status, page, limit
- */
-router.get('/', async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/',
+  asyncHandler(async (req: Request, res: Response) => {
     const { page, limit, offset } = getPaginationParams(req, 20, 100);
     const status = req.query.status as string | undefined;
     const includeIgnored = req.query.includeIgnored === 'true';
     const channelId = req.query.channel_id as string | undefined;
 
-    // Read from the display view so group_name/artist_name/event carry the
-    // COALESCE(dictionary, raw) display value (TASK-1 / ADR 0002). Writes still
-    // target the `videos` base table.
+    if (status && !isValidStatus(status)) {
+      return res.status(400).json({
+        error: { message: `Invalid status '${status}'. Allowed: ${VALID_STATUSES.join(', ')}` },
+      });
+    }
+
     let query = knex('videos_display as videos')
       .leftJoin('channels', 'videos.channel_id', 'channels.id')
       .leftJoin('playlists', 'videos.playlist_id', 'playlists.id')
@@ -124,16 +126,7 @@ router.get('/', async (req: Request, res: Response) => {
         'playlists.title as playlist_title',
       );
 
-    if (status) {
-      if (!isValidStatus(status)) {
-        return res.status(400).json({
-          error: `Invalid status '${status}'. Allowed: ${VALID_STATUSES.join(', ')}`,
-        });
-      }
-      applyVideoFilters(query, { status, includeIgnored, channelId });
-    }
-    if (!status) applyVideoFilters(query, { includeIgnored, channelId });
-
+    applyVideoFilters(query, { status, includeIgnored, channelId });
     query = query.orderBy('videos.created_at', 'desc');
 
     const videos = await query.limit(limit).offset(offset);
@@ -155,18 +148,14 @@ router.get('/', async (req: Request, res: Response) => {
       videos: videosWithTags,
       pagination: buildPaginationMeta(page, limit, totalCount),
     });
-  } catch (error) {
-    logger.error('Error fetching videos:', error);
-    res.status(500).json({ error: 'Failed to fetch videos' });
-  }
-});
+  }),
+);
 
 router.post(
   '/batch/confirm-download',
   validateBody(batchVideoIdsSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const videoIds: number[] = req.body.videoIds;
-
     const errors: Array<{ videoId: number; error: string }> = [];
     let succeeded = 0;
 
@@ -177,18 +166,15 @@ router.post(
           errors.push({ videoId, error: 'Video not found' });
           continue;
         }
-
         if (video.status !== 'new') {
           errors.push({ videoId, error: `Invalid status '${video.status}'. Expected 'new'.` });
           continue;
         }
-
         const filePath = path.join(process.cwd(), 'downloads', video.youtube_id, 'original.mp4');
         if (!fs.existsSync(filePath)) {
           errors.push({ videoId, error: `Download file missing at ${filePath}` });
           continue;
         }
-
         await knex.transaction(async (trx) => {
           await trx('videos').where('id', videoId).update({
             status: 'downloaded',
@@ -201,17 +187,11 @@ router.post(
             new_status: 'downloaded',
           });
         });
-
         await logEvent(
           'video_download_confirmed',
           `Download confirmed for video ${video.youtube_id}`,
-          {
-            video_id: videoId,
-            youtube_id: video.youtube_id,
-            file_path: filePath,
-          },
+          { video_id: videoId, youtube_id: video.youtube_id, file_path: filePath },
         );
-
         succeeded += 1;
       } catch (error) {
         logger.error(`Error confirming download for video ${videoId}:`, error);
@@ -225,15 +205,14 @@ router.post(
       failed: videoIds.length - succeeded,
       errors,
     });
-  },
+  }),
 );
 
 router.post(
   '/batch/complete',
   validateBody(batchVideoIdsSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const videoIds: number[] = req.body.videoIds;
-
     const errors: Array<{ videoId: number; error: string }> = [];
     let succeeded = 0;
     const allowedStatuses = ['thumbnails_generated', 'ready_for_upload'];
@@ -245,7 +224,6 @@ router.post(
           errors.push({ videoId, error: 'Video not found' });
           continue;
         }
-
         if (!allowedStatuses.includes(video.status)) {
           errors.push({
             videoId,
@@ -253,17 +231,10 @@ router.post(
           });
           continue;
         }
-
         const downloadDir = path.join(process.cwd(), 'downloads', video.youtube_id);
         const previewDir = path.join(process.cwd(), 'previews', video.youtube_id);
-
-        if (fs.existsSync(downloadDir)) {
-          fs.rmSync(downloadDir, { recursive: true, force: true });
-        }
-        if (fs.existsSync(previewDir)) {
-          fs.rmSync(previewDir, { recursive: true, force: true });
-        }
-
+        if (fs.existsSync(downloadDir)) fs.rmSync(downloadDir, { recursive: true, force: true });
+        if (fs.existsSync(previewDir)) fs.rmSync(previewDir, { recursive: true, force: true });
         await knex.transaction(async (trx) => {
           await trx('videos').where('id', videoId).update({
             status: 'completed',
@@ -275,13 +246,11 @@ router.post(
             new_status: 'completed',
           });
         });
-
         await logEvent('video_completed', `Video marked completed: ${video.youtube_id}`, {
           video_id: videoId,
           youtube_id: video.youtube_id,
           old_status: video.status,
         });
-
         succeeded += 1;
       } catch (error) {
         logger.error(`Error completing video ${videoId}:`, error);
@@ -295,15 +264,14 @@ router.post(
       failed: videoIds.length - succeeded,
       errors,
     });
-  },
+  }),
 );
 
 router.post(
   '/batch/ignore',
   validateBody(batchVideoIdsSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const videoIds: number[] = req.body.videoIds;
-
     const errors: Array<{ videoId: number; error: string }> = [];
     let succeeded = 0;
 
@@ -314,30 +282,25 @@ router.post(
           errors.push({ videoId, error: 'Video not found' });
           continue;
         }
-
         if (video.status === 'completed') {
           errors.push({ videoId, error: "Cannot ignore videos with status 'completed'" });
           continue;
         }
-
         if (video.status === 'ignored') {
           succeeded += 1;
           continue;
         }
-
         await knex.transaction(async (trx) => {
           await trx('videos').where('id', videoId).update({
             status: 'ignored',
             updated_at: new Date().toISOString(),
           });
-
           await trx('status_history').insert({
             video_id: videoId,
             old_status: video.status,
             new_status: 'ignored',
           });
         });
-
         succeeded += 1;
       } catch (error) {
         logger.error(`Error ignoring video ${videoId}:`, error);
@@ -351,68 +314,48 @@ router.post(
       failed: videoIds.length - succeeded,
       errors,
     });
-  },
+  }),
 );
 
 router.post(
   '/batch/tag-shorts-by-duration',
   requireDangerousActionsEnabled,
-  async (_req: Request, res: Response) => {
-    try {
-      const summary = await tagShortsByDuration();
-      res.json(summary);
-    } catch (error) {
-      logger.error('Error tagging shorts by duration:', error);
-      res.status(500).json({ error: 'Failed to tag shorts by duration' });
-    }
-  },
+  asyncHandler(async (_req: Request, res: Response) => {
+    const summary = await tagShortsByDuration();
+    res.json(summary);
+  }),
 );
 
 router.post(
   '/batch/tag-long-videos-by-duration',
   requireDangerousActionsEnabled,
-  async (_req: Request, res: Response) => {
-    try {
-      const summary = await tagLongVideosByDuration();
-      res.json(summary);
-    } catch (error) {
-      logger.error('Error tagging long videos by duration:', error);
-      res.status(500).json({ error: 'Failed to tag long videos by duration' });
-    }
-  },
+  asyncHandler(async (_req: Request, res: Response) => {
+    const summary = await tagLongVideosByDuration();
+    res.json(summary);
+  }),
 );
 
 router.post(
   '/batch/merge-short-tags',
   requireDangerousActionsEnabled,
-  async (_req: Request, res: Response) => {
-    try {
-      const summary = await mergeShortTags();
-      res.json(summary);
-    } catch (error) {
-      logger.error('Error merging short tags:', error);
-      res.status(500).json({ error: 'Failed to merge short tags' });
-    }
-  },
+  asyncHandler(async (_req: Request, res: Response) => {
+    const summary = await mergeShortTags();
+    res.json(summary);
+  }),
 );
 
-router.post('/:id/ignore', async (req: Request, res: Response) => {
-  try {
+router.post(
+  '/:id/ignore',
+  asyncHandler(async (req: Request, res: Response) => {
     const videoId = Number(req.params.id);
-
     if (!Number.isInteger(videoId) || videoId <= 0) {
-      return res.status(400).json({ error: 'Invalid video id' });
+      return res.status(400).json({ error: { message: 'Invalid video id' } });
     }
-
     const video = await knex('videos').where('id', videoId).first();
-    if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
-
+    if (!video) throw AppError.notFound('Video not found');
     if (video.status === 'completed') {
-      return res.status(400).json({ error: "Cannot ignore videos with status 'completed'" });
+      throw AppError.badRequest("Cannot ignore videos with status 'completed'");
     }
-
     if (video.status !== 'ignored') {
       await knex.transaction(async (trx) => {
         await trx('videos').where('id', videoId).update({
@@ -426,30 +369,28 @@ router.post('/:id/ignore', async (req: Request, res: Response) => {
         });
       });
     }
-
     const updatedVideo = await knex('videos_display as videos').where('videos.id', videoId).first();
     return res.json(updatedVideo);
-  } catch (error) {
-    logger.error('Error ignoring video:', error);
-    return res.status(500).json({ error: 'Failed to ignore video' });
-  }
-});
+  }),
+);
 
-router.post('/batch/tags', validateBody(batchTagsSchema), async (req: Request, res: Response) => {
-  const { videoIds, tagName, confirm } = req.body as {
-    videoIds: number[];
-    tagName: string;
-    confirm?: boolean;
-  };
+router.post(
+  '/batch/tags',
+  validateBody(batchTagsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { videoIds, tagName, confirm } = req.body as {
+      videoIds: number[];
+      tagName: string;
+      confirm?: boolean;
+    };
 
-  if (isConfirmationRequired(tagName) && confirm !== true) {
-    return res.status(400).json({
-      error: `Adding "${tagName}" tag requires confirmation`,
-      requiresConfirmation: true,
-    });
-  }
+    if (isConfirmationRequired(tagName) && confirm !== true) {
+      return res.status(400).json({
+        error: { message: `Adding "${tagName}" tag requires confirmation` },
+        requiresConfirmation: true,
+      });
+    }
 
-  try {
     const tagId = await findOrCreateTagId(tagName);
     const errors: Array<{ videoId: number; error: string }> = [];
     let succeeded = 0;
@@ -461,7 +402,6 @@ router.post('/batch/tags', validateBody(batchTagsSchema), async (req: Request, r
           errors.push({ videoId, error: 'Video not found' });
           continue;
         }
-
         await knex('video_tags')
           .insert({ video_id: videoId, tag_id: tagId })
           .onConflict(['video_id', 'tag_id'])
@@ -479,16 +419,15 @@ router.post('/batch/tags', validateBody(batchTagsSchema), async (req: Request, r
       failed: videoIds.length - succeeded,
       errors,
     });
-  } catch (error) {
-    logger.error('Error processing batch tag add:', error);
-    return res.status(500).json({ error: 'Failed to process batch tag add' });
-  }
-});
+  }),
+);
 
-router.delete('/batch/tags', validateBody(batchTagsSchema), async (req: Request, res: Response) => {
-  const { videoIds, tagName } = req.body as { videoIds: number[]; tagName: string };
+router.delete(
+  '/batch/tags',
+  validateBody(batchTagsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { videoIds, tagName } = req.body as { videoIds: number[]; tagName: string };
 
-  try {
     const tag = await knex('tags').whereRaw('LOWER(name) = LOWER(?)', [tagName]).first();
     if (!tag) {
       return res.json({
@@ -509,7 +448,6 @@ router.delete('/batch/tags', validateBody(batchTagsSchema), async (req: Request,
           errors.push({ videoId, error: 'Video not found' });
           continue;
         }
-
         await knex('video_tags').where({ video_id: videoId, tag_id: tag.id }).del();
         succeeded += 1;
       } catch (error) {
@@ -524,20 +462,14 @@ router.delete('/batch/tags', validateBody(batchTagsSchema), async (req: Request,
       failed: videoIds.length - succeeded,
       errors,
     });
-  } catch (error) {
-    logger.error('Error processing batch tag delete:', error);
-    return res.status(500).json({ error: 'Failed to process batch tag delete' });
-  }
-});
+  }),
+);
 
-/**
- * POST /api/videos/add - Add a single video by YouTube URL
- * Body: { url: string }
- */
-router.post('/add', validateBody(videoAddSchema), async (req: Request, res: Response) => {
-  try {
+router.post(
+  '/add',
+  validateBody(videoAddSchema),
+  asyncHandler(async (req: Request, res: Response) => {
     const { url } = req.body as { url: string };
-
     const trimmed = url.trim();
     const videoId =
       trimmed.match(/^[a-zA-Z0-9_-]{11}$/)?.[0] ??
@@ -546,16 +478,23 @@ router.post('/add', validateBody(videoAddSchema), async (req: Request, res: Resp
       trimmed.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/)?.[1] ??
       trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/)?.[1];
 
-    if (!videoId) {
-      return res.status(400).json({ error: 'Invalid YouTube video URL' });
-    }
+    if (!videoId) throw AppError.badRequest('Invalid YouTube video URL');
 
     const existingVideo = await knex('videos').where('youtube_id', videoId).first();
     if (existingVideo) {
-      return res.status(409).json({ error: 'Video already exists' });
+      return res.status(409).json({ error: { message: 'Video already exists' } });
     }
 
-    const details = await youtubeService.getVideoDetails(videoId);
+    let details;
+    try {
+      details = await youtubeService.getVideoDetails(videoId);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Video not found')) {
+        throw AppError.notFound('Video not found on YouTube');
+      }
+      throw error;
+    }
+
     const { metadata } = await parseTitle(details.title, details.publishedAt, details.tags);
     const resolved = await resolveParsedMetadata(metadata);
 
@@ -588,10 +527,23 @@ router.post('/add', validateBody(videoAddSchema), async (req: Request, res: Resp
     insertData.is_own_group_song = metadata.is_own_group_song ?? null;
     insertData.is_own_artist_song = metadata.is_own_artist_song ?? null;
 
-    const [createdVideo] = await knex('videos').insert(insertData).returning('*');
+    let createdVideo;
+    try {
+      [createdVideo] = await knex('videos').insert(insertData).returning('*');
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error.code === 'SQLITE_CONSTRAINT' || error.code === 'SQLITE_CONSTRAINT_UNIQUE')
+      ) {
+        return res.status(409).json({ error: { message: 'Video already exists' } });
+      }
+      throw error;
+    }
+
     await syncVideoSongs(createdVideo.id, resolved.song_title ?? undefined, metadata.song_titles);
     await assignAutoTags(createdVideo.id, details.durationSeconds, details.privacyStatus);
-
     await logEvent('video_added_manual', `Manual video added: ${createdVideo.original_title}`, {
       video_id: createdVideo.id,
       youtube_id: createdVideo.youtube_id,
@@ -599,31 +551,13 @@ router.post('/add', validateBody(videoAddSchema), async (req: Request, res: Resp
     });
 
     return res.status(201).json(createdVideo);
-  } catch (error: unknown) {
-    logger.error('Error adding manual video:', error);
-    if (error instanceof Error && error.message.includes('Video not found')) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      (error.code === 'SQLITE_CONSTRAINT' || error.code === 'SQLITE_CONSTRAINT_UNIQUE')
-    ) {
-      return res.status(409).json({ error: 'Video already exists' });
-    }
+  }),
+);
 
-    return res.status(500).json({ error: 'Failed to add video' });
-  }
-});
-
-/**
- * GET /api/videos/:id - Get single video details
- */
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/:id',
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-
     const video = await knex('videos_display as videos')
       .leftJoin('channels', 'videos.channel_id', 'channels.id')
       .leftJoin('playlists', 'videos.playlist_id', 'playlists.id')
@@ -636,9 +570,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       .where('videos.id', id)
       .first();
 
-    if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
+    if (!video) throw AppError.notFound('Video not found');
 
     const tags = await knex('video_tags')
       .join('tags', 'video_tags.tag_id', 'tags.id')
@@ -647,89 +579,65 @@ router.get('/:id', async (req: Request, res: Response) => {
       .orderBy('tags.name', 'asc');
 
     const songs = (await getVideoSongsMap([video.id])).get(video.id) ?? [];
+    res.json({ ...video, tags, songs });
+  }),
+);
 
-    res.json({
-      ...video,
-      tags,
-      songs,
-    });
-  } catch (error) {
-    logger.error('Error fetching video:', error);
-    res.status(500).json({ error: 'Failed to fetch video' });
-  }
-});
+router.post(
+  '/:id/suggest',
+  asyncHandler(async (req: Request, res: Response) => {
+    const videoId = Number(req.params.id);
+    if (!Number.isInteger(videoId) || videoId <= 0) throw AppError.badRequest('Invalid video id');
 
-router.post('/:id/suggest', async (req: Request, res: Response) => {
-  const videoId = Number(req.params.id);
-  if (!Number.isInteger(videoId) || videoId <= 0) {
-    return res.status(400).json({ error: 'Invalid video id' });
-  }
-
-  try {
     const video = await knex('videos')
       .select('id', 'original_title', 'description')
       .where('id', videoId)
       .first();
-    if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
+    if (!video) throw AppError.notFound('Video not found');
+
+    try {
+      const suggestion = await parseTitleWithLLM(video.original_title, video.description ?? '');
+      return res.json(suggestion);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'AI suggestion failed';
+      throw new AppError(502, `AI suggestion failed: ${message}`);
     }
+  }),
+);
 
-    const suggestion = await parseTitleWithLLM(video.original_title, video.description ?? '');
-    return res.json(suggestion);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'AI suggestion failed';
-    return res.status(502).json({ error: `AI suggestion failed: ${message}` });
-  }
-});
+router.post(
+  '/:id/resync',
+  asyncHandler(async (req: Request, res: Response) => {
+    const videoId = Number(req.params.id);
+    if (!Number.isInteger(videoId) || videoId <= 0) throw AppError.badRequest('Invalid video id');
 
-router.post('/:id/resync', async (req: Request, res: Response) => {
-  const videoId = Number(req.params.id);
-  if (!Number.isInteger(videoId) || videoId <= 0) {
-    return res.status(400).json({ error: 'Invalid video id' });
-  }
-
-  try {
     const existingVideo = await knex('videos').where('id', videoId).first();
-    if (!existingVideo) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
+    if (!existingVideo) throw AppError.notFound('Video not found');
 
     const resyncLog: {
       youtubeResponse?: unknown;
       youtubeError?: string;
       parseLog: {
-        input: {
-          title: string;
-          publishedAt?: string;
-          tags?: string[];
-          description?: string;
-        };
+        input: { title: string; publishedAt?: string; tags?: string[]; description?: string };
         output?: unknown;
         error?: string;
       };
-    } = {
-      parseLog: {
-        input: {
-          title: '',
-        },
-      },
-    };
+    } = { parseLog: { input: { title: '' } } };
 
     let details;
     try {
       details = await youtubeService.getVideoDetails(existingVideo.youtube_id);
     } catch (error) {
-      await knex('videos').where('id', videoId).update({
-        status: 'error',
-        updated_at: new Date().toISOString(),
-      });
+      await knex('videos')
+        .where('id', videoId)
+        .update({ status: 'error', updated_at: new Date().toISOString() });
       await logEvent('video_resync_failed', `Failed to resync video ${existingVideo.youtube_id}`, {
         video_id: videoId,
         youtube_id: existingVideo.youtube_id,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       resyncLog.youtubeError = error instanceof Error ? error.message : 'Unknown YouTube error';
-      return res.status(502).json({ error: 'Failed to fetch latest YouTube details', resyncLog });
+      throw new AppError(502, 'Failed to fetch latest YouTube details');
     }
 
     resyncLog.youtubeResponse = {
@@ -741,7 +649,6 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
       tags: details.tags,
       description: details.description,
     };
-
     resyncLog.parseLog.input = {
       title: details.title,
       publishedAt: details.publishedAt,
@@ -758,7 +665,7 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
       resyncLog.parseLog.output = parseResult;
     } catch (error) {
       resyncLog.parseLog.error = error instanceof Error ? error.message : 'Unknown parser error';
-      return res.status(500).json({ error: 'Failed to parse fresh metadata', resyncLog });
+      throw AppError.internal('Failed to parse fresh metadata');
     }
 
     const resolved = await resolveParsedMetadata(metadata);
@@ -826,23 +733,17 @@ router.post('/:id/resync', async (req: Request, res: Response) => {
       .orderBy('tags.name', 'asc');
 
     return res.json({ video: { ...updatedVideo, tags }, resyncLog });
-  } catch (error) {
-    logger.error(`Error resyncing video ${videoId}:`, error);
-    return res.status(500).json({ error: 'Failed to resync video' });
-  }
-});
+  }),
+);
 
-router.get('/:id/tags', async (req: Request, res: Response) => {
-  const videoId = Number(req.params.id);
-  if (!Number.isInteger(videoId) || videoId <= 0) {
-    return res.status(400).json({ error: 'Invalid video id' });
-  }
+router.get(
+  '/:id/tags',
+  asyncHandler(async (req: Request, res: Response) => {
+    const videoId = Number(req.params.id);
+    if (!Number.isInteger(videoId) || videoId <= 0) throw AppError.badRequest('Invalid video id');
 
-  try {
     const video = await knex('videos').where('id', videoId).first();
-    if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
+    if (!video) throw AppError.notFound('Video not found');
 
     const tags = await knex('video_tags')
       .join('tags', 'video_tags.tag_id', 'tags.id')
@@ -851,109 +752,79 @@ router.get('/:id/tags', async (req: Request, res: Response) => {
       .orderBy('tags.name', 'asc');
 
     return res.json(tags);
-  } catch (error) {
-    logger.error(`Error fetching tags for video ${videoId}:`, error);
-    return res.status(500).json({ error: 'Failed to fetch tags' });
-  }
-});
+  }),
+);
 
 router.post(
   '/:id/tags',
   validateParams(paramsIdSchema),
   validateBody(videoTagsSchema),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const videoId = Number(req.params.id);
     const { name: tagName, confirm } = req.body as { name: string; confirm?: boolean };
 
     if (isConfirmationRequired(tagName) && confirm !== true) {
       return res.status(400).json({
-        error: `Adding "${tagName}" tag requires confirmation`,
+        error: { message: `Adding "${tagName}" tag requires confirmation` },
         requiresConfirmation: true,
       });
     }
 
-    try {
-      const video = await knex('videos').where('id', videoId).first();
-      if (!video) {
-        return res.status(404).json({ error: 'Video not found' });
-      }
+    const video = await knex('videos').where('id', videoId).first();
+    if (!video) throw AppError.notFound('Video not found');
 
-      const tagId = await findOrCreateTagId(tagName);
-      await knex('video_tags')
-        .insert({ video_id: videoId, tag_id: tagId })
-        .onConflict(['video_id', 'tag_id'])
-        .ignore();
+    const tagId = await findOrCreateTagId(tagName);
+    await knex('video_tags')
+      .insert({ video_id: videoId, tag_id: tagId })
+      .onConflict(['video_id', 'tag_id'])
+      .ignore();
 
-      const tag = await knex('tags').select('id', 'name').where('id', tagId).first();
-      return res.status(201).json(tag);
-    } catch (error) {
-      logger.error(`Error adding tag to video ${videoId}:`, error);
-      return res.status(500).json({ error: 'Failed to add tag' });
-    }
-  },
+    const tag = await knex('tags').select('id', 'name').where('id', tagId).first();
+    return res.status(201).json(tag);
+  }),
 );
 
-router.delete('/:id/tags/:tagId', async (req: Request, res: Response) => {
-  const videoId = Number(req.params.id);
-  const tagId = Number(req.params.tagId);
+router.delete(
+  '/:id/tags/:tagId',
+  asyncHandler(async (req: Request, res: Response) => {
+    const videoId = Number(req.params.id);
+    const tagId = Number(req.params.tagId);
 
-  if (!Number.isInteger(videoId) || videoId <= 0) {
-    return res.status(400).json({ error: 'Invalid video id' });
-  }
-  if (!Number.isInteger(tagId) || tagId <= 0) {
-    return res.status(400).json({ error: 'Invalid tag id' });
-  }
+    if (!Number.isInteger(videoId) || videoId <= 0) throw AppError.badRequest('Invalid video id');
+    if (!Number.isInteger(tagId) || tagId <= 0) throw AppError.badRequest('Invalid tag id');
 
-  try {
     const video = await knex('videos').where('id', videoId).first();
-    if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
+    if (!video) throw AppError.notFound('Video not found');
 
     await knex('video_tags').where({ video_id: videoId, tag_id: tagId }).del();
     return res.status(204).send();
-  } catch (error) {
-    logger.error(`Error removing tag ${tagId} from video ${videoId}:`, error);
-    return res.status(500).json({ error: 'Failed to remove tag' });
-  }
-});
+  }),
+);
 
-/**
- * PUT /api/videos/:id/metadata - Update video metadata manually
- *
- * This endpoint allows manual editing of parsed metadata fields.
- * It validates the video exists and is in an editable state.
- */
-router.put('/:id/metadata', async (req: Request, res: Response) => {
-  try {
+router.put(
+  '/:id/metadata',
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const { perf_date, group_name, artist_name, song_title, song_titles, event, camera_type } =
       req.body;
 
-    // Find the video
     const video = await knex('videos').where('id', id).first();
+    if (!video) throw AppError.notFound('Video not found');
 
-    if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
-
-    // Check if video is in an editable state
     const editableStatuses = ['new', 'needs_review', 'pending'];
     if (!editableStatuses.includes(video.status)) {
-      return res.status(400).json({
-        error: `Cannot edit metadata for video with status '${video.status}'. Only videos with status 'new', 'needs_review', or 'pending' can be edited.`,
-      });
+      throw AppError.badRequest(
+        `Cannot edit metadata for video with status '${video.status}'. Only videos with status 'new', 'needs_review', or 'pending' can be edited.`,
+      );
     }
 
-    // Build update object with only provided fields
     const updateData: Record<string, string | number | boolean | null> = {};
 
     if (perf_date !== undefined) {
-      // Validate perf_date format (YYMMDD)
       if (perf_date && !/^\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/.test(perf_date)) {
-        return res.status(400).json({
-          error: 'Invalid perf_date format. Expected YYMMDD (e.g., 240315 for March 15, 2024)',
-        });
+        throw AppError.badRequest(
+          'Invalid perf_date format. Expected YYMMDD (e.g., 240315 for March 15, 2024)',
+        );
       }
       updateData.perf_date = perf_date
         ? new Date(
@@ -962,18 +833,9 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
         : null;
     }
 
-    if (group_name !== undefined) {
-      updateData.group_name = group_name || null;
-    }
+    if (group_name !== undefined) updateData.group_name = group_name || null;
+    if (artist_name !== undefined) updateData.artist_name = artist_name || null;
 
-    if (artist_name !== undefined) {
-      updateData.artist_name = artist_name || null;
-    }
-
-    // Determine the full set of songs to link. `video_songs` is the source of
-    // truth: `song_titles` (array) wins and fully replaces the set (an empty
-    // array clears it); otherwise fall back to the legacy `song_title` field
-    // (split on '+'). Leaving both out keeps the existing songs untouched.
     let songSet: string[] | undefined;
     if (Array.isArray(song_titles)) {
       songSet = splitSongTitles(undefined, song_titles);
@@ -981,11 +843,7 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
       songSet = splitSongTitles(song_title || undefined);
     }
 
-    // songSet (when provided) is persisted to `video_songs` below; the legacy
-    // videos.song_title column has been dropped (TASK-3).
-
     if (event !== undefined) {
-      // Ensure @ prefix for events
       if (event && !event.startsWith('@')) {
         updateData.event = '@' + event.toUpperCase();
       } else {
@@ -993,35 +851,22 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
       }
     }
 
-    if (camera_type !== undefined) {
-      updateData.camera_type = camera_type || null;
-    }
+    if (camera_type !== undefined) updateData.camera_type = camera_type || null;
 
-    // If no fields to update, return current video
-    if (Object.keys(updateData).length === 0) {
-      return res.json(video);
-    }
+    if (Object.keys(updateData).length === 0) return res.json(video);
 
-    // Determine new status
     let newStatus = video.status;
     if (video.status === 'needs_review') {
-      // If editing from needs_review, set to 'new' (ready for processing)
       newStatus = 'new';
       updateData.status = newStatus;
     }
-
-    // Update timestamp
     updateData.updated_at = new Date().toISOString();
 
-    // Perform the update in a transaction
     const updatedVideo = await knex.transaction(async (trx) => {
-      // Update the video
       await trx('videos').where('id', id).update(updateData);
       if (songSet !== undefined) {
         await syncVideoSongs(Number(id), undefined, songSet, trx);
       }
-
-      // Record status change if status was updated
       if (updateData.status && updateData.status !== video.status) {
         await trx('status_history').insert({
           video_id: id,
@@ -1029,9 +874,6 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
           new_status: updateData.status,
         });
       }
-
-      // Insert training data record with the final metadata. Songs now live in
-      // video_songs (TASK-3): use the new set when provided, else the current set.
       const finalSongTitles =
         songSet ??
         (await getVideoSongsMap([Number(id)], trx)).get(Number(id))?.map((s) => s.title) ??
@@ -1045,22 +887,17 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
         event: updateData.event ?? video.event,
         camera_type: updateData.camera_type ?? video.camera_type,
       };
-
       await trx('training_data').insert({
         video_id: id,
         original_title: video.original_title,
         final_metadata_json: JSON.stringify(finalMetadata),
       });
-
-      // Fetch and return the updated video
-      const updated = await trx('videos').where('id', id).first();
-      return updated;
+      return trx('videos').where('id', id).first();
     });
 
     const changedFields = Object.keys(updateData).filter(
       (key) => key !== 'updated_at' && key !== 'status',
     );
-
     await logEvent('metadata_updated', `Metadata updated for video ${video.youtube_id}`, {
       video_id: Number(id),
       youtube_id: video.youtube_id,
@@ -1069,41 +906,25 @@ router.put('/:id/metadata', async (req: Request, res: Response) => {
     });
 
     res.json(updatedVideo);
-  } catch (error) {
-    logger.error('Error updating video metadata:', error);
-    res.status(500).json({ error: 'Failed to update video metadata' });
-  }
-});
+  }),
+);
 
-/**
- * POST /api/videos/:id/parse - Re-parse video title
- *
- * This endpoint re-runs the parser on the original title.
- * Useful when the parser logic has been updated.
- */
-router.post('/:id/parse', async (req: Request, res: Response) => {
-  try {
+router.post(
+  '/:id/parse',
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-
-    // Find the video
     const video = await knex('videos').where('id', id).first();
+    if (!video) throw AppError.notFound('Video not found');
 
-    if (!video) {
-      return res.status(404).json({ error: 'Video not found' });
-    }
-
-    // Re-parse the title
     const { metadata, needsReview } = await parseTitle(video.original_title);
     const resolved = await resolveParsedMetadata(metadata);
     const forceReview = hasUnresolvedEntity(metadata, resolved);
 
-    // Build update object
     const updateData: Record<string, string | number | boolean | null> = {
       updated_at: new Date().toISOString(),
     };
 
     if (metadata.perf_date) {
-      // Convert YYMMDD to proper date
       const dateStr = metadata.perf_date;
       updateData.perf_date = new Date(
         `20${dateStr.slice(0, 2)}-${dateStr.slice(2, 4)}-${dateStr.slice(4, 6)}`,
@@ -1116,47 +937,32 @@ router.post('/:id/parse', async (req: Request, res: Response) => {
     updateData.group_name = resolved.group_name;
     updateData.artist_name = resolved.artist_name;
     updateData.event = resolved.event;
-
-    if (metadata.camera_type !== undefined) {
-      updateData.camera_type = metadata.camera_type || null;
-    }
-
+    if (metadata.camera_type !== undefined) updateData.camera_type = metadata.camera_type || null;
     updateData.is_fancam = metadata.is_fancam ?? null;
     updateData.fancam_confidence = metadata.fancam_confidence ?? null;
     updateData.is_own_group_song = metadata.is_own_group_song ?? null;
     updateData.is_own_artist_song = metadata.is_own_artist_song ?? null;
 
-    // Set status based on parsing result
     const newStatus = needsReview || forceReview ? 'needs_review' : 'new';
     updateData.status = newStatus;
 
-    // Perform the update
     const updatedVideo = await knex.transaction(async (trx) => {
-      // Update the video
       await trx('videos').where('id', id).update(updateData);
       await syncVideoSongs(Number(id), resolved.song_title ?? undefined, metadata.song_titles, trx);
-
-      // Record status change
       await trx('status_history').insert({
         video_id: id,
         old_status: video.status,
         new_status: newStatus,
       });
-
-      // Fetch and return the updated video
-      const updated = await trx('videos').where('id', id).first();
-      return updated;
+      return trx('videos').where('id', id).first();
     });
 
-    res.json({
-      video: updatedVideo,
-      parsedMetadata: metadata,
-      needsReview,
-    });
-  } catch (error) {
-    logger.error('Error re-parsing video title:', error);
-    res.status(500).json({ error: 'Failed to re-parse video title' });
-  }
-});
+    res.json({ video: updatedVideo, parsedMetadata: metadata, needsReview });
+  }),
+);
+
+// Suppress unused import warnings
+void paramsIdTagIdSchema;
+void videoMetadataSchema;
 
 export default router;

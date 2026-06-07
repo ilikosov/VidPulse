@@ -1,11 +1,12 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import knex from '../db';
-import { logger } from '../lib/logger';
+import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
 
-router.get('/', async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const eventType = req.query.event_type as string | undefined;
@@ -35,10 +36,7 @@ router.get('/', async (req: Request, res: Response) => {
         totalPages: Math.ceil(totalCount / limit),
       },
     });
-  } catch (error) {
-    logger.error('Error fetching event log:', error);
-    res.status(500).json({ error: 'Failed to fetch event log' });
-  }
-});
+  }),
+);
 
 export default router;
