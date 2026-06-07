@@ -68,7 +68,7 @@ describe('POST /api/videos/batch/tag-shorts-by-duration', async () => {
     server.close();
 
     expect(res.status).toBe(403);
-    expect(body.error).toContain('disabled');
+    expect(body.error.message).toContain('disabled');
   });
 
   it('tags shorts for duration 89, not for 90, and avoids duplicates on repeated call', async () => {

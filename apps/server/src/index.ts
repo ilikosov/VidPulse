@@ -15,6 +15,7 @@ import eventsRoutes from './routes/events.routes';
 import settingsRoutes from './routes/settings.routes';
 import videoListsRoutes from './routes/video-lists.routes';
 import { createAppContainer } from './compositionRoot';
+import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +42,12 @@ app.use('/api/parser', parserRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/video-lists', videoListsRoutes);
+
+// 404 for unmatched /api/* routes
+app.use('/api/*', notFoundHandler);
+
+// Central error handler (must be last)
+app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
