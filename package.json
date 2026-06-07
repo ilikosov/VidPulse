@@ -1,23 +1,22 @@
 {
-  "name": "kpop-archive-manager",
+  "name": "vidpulse",
   "version": "1.0.0",
-  "main": "dist/index.js",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "nodemon --exec ts-node src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "client:dev": "cd client && npm run dev",
-    "client:build": "cd client && npm run build",
-    "test": "vitest run",
-    "test:e2e": "playwright test",
-    "launch": "concurrently -n BE,FE -c blue,green \"npm run dev\" \"cd client && npm run dev\"",
-    "dev:all": "npm install && cd client && npm install && cd .. && npx knex migrate:latest --knexfile src/db/knexfile.ts && npm run launch",
+    "dev": "npm run dev -w apps/server",
+    "build": "npm run build -w apps/server && npm run build -w apps/web",
+    "start": "npm run start -w apps/server",
+    "test": "npm run test -w apps/server",
+    "test:e2e": "npm run test:e2e -w apps/server",
+    "launch": "concurrently -n BE,FE -c blue,green \"npm run dev -w apps/server\" \"npm run dev -w apps/web\"",
+    "dev:all": "npm install && npx knex migrate:latest --knexfile apps/server/src/db/knexfile.ts && npm run launch",
     "prepare": "husky",
-    "format": "prettier --write \"src/**/*.{ts,tsx,js,json,css,md}\" \"client/src/**/*.{ts,tsx,js,json,css,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,json,css,md}\" \"client/src/**/*.{ts,tsx,js,json,css,md}\"",
-    "backfill:video-entities": "tsx src/scripts/backfill-video-entity-ids.ts",
-    "backfill:shorts-tags": "tsx src/scripts/backfill-shorts-tags.ts",
-    "merge:short-tags": "tsx src/scripts/merge-short-tags.ts"
+    "format": "prettier --write \"apps/server/src/**/*.{ts,tsx,js,json,css,md}\" \"apps/web/src/**/*.{ts,tsx,js,json,css,md}\" \"packages/**/*.{ts,tsx,js,json,md}\" \"docs/**/*.md\" \"*.md\"",
+    "format:check": "prettier --check \"apps/server/src/**/*.{ts,tsx,js,json,css,md}\" \"apps/web/src/**/*.{ts,tsx,js,json,css,md}\" \"packages/**/*.{ts,tsx,js,json,md}\" \"docs/**/*.md\" \"*.md\""
   },
   "keywords": [],
   "author": "",
@@ -26,45 +25,10 @@
   "lint-staged": {
     "*.{ts,tsx,js,json,css,md}": "prettier --write"
   },
-  "dependencies": {
-    "better-sqlite3": "^12.9.0",
-    "chokidar": "^5.0.0",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "fluent-ffmpeg": "^2.1.3",
-    "fs-extra": "^11.3.4",
-    "googleapis": "^171.4.0",
-    "helmet": "^8.1.0",
-    "knex": "^3.2.9",
-    "lru-cache": "^11.3.5",
-    "morgan": "^1.10.1",
-    "multer": "^2.0.2",
-    "node-cron": "^4.2.1",
-    "sharp": "^0.34.5",
-    "yaml": "^2.8.3",
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1"
-  },
   "devDependencies": {
-    "@playwright/test": "^1.54.0",
-    "@types/node": "^25.6.0",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/fluent-ffmpeg": "^2.1.28",
-    "@types/fs-extra": "^11.0.4",
-    "@types/morgan": "^1.9.10",
-    "@types/multer": "^2.0.0",
-    "@types/sharp": "^0.31.1",
     "concurrently": "^9.2.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "nock": "^14.0.5",
-    "nodemon": "^3.1.14",
-    "prettier": "^3.8.3",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
-    "typescript": "^6.0.3",
-    "vitest": "^2.1.8"
+    "prettier": "^3.8.3"
   }
 }

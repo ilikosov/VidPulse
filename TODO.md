@@ -26,10 +26,6 @@ acceptance criteria.
 - [ ] **TASK-7** (medium) — Consolidate & harden migrations (squash to a baseline) — [details](./docs/tasks/task-07-migration-robustness.md)
 - [ ] **TASK-17** (low) — Populate a development seed dataset — [details](./docs/tasks/task-17-seed-dataset.md)
 
-## Repository structure (ADR-0003)
-
-- [ ] **TASK-8** (medium) — Migrate to a proper monorepo (npm workspaces) — [details](./docs/tasks/task-08-monorepo.md)
-
 ## Code quality (code-review)
 
 - [x] **TASK-9** (medium) — Remove dead code (`parser_new`) & unused dep (`sqlite3`) — [details](./docs/tasks/task-09-remove-dead-code.md)

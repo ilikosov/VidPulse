@@ -1,0 +1,8 @@
+{
+  "name": "@vidpulse/shared",
+  "version": "1.0.0",
+  "description": "Shared API contracts and domain types for VidPulse",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {}
+}
