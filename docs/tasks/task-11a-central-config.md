@@ -1,6 +1,6 @@
 # TASK-11A — Centralize runtime configuration parsing and validation
 
-**Status:** [ ] not started
+**Status:** Not started
 **Priority:** medium
 **Docs:** [Code review → C4](../code-review.md#c4--import-time-side-effects-in-srcindexts)
 
