@@ -28,4 +28,9 @@ export default async function setup() {
     stdio: 'inherit',
     env: { ...process.env, NODE_ENV: 'test' },
   });
+
+  execFileSync('npx', ['knex', 'seed:run', '--knexfile', 'src/db/knexfile.ts'], {
+    stdio: 'inherit',
+    env: { ...process.env, NODE_ENV: 'test' },
+  });
 }

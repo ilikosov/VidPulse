@@ -28,11 +28,6 @@ export async function up(knex: Knex): Promise<void> {
   if (!hasDurationSeconds) {
     await knex.raw('ALTER TABLE videos ADD COLUMN duration_seconds INTEGER;');
   }
-
-  await knex.raw(`
-    INSERT INTO tags (name)
-    VALUES ('short'), ('длинное видео'), ('игнорировать видео'), ('private');
-  `);
 }
 
 export async function down(knex: Knex): Promise<void> {
