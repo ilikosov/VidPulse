@@ -1,5 +1,8 @@
 import { ParsedMetadata, ParserModule } from './parser.types';
 
+/** Sentinel group name for a solo stage (a single performer, no group credited). */
+export const SOLO_GROUP = 'SOLO';
+
 export class RegexModule implements ParserModule {
   private readonly datePattern = /\b(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))\b/g;
 
@@ -25,7 +28,7 @@ export class RegexModule implements ParserModule {
       song_title: this.extractSongTitle(compacted),
     };
 
-    const englishFancamMeta = this.extractFromEnglishFancamParen(compacted);
+    const englishFancamMeta = this.extractFancamCredit(compacted);
     const koreanPrefixMeta = this.extractKoreanPrefix(compacted, metadata.song_title);
     Object.assign(metadata, englishFancamMeta, koreanPrefixMeta);
 
@@ -104,6 +107,10 @@ export class RegexModule implements ParserModule {
 
   private extractSongTitle(title: string): string | undefined {
     const quotePatterns = [
+      // Apostrophe-aware single quotes: the closing quote is the one followed by a
+      // delimiter, so apostrophes *inside* the title (e.g. `What's`, `Eye-Poppin')`)
+      // no longer truncate it. Falls back to the simple pattern below when needed.
+      /(?<=^|[\s\[\]("])'(.+?)'(?=$|[\s|\]@])/,
       /'([^']+)'/,
       /"([^"]+)"/,
       /‘([^’]+)’/,
@@ -174,16 +181,50 @@ export class RegexModule implements ParserModule {
     return song || undefined;
   }
 
-  private extractFromEnglishFancamParen(title: string): Partial<ParsedMetadata> {
-    const match = title.match(/\(([A-Za-z0-9&\s'.-]+?)\s+([A-Za-z0-9'.-]+)\s+Fan\s?Cam\)/i);
+  private extractFancamCredit(title: string): Partial<ParsedMetadata> {
+    const match = title.match(/\(([A-Za-z0-9&'._\s-]+?)\s+Fan\s?Cam\)/i);
     if (!match) {
       return {};
     }
 
+    // Drop resolution / camera-rig words so "(4K FANCAM)" or "(YUNA 4K FanCam)"
+    // is not mistaken for a performer credit.
+    const nameWords = this.compact(match[1])
+      .split(/\s+/)
+      .filter((word) => !this.isCameraNoiseWord(word));
+    if (nameWords.length === 0) {
+      return {};
+    }
+
+    // Two Korean name tokens in the prefix ("킥플립 동현", "키스오브라이프 하늘") mean the
+    // credit is "<group> <member>". A single token ("다영", "문별") is a solo stage,
+    // so the whole — possibly multi-word — romanized name stays as one artist and
+    // the group is flagged SOLO instead of being split apart.
+    if (this.countKoreanNameTokens(title) >= 2 && nameWords.length >= 2) {
+      return {
+        group_name: nameWords.slice(0, -1).join(' '),
+        artist_name: nameWords[nameWords.length - 1],
+      };
+    }
+
     return {
-      group_name: this.compact(match[1]),
-      artist_name: this.compact(match[2]),
+      group_name: SOLO_GROUP,
+      artist_name: nameWords.join(' '),
     };
+  }
+
+  private isCameraNoiseWord(word: string): boolean {
+    return /^(?:[48]k|fhd|uhd|hd|multi(?:cam)?|cam|unfiltered|full(?:cam)?|close-?up|focus)$/i.test(
+      word,
+    );
+  }
+
+  private countKoreanNameTokens(title: string): number {
+    // Performer names sit between the leading "[..]" tag and the song quote.
+    // Bracketed tags and parenthetical credits are not names, so drop them first.
+    const withoutTags = title.replace(/\[[^\]]*\]/g, ' ').replace(/\([^)]*\)/g, ' ');
+    const prefix = this.stripLeadingDate(withoutTags.split(/['"‘“「＜@]/)[0]);
+    return prefix.split(/\s+/).filter((token) => /[가-힣]/.test(token)).length;
   }
 
   private extractKoreanPrefix(title: string, songTitle?: string): Partial<ParsedMetadata> {
