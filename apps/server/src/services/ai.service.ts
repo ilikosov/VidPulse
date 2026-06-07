@@ -1,5 +1,6 @@
 import type { ParsedMetadata } from './parser/parser.types';
 import { logger } from '../lib/logger';
+import { config } from '../config';
 
 export interface SuggestedMetadata {
   group_name?: string;
@@ -92,9 +93,7 @@ function parseJsonContent(content: string): Record<string, unknown> {
 
 export class AIService {
   async callLLM(prompt: string): Promise<string> {
-    const endpoint = process.env.LM_STUDIO_API_URL || process.env.LM_STUDIO_URL;
-    const model = process.env.LM_STUDIO_MODEL;
-    const timeoutMs = Number(process.env.LM_STUDIO_TIMEOUT || '30000');
+    const { endpoint, model, timeoutMs, apiKey } = config.ai;
 
     if (!endpoint || !model) {
       throw new Error(
@@ -107,8 +106,8 @@ export class AIService {
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (process.env.LM_STUDIO_API_KEY) {
-        headers.Authorization = `Bearer ${process.env.LM_STUDIO_API_KEY}`;
+      if (apiKey) {
+        headers.Authorization = `Bearer ${apiKey}`;
       }
 
       const response = await fetch(endpoint, {

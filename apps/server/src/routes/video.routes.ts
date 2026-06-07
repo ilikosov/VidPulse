@@ -28,6 +28,7 @@ import { splitSongTitles } from '../services/parser/songTitles.util';
 import { validateBody, validateParams } from '../middleware/validate';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { AppError } from '../middleware/AppError';
+import { config } from '../config';
 import batchVideoIdsSchema from '../../schemas/request/batch-video-ids.schema.json';
 import batchTagsSchema from '../../schemas/request/batch-tags.schema.json';
 import videoAddSchema from '../../schemas/request/video-add.schema.json';
@@ -78,7 +79,7 @@ function applyVideoFilters(
   if (channelId) query.where('videos.channel_id', channelId);
   if (status) query.where('videos.status', status);
   else if (!includeIgnored) query.whereNot('videos.status', 'ignored');
-  if (process.env.HIDE_FLAGGED_VIDEOS === 'true') {
+  if (config.hideFlaggedVideos) {
     query.whereNotIn('videos.id', function () {
       this.select('v2.id')
         .from('videos as v2')
