@@ -17,43 +17,40 @@ import videoListsRoutes from './routes/video-lists.routes';
 import { createAppContainer } from './compositionRoot';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+export function createApp() {
+  const app = express();
 
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(morgan('dev'));
-app.use(express.json());
+  app.use(helmet());
+  app.use(cors());
+  app.use(morgan('dev'));
+  app.use(express.json());
 
-// Health check route
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+  app.get('/api/health', (_req: Request, res: Response) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
 
-// Mount routes
-app.use('/api/channels', channelRoutes);
-app.use('/api/playlists', playlistRoutes);
-const container = createAppContainer();
-app.use('/api/sync', createSyncRouter(container.syncService));
-app.use('/api/videos', videoRoutes);
-app.use('/api/dictionary', dictionaryRoutes);
-app.use('/api/parser', parserRoutes);
-app.use('/api/events', eventsRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/video-lists', videoListsRoutes);
+  app.use('/api/channels', channelRoutes);
+  app.use('/api/playlists', playlistRoutes);
+  const container = createAppContainer();
+  app.use('/api/sync', createSyncRouter(container.syncService));
+  app.use('/api/videos', videoRoutes);
+  app.use('/api/dictionary', dictionaryRoutes);
+  app.use('/api/parser', parserRoutes);
+  app.use('/api/events', eventsRoutes);
+  app.use('/api/settings', settingsRoutes);
+  app.use('/api/video-lists', videoListsRoutes);
 
-// 404 for unmatched /api/* routes
-app.use('/api/*', notFoundHandler);
+  app.use('/api/*path', notFoundHandler);
+  app.use(errorHandler);
 
-// Central error handler (must be last)
-app.use(errorHandler);
+  return { app, container };
+}
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  // Start the sync scheduler
-  container.syncService.runScheduler();
-});
-
-export default app;
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  const { app, container } = createApp();
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    container.syncService.runScheduler();
+  });
+}
