@@ -36,13 +36,22 @@ export default function VideoListDetailsPage() {
     { title: 'Artist', dataIndex: 'artist', key: 'artist' },
     { title: 'Group', dataIndex: 'group', key: 'group' },
     { title: 'Duration', dataIndex: 'duration', key: 'duration' },
-    { title: 'Tags', dataIndex: 'tags', key: 'tags', render: (tags: string[]) => tags.map(t => <span key={t}>{t} </span>) }
+    {
+      title: 'Tags',
+      dataIndex: 'tags',
+      key: 'tags',
+      render: (tags: string[]) => tags.map((t) => <span key={t}>{t} </span>),
+    },
   ];
 
   return (
     <div>
       <h1>Video List Details</h1>
-      <VideoListOperations listId={Number(id)} selectedVideoIds={selectedVideoIds} refreshVideos={fetchVideos} />
+      <VideoListOperations
+        listId={Number(id)}
+        selectedVideoIds={selectedVideoIds}
+        refreshVideos={fetchVideos}
+      />
       <Table
         dataSource={videos}
         rowKey="id"

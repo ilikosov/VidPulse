@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { Button, Modal, Input, notification } from 'antd';
-import { createVideoList, addVideosToList, renameVideoList, deleteVideoList } from '../api/videoListsApi';
+import {
+  createVideoList,
+  addVideosToList,
+  renameVideoList,
+  deleteVideoList,
+} from '../api/videoListsApi';
 
 interface VideoListManagerProps {
   selectedVideoIds: number[];
   refreshLists: () => void;
 }
 
-export default function VideoListManager({ selectedVideoIds, refreshLists }: VideoListManagerProps) {
+export default function VideoListManager({
+  selectedVideoIds,
+  refreshLists,
+}: VideoListManagerProps) {
   const [newListModalOpen, setNewListModalOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
 
@@ -29,7 +37,11 @@ export default function VideoListManager({ selectedVideoIds, refreshLists }: Vid
 
   return (
     <>
-      <Button type="primary" onClick={() => setNewListModalOpen(true)} disabled={selectedVideoIds.length === 0}>
+      <Button
+        type="primary"
+        onClick={() => setNewListModalOpen(true)}
+        disabled={selectedVideoIds.length === 0}
+      >
         Create New List
       </Button>
       <Modal
@@ -41,7 +53,7 @@ export default function VideoListManager({ selectedVideoIds, refreshLists }: Vid
         <Input
           placeholder="List name"
           value={newListName}
-          onChange={e => setNewListName(e.target.value)}
+          onChange={(e) => setNewListName(e.target.value)}
         />
       </Modal>
     </>
