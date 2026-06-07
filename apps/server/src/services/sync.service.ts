@@ -5,6 +5,7 @@ import type {
 } from '../interfaces/services';
 import { logger } from '../lib/logger';
 import { createAppContainer } from '../compositionRoot';
+import { config } from '../config';
 
 export class SyncService implements ISyncService {
   constructor(
@@ -16,7 +17,7 @@ export class SyncService implements ISyncService {
     await this.playlistSync.sync();
   }
   runScheduler(): void {
-    const cronTime = process.env.SYNC_CRON_TIME || '0 3 * * *';
+    const cronTime = config.sync.cronTime;
     import('node-cron')
       .then((cron) => {
         cron.schedule(cronTime, async () => {

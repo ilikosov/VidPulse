@@ -1,7 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
+import { config } from '../config';
 
 export function dangerousActionsEnabled(): boolean {
-  return process.env.MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED === 'true';
+  return config.dangerousActionsEnabled;
 }
 
 export function requireDangerousActionsEnabled(_req: Request, res: Response, next: NextFunction) {

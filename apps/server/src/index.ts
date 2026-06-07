@@ -16,6 +16,7 @@ import settingsRoutes from './routes/settings.routes';
 import videoListsRoutes from './routes/video-lists.routes';
 import { createAppContainer } from './compositionRoot';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
+import { config, validateConfig } from './config';
 
 export function createApp() {
   const app = express();
@@ -47,10 +48,10 @@ export function createApp() {
 }
 
 if (require.main === module) {
-  const PORT = process.env.PORT || 3000;
+  validateConfig();
   const { app, container } = createApp();
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  app.listen(config.port, () => {
+    console.log(`Server running on port ${config.port}`);
     container.syncService.runScheduler();
   });
 }

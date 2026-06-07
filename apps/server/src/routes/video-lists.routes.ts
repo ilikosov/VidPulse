@@ -6,6 +6,7 @@ import videoListSchema from '../../schemas/request/video-list.schema.json';
 import videoListVideosSchema from '../../schemas/request/video-list-videos.schema.json';
 import videoListPatchSchema from '../../schemas/request/video-list-patch.schema.json';
 import paramsIdSchema from '../../schemas/request/params-id.schema.json';
+import { config } from '../config';
 
 const router = Router();
 const COLORS = [
@@ -21,7 +22,7 @@ const COLORS = [
   'geekblue',
   'purple',
 ];
-const MAX_VIDEO_LIST_ITEMS = Number(process.env.MAX_VIDEO_LIST_ITEMS || '100');
+const MAX_VIDEO_LIST_ITEMS = config.maxVideoListItems;
 
 async function ensureVideosCanBeAssigned(videoIds: number[], listId?: number) {
   if (videoIds.length === 0) return { ok: true as const };

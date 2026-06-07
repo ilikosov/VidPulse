@@ -3,13 +3,9 @@ import { LRUCache } from 'lru-cache';
 import { logger } from '../lib/logger';
 import type { VideoInfo, VideoDetails } from '../models/youtube.types';
 import { logEvent } from './eventLog.service';
+import { config } from '../config';
 
 const youtube = google.youtube('v3');
-const apiKey = process.env.YOUTUBE_API_KEY;
-
-if (!apiKey) {
-  throw Error('YOUTUBE_API_KEY is not set in environment variables');
-}
 
 const cache = new LRUCache<string, any>({
   max: 500,
@@ -81,12 +77,18 @@ function parseDurationToSeconds(duration?: string): number | undefined {
 }
 
 export class YouTubeService {
+  private get apiKey(): string {
+    const key = config.youtube.apiKey;
+    if (!key) throw new Error('YOUTUBE_API_KEY is not set in environment variables');
+    return key;
+  }
+
   private async logYouTubeCall(
     method: string,
     params: Record<string, unknown>,
     cacheHit: boolean,
   ): Promise<void> {
-    if (process.env.LOG_YOUTUBE_API_CALLS !== 'true') {
+    if (!config.youtube.logApiCalls) {
       return;
     }
 
@@ -168,7 +170,7 @@ export class YouTubeService {
         if (usernameMatch) {
           const username = usernameMatch[1];
           const params = {
-            key: apiKey!,
+            key: this.apiKey,
             forUsername: username,
             part: ['id'],
           };
@@ -193,7 +195,7 @@ export class YouTubeService {
         if (cNameMatch) {
           const customName = cNameMatch[1];
           const params = {
-            key: apiKey!,
+            key: this.apiKey,
             q: customName,
             type: 'channel',
             part: ['snippet'],
@@ -215,7 +217,7 @@ export class YouTubeService {
         if (userMatch) {
           const username = userMatch[1];
           const params = {
-            key: apiKey!,
+            key: this.apiKey,
             forUsername: username,
             part: ['id'],
           };
@@ -253,7 +255,7 @@ export class YouTubeService {
       return cached;
     }
 
-    const params = { key: apiKey!, id: [channelId], part: ['contentDetails'] };
+    const params = { key: this.apiKey, id: [channelId], part: ['contentDetails'] };
     const response = await this.executeYouTubeCall('channels.list', params, () =>
       youtube.channels.list(params),
     );
@@ -290,7 +292,7 @@ export class YouTubeService {
 
       do {
         const playlistParams = {
-          key: apiKey!,
+          key: this.apiKey,
           playlistId: uploadsPlaylistId,
           part: ['snippet'],
           maxResults: 50,
@@ -363,7 +365,7 @@ export class YouTubeService {
 
       do {
         const params = {
-          key: apiKey!,
+          key: this.apiKey,
           playlistId: uploadsPlaylistId,
           part: ['snippet'],
           maxResults: 50,
@@ -422,7 +424,7 @@ export class YouTubeService {
 
       do {
         const params = {
-          key: apiKey!,
+          key: this.apiKey,
           playlistId: playlistId,
           part: ['snippet'],
           maxResults: 50,
@@ -491,7 +493,7 @@ export class YouTubeService {
 
     try {
       const params = {
-        key: apiKey!,
+        key: this.apiKey,
         id: [channelId],
         part: ['snippet'],
       };
@@ -534,7 +536,7 @@ export class YouTubeService {
 
     try {
       const params = {
-        key: apiKey!,
+        key: this.apiKey,
         id: [playlistId],
         part: ['snippet'],
       };
@@ -588,7 +590,7 @@ export class YouTubeService {
 
     try {
       const params = {
-        key: apiKey!,
+        key: this.apiKey,
         id: [videoId],
         part: ['snippet', 'contentDetails', 'status'],
         fields:
