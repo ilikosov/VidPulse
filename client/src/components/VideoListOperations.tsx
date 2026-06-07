@@ -8,7 +8,11 @@ interface VideoListOperationsProps {
   refreshVideos: () => void;
 }
 
-export default function VideoListOperations({ listId, selectedVideoIds, refreshVideos }: VideoListOperationsProps) {
+export default function VideoListOperations({
+  listId,
+  selectedVideoIds,
+  refreshVideos,
+}: VideoListOperationsProps) {
   async function handleOperation(operation: string) {
     if (selectedVideoIds.length === 0) {
       notification.error({ message: 'No videos selected' });
@@ -25,16 +29,32 @@ export default function VideoListOperations({ listId, selectedVideoIds, refreshV
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <Button onClick={() => handleOperation('removeFromList')} disabled={selectedVideoIds.length === 0} style={{ marginRight: 8 }}>
+      <Button
+        onClick={() => handleOperation('removeFromList')}
+        disabled={selectedVideoIds.length === 0}
+        style={{ marginRight: 8 }}
+      >
         Remove from List
       </Button>
-      <Button onClick={() => handleOperation('addTag')} disabled={selectedVideoIds.length === 0} style={{ marginRight: 8 }}>
+      <Button
+        onClick={() => handleOperation('addTag')}
+        disabled={selectedVideoIds.length === 0}
+        style={{ marginRight: 8 }}
+      >
         Add Tag
       </Button>
-      <Button onClick={() => handleOperation('removeTag')} disabled={selectedVideoIds.length === 0} style={{ marginRight: 8 }}>
+      <Button
+        onClick={() => handleOperation('removeTag')}
+        disabled={selectedVideoIds.length === 0}
+        style={{ marginRight: 8 }}
+      >
         Remove Tag
       </Button>
-      <Button onClick={() => handleOperation('confirmDownload')} disabled={selectedVideoIds.length === 0} style={{ marginRight: 8 }}>
+      <Button
+        onClick={() => handleOperation('confirmDownload')}
+        disabled={selectedVideoIds.length === 0}
+        style={{ marginRight: 8 }}
+      >
         Confirm Download
       </Button>
       <Button onClick={() => handleOperation('reparse')} disabled={selectedVideoIds.length === 0}>

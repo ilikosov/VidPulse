@@ -39,7 +39,12 @@ export default function VideoListsPage() {
     { title: 'Artist', dataIndex: 'artist', key: 'artist' },
     { title: 'Group', dataIndex: 'group', key: 'group' },
     { title: 'Duration', dataIndex: 'duration', key: 'duration' },
-    { title: 'Tags', dataIndex: 'tags', key: 'tags', render: (tags: string[]) => tags.map(t => <Tag key={t}>{t}</Tag>) }
+    {
+      title: 'Tags',
+      dataIndex: 'tags',
+      key: 'tags',
+      render: (tags: string[]) => tags.map((t) => <Tag key={t}>{t}</Tag>),
+    },
   ];
 
   return (
@@ -54,8 +59,13 @@ export default function VideoListsPage() {
         })}
         columns={[
           { title: 'Name', dataIndex: 'name', key: 'name' },
-          { title: 'Color', dataIndex: 'color', key: 'color', render: (c: string) => <Tag color={c}>{c}</Tag> },
-          { title: 'Videos Count', dataIndex: 'countVideos', key: 'countVideos' }
+          {
+            title: 'Color',
+            dataIndex: 'color',
+            key: 'color',
+            render: (c: string) => <Tag color={c}>{c}</Tag>,
+          },
+          { title: 'Videos Count', dataIndex: 'countVideos', key: 'countVideos' },
         ]}
       />
       {selectedListId && (
