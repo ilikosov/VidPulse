@@ -20,7 +20,6 @@ acceptance criteria.
 
 ## Migrations & DB hygiene (migrations-review)
 
-- [ ] **TASK-4** (medium) — Remove duplicate indexes on `videos` (superseded by TASK-7 if squashed) — [details](./docs/tasks/task-04-duplicate-indexes.md)
 - [ ] **TASK-5** (medium) — Harden `knexfile.ts` (test DB, FK pragma, prod path) — [details](./docs/tasks/task-05-knexfile-hardening.md)
 - [ ] **TASK-6** (low) — Move seed data out of migrations into `seeds/` — [details](./docs/tasks/task-06-seeds-extraction.md)
 - [ ] **TASK-7** (medium) — Consolidate & harden migrations (squash to a baseline) — [details](./docs/tasks/task-07-migration-robustness.md)
