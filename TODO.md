@@ -34,7 +34,6 @@ acceptance criteria.
 ## Tests (code-review)
 
 - [x] **TASK-15** (high) — Fix the test suite (DB bootstrap, schema drift, real failures) — [details](./docs/tasks/task-15-fix-tests.md)
-- [ ] **TASK-16** (medium) — Fix parser correctness bugs (apostrophe truncation, name split, solo detection) — [details](./docs/tasks/task-16-parser-correctness.md)
 
 ---
 
