@@ -1,3 +1,8 @@
+import { KnexChannelRepository, KnexVideoRepository } from '../../repositories/knex.repositories';
+import { youtubeService } from '../youtube.service';
+import { parseTitle } from '../parser/parser.service';
+import { assignAutoTags } from '../tag.service';
+import { logEvent } from '../eventLog.service';
 import { IChannelRepository, IVideoRepository } from '../../interfaces/repositories';
 import {
   IChannelSyncService,
@@ -73,3 +78,12 @@ export class ChannelSyncService implements IChannelSyncService {
     );
   }
 }
+
+export const channelSyncService = new ChannelSyncService(
+  new KnexChannelRepository(),
+  new KnexVideoRepository(),
+  youtubeService,
+  { parseTitle },
+  { assignAutoTags },
+  { logEvent },
+);

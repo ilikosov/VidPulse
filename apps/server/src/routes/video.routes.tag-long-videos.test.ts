@@ -29,7 +29,7 @@ vi.mock('../services/tag.service', () => ({
 }));
 
 describe('POST /api/videos/batch/tag-long-videos-by-duration', async () => {
-  const { default: router } = await import('./video.routes');
+  const { default: router } = await import('./video');
 
   beforeEach(() => {
     delete process.env.MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED;

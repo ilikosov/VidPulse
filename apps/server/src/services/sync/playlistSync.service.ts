@@ -1,3 +1,8 @@
+import { KnexPlaylistRepository, KnexVideoRepository } from '../../repositories/knex.repositories';
+import { youtubeService } from '../youtube.service';
+import { parseTitle } from '../parser/parser.service';
+import { assignAutoTags } from '../tag.service';
+import { logEvent } from '../eventLog.service';
 import { IPlaylistRepository, IVideoRepository } from '../../interfaces/repositories';
 import {
   IEventLogger,
@@ -64,3 +69,12 @@ export class PlaylistSyncService implements IPlaylistSyncService {
     );
   }
 }
+
+export const playlistSyncService = new PlaylistSyncService(
+  new KnexPlaylistRepository(),
+  new KnexVideoRepository(),
+  youtubeService,
+  { parseTitle },
+  { assignAutoTags },
+  { logEvent },
+);

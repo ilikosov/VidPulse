@@ -1,5 +1,11 @@
 import knex from '../../db';
-import { dictionaryService } from '../dictionary.service';
+import {
+  groupService,
+  artistService,
+  songService,
+  eventService,
+  aliasService,
+} from '../dictionary';
 import { ParsedMetadata, ParserModule } from './parser.types';
 
 function levenshteinDistance(str1: string, str2: string): number {
@@ -122,11 +128,11 @@ export class DictionaryModule implements ParserModule {
     if (this.dictionary) return this.dictionary;
 
     const [groups, artists, songs, events, aliases] = await Promise.all([
-      dictionaryService.getAllGroups(),
-      dictionaryService.getAllArtists(),
-      dictionaryService.getAllSongs(),
-      dictionaryService.getAllEvents(),
-      dictionaryService.getAllAliases(),
+      groupService.getAllGroups(),
+      artistService.getAllArtists(),
+      songService.getAllSongs(),
+      eventService.getAllEvents(),
+      aliasService.getAllAliases(),
     ]);
 
     const artistMap: Record<string, string[]> = {};
@@ -142,7 +148,7 @@ export class DictionaryModule implements ParserModule {
       if (!normalized) {
         continue;
       }
-      const resolved = await dictionaryService.resolveAlias(alias.entity_type, alias.alias);
+      const resolved = await aliasService.resolveAlias(alias.entity_type, alias.alias);
       if (!resolved?.name) {
         continue;
       }

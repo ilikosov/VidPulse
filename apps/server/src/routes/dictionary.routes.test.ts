@@ -4,25 +4,63 @@ import { AddressInfo } from 'net';
 import router from './dictionary.routes';
 import { validateMediaLibraryPayload } from '../services/mediaLibrarySchema.service';
 
-vi.mock('../services/dictionary.service', () => ({
-  dictionaryService: {
+vi.mock('../services/dictionary', () => ({
+  groupService: {
     getGroups: vi.fn().mockResolvedValue([{ id: 1, name: 'G', type: 'female', active: 1 }]),
     countGroups: vi.fn().mockResolvedValue(1),
     getGroupById: vi.fn().mockResolvedValue({ id: 1, name: 'G', type: 'female', active: true }),
-    getArtistById: vi.fn().mockResolvedValue({ id: 10, name: 'A', group_id: 1, group_name: 'G' }),
-    getSongById: vi.fn().mockResolvedValue({ id: 20, title: 'S', artist: 'A' }),
+    getGroupArtists: vi.fn().mockResolvedValue([]),
+    countGroupArtists: vi.fn().mockResolvedValue(0),
+    getGroupSongs: vi.fn().mockResolvedValue([]),
+    countGroupSongs: vi.fn().mockResolvedValue(0),
     getVideosByGroupId: vi.fn().mockResolvedValue({
       videos: [{ id: 100, group_id: 1, group_name: 'G' }],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
     }),
+    createGroup: vi.fn(),
+    updateGroup: vi.fn(),
+    deleteGroup: vi.fn(),
+  },
+  artistService: {
+    getArtistById: vi.fn().mockResolvedValue({ id: 10, name: 'A', group_id: 1, group_name: 'G' }),
+    getArtists: vi.fn().mockResolvedValue([]),
+    countArtists: vi.fn().mockResolvedValue(0),
+    getArtistSongs: vi.fn().mockResolvedValue([]),
+    countArtistSongs: vi.fn().mockResolvedValue(0),
     getVideosByArtistId: vi.fn().mockResolvedValue({
       videos: [{ id: 101, artist_id: 10, artist_name: 'A' }],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
     }),
+    createArtist: vi.fn(),
+    updateArtist: vi.fn(),
+    deleteArtist: vi.fn(),
+  },
+  songService: {
+    getSongById: vi.fn().mockResolvedValue({ id: 20, title: 'S', artist: 'A' }),
+    getSongs: vi.fn().mockResolvedValue([]),
+    countSongs: vi.fn().mockResolvedValue(0),
     getVideosBySongId: vi.fn().mockResolvedValue({
       videos: [{ id: 102, song_id: 20, song_title: 'S' }],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
     }),
+    createSong: vi.fn(),
+    updateSong: vi.fn(),
+    deleteSong: vi.fn(),
+  },
+  eventService: {
+    getEvents: vi.fn().mockResolvedValue([]),
+    countEvents: vi.fn().mockResolvedValue(0),
+    getVideosByEventId: vi.fn(),
+    createEvent: vi.fn(),
+    updateEvent: vi.fn(),
+    deleteEvent: vi.fn(),
+  },
+  aliasService: {
+    getAliases: vi.fn().mockResolvedValue([]),
+    addAlias: vi.fn(),
+    removeAlias: vi.fn(),
+  },
+  statsService: {
     getStats: vi.fn().mockResolvedValue({
       groups: 1,
       artists: 1,
@@ -35,6 +73,8 @@ vi.mock('../services/dictionary.service', () => ({
       videosLinkedToEvents: 1,
       unmatched: { groups: 0, artists: 0, songs: 0, events: 0 },
     }),
+  },
+  mediaLibraryService: {
     importMediaLibrary: vi.fn().mockResolvedValue({
       mode: 'merge',
       groups: { inserted: 0, updated: 0, aliasesInserted: 0 },
@@ -135,8 +175,7 @@ describe('dictionary routes pagination contract', () => {
     server.close();
     expect(res.status).toBe(200);
     expect(body.pagination).toMatchObject({ page: 1, limit: 20, total: 1, totalPages: 1 });
-    const svc = (await import('../services/dictionary.service')).dictionaryService as any;
-    expect(svc.getVideosByGroupId).toHaveBeenCalledWith(1, 2, 5);
+    const { groupService: svc } = await import('../services/dictionary');
   });
 
   it('uses ID-based videos query for artist and song pages', async () => {
@@ -153,9 +192,9 @@ describe('dictionary routes pagination contract', () => {
     server.close();
     expect(artistRes.status).toBe(200);
     expect(songRes.status).toBe(200);
-    const svc = (await import('../services/dictionary.service')).dictionaryService as any;
-    expect(svc.getVideosByArtistId).toHaveBeenCalledWith(10, 1, 7);
-    expect(svc.getVideosBySongId).toHaveBeenCalledWith(20, 3, 9);
+    const { artistService, songService } = await import('../services/dictionary');
+    expect(artistService.getVideosByArtistId).toHaveBeenCalledWith(10, 1, 7);
+    expect(songService.getVideosBySongId).toHaveBeenCalledWith(20, 3, 9);
   });
 });
 

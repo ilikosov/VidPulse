@@ -52,7 +52,7 @@ vi.mock('../db', () => ({
   default: ((tableName: keyof typeof tables) => createQuery(tableName)) as any,
 }));
 
-import { DictionaryService } from './dictionary.service';
+import { MediaLibraryService } from './dictionary';
 
 describe('DictionaryService.importRecords aliases support', () => {
   beforeEach(() => {
@@ -60,7 +60,7 @@ describe('DictionaryService.importRecords aliases support', () => {
   });
 
   it('imports aliases by canonical entity name and prevents case-insensitive duplicates', async () => {
-    const service = new DictionaryService();
+    const service = new MediaLibraryService();
     const summary = await service.importRecords([
       { type: 'aliases', entity_type: 'group', entity_name: 'le sserafim', alias: '르세라핌' },
       { type: 'aliases', entity_type: 'group', entity_name: 'LE SSERAFIM', alias: '르세라핌' },
