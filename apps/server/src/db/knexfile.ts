@@ -4,9 +4,15 @@ import path from 'path';
 const SEEDS_DIR = path.resolve(__dirname, '../../seeds');
 const MIGRATIONS_DIR = path.resolve(__dirname, '../../migrations');
 
-const DEV_DB = process.env.DATABASE_PATH ?? path.resolve(__dirname, './dev.sqlite3');
-const TEST_DB = process.env.TEST_DATABASE_PATH ?? path.resolve(__dirname, './dev.test.sqlite3');
-const PROD_DB = process.env.DATABASE_PATH ?? path.resolve(__dirname, './prod.sqlite3');
+if (!process.env.DATABASE_PATH) {
+  throw new Error('Missing required env var: DATABASE_PATH');
+}
+if (!process.env.TEST_DATABASE_PATH) {
+  throw new Error('Missing required env var: TEST_DATABASE_PATH');
+}
+const DEV_DB = process.env.DATABASE_PATH;
+const TEST_DB = process.env.TEST_DATABASE_PATH;
+const PROD_DB = process.env.DATABASE_PATH;
 
 const sharedPool = {
   afterCreate: (conn: any, done: any) => {
