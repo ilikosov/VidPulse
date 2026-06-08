@@ -7,7 +7,10 @@ import { logEvent } from './eventLog.service';
 import { config } from '../config';
 
 if (config.youtube.proxy) {
-  google.options({ agent: new HttpsProxyAgent(config.youtube.proxy) });
+  const proxyUrl = new URL(config.youtube.proxy);
+  if (config.youtube.proxyUser) proxyUrl.username = config.youtube.proxyUser;
+  if (config.youtube.proxyPass) proxyUrl.password = config.youtube.proxyPass;
+  google.options({ agent: new HttpsProxyAgent(proxyUrl.toString()) });
 }
 
 const youtube = google.youtube('v3');
