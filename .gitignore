@@ -6,6 +6,7 @@ node_modules/
 .env
 .env.local
 *.env.*
+!apps/server/.env.test
 
 # Build artifacts
 dist/
