@@ -653,15 +653,19 @@ export async function checkYouTubeApiConnectivity(): Promise<{ ok: boolean; erro
   if (!config.youtube.apiKey) {
     return { ok: false, error: 'YOUTUBE_API_KEY is not set' };
   }
+  const timeoutMs = config.youtube.connectivityTimeoutMs;
   try {
     const params = { key: config.youtube.apiKey, part: ['id'], id: ['UC_x5XG1OV2P6uZZ5FSM9Ttw'] };
-    await youtube.channels.list(params);
+    await youtube.channels.list(params, { timeout: timeoutMs });
     return { ok: true };
   } catch (error: any) {
     const status = error?.response?.status ?? error?.code;
     // 403 means the API is reachable (quota/auth issue on our end, not a network problem)
     if (status === 403) return { ok: true };
-    const message: string = error?.message ?? String(error);
+    const isTimeout = error?.code === 'ETIMEDOUT' || error?.message?.includes('timeout');
+    const message: string = isTimeout
+      ? `Превышено время ожидания (${timeoutMs} мс)`
+      : (error?.message ?? String(error));
     return { ok: false, error: message };
   }
 }
