@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { Knex } from 'knex';
 
 const { testKnex } = vi.hoisted(() => {
   const Knex = require('knex');
@@ -47,50 +48,50 @@ const parserWithDictionary = new ParserService(
 );
 
 beforeAll(async () => {
-  await testKnex.schema.createTable('dictionary_groups', (t) => {
+  await testKnex.schema.createTable('dictionary_groups', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();
     t.string('name').notNullable();
     t.string('type');
     t.boolean('active').defaultTo(true);
   });
-  await testKnex.schema.createTable('dictionary_artists', (t) => {
+  await testKnex.schema.createTable('dictionary_artists', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();
     t.string('name').notNullable();
     t.integer('group_id').unsigned();
   });
-  await testKnex.schema.createTable('dictionary_songs', (t) => {
+  await testKnex.schema.createTable('dictionary_songs', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();
     t.string('title').notNullable();
     t.string('artist');
   });
-  await testKnex.schema.createTable('dictionary_song_groups', (t) => {
+  await testKnex.schema.createTable('dictionary_song_groups', (t: Knex.CreateTableBuilder) => {
     t.integer('song_id').notNullable();
     t.integer('group_id').notNullable();
     t.primary(['song_id', 'group_id']);
   });
-  await testKnex.schema.createTable('dictionary_song_artists', (t) => {
+  await testKnex.schema.createTable('dictionary_song_artists', (t: Knex.CreateTableBuilder) => {
     t.integer('song_id').notNullable();
     t.integer('artist_id').notNullable();
     t.primary(['song_id', 'artist_id']);
   });
-  await testKnex.schema.createTable('dictionary_events', (t) => {
+  await testKnex.schema.createTable('dictionary_events', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();
     t.string('name').notNullable();
   });
-  await testKnex.schema.createTable('dictionary_aliases', (t) => {
+  await testKnex.schema.createTable('dictionary_aliases', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();
     t.string('entity_type').notNullable();
     t.integer('entity_id').notNullable();
     t.string('alias').notNullable();
   });
-  await testKnex.schema.createTable('videos', (t) => {
+  await testKnex.schema.createTable('videos', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();
     t.integer('group_id');
     t.string('group_name');
     t.integer('song_id');
     t.string('song_title');
   });
-  await testKnex.schema.createTable('video_songs', (t) => {
+  await testKnex.schema.createTable('video_songs', (t: Knex.CreateTableBuilder) => {
     t.integer('video_id').notNullable();
     t.integer('song_id').notNullable();
     t.primary(['video_id', 'song_id']);

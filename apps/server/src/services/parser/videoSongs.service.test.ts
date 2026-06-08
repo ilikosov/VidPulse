@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Knex } from 'knex';
 const { testKnex } = vi.hoisted(() => {
   const Knex = require('knex');
   const testKnex = Knex({
@@ -14,20 +15,20 @@ vi.mock('../../db', () => ({ default: testKnex }));
 import { syncVideoSongs, getVideoSongsMap } from './videoSongs.service';
 
 beforeAll(async () => {
-  await testKnex.schema.createTable('videos', (t) => {
+  await testKnex.schema.createTable('videos', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();
   });
-  await testKnex.schema.createTable('dictionary_songs', (t) => {
+  await testKnex.schema.createTable('dictionary_songs', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();
     t.string('title').notNullable();
   });
-  await testKnex.schema.createTable('dictionary_aliases', (t) => {
+  await testKnex.schema.createTable('dictionary_aliases', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();
     t.string('entity_type').notNullable();
     t.integer('entity_id').notNullable();
     t.string('alias').notNullable();
   });
-  await testKnex.schema.createTable('video_songs', (t) => {
+  await testKnex.schema.createTable('video_songs', (t: Knex.CreateTableBuilder) => {
     t.integer('video_id').notNullable();
     t.integer('position').notNullable();
     t.text('raw_title').notNullable();
@@ -85,7 +86,7 @@ describe('syncVideoSongs', () => {
     await syncVideoSongs(42, undefined, ['ASAP', 'BEAUTIFUL MONSTER']);
 
     const rows = await testKnex('video_songs').where('video_id', 42).orderBy('position');
-    expect(rows.map((r) => r.raw_title)).toEqual(['ASAP', 'BEAUTIFUL MONSTER']);
+    expect(rows.map((r: Record<string, unknown>) => r.raw_title)).toEqual(['ASAP', 'BEAUTIFUL MONSTER']);
   });
 
   it('removes all rows when the new set is empty', async () => {
@@ -95,7 +96,7 @@ describe('syncVideoSongs', () => {
   });
 
   it('scopes writes to a passed transaction', async () => {
-    await testKnex.transaction(async (trx) => {
+    await testKnex.transaction(async (trx: Knex.Transaction) => {
       await syncVideoSongs(7, undefined, ['Bubble'], trx);
     });
     expect(await testKnex('video_songs').where('video_id', 7)).toHaveLength(1);
