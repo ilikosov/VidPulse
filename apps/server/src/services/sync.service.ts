@@ -4,7 +4,8 @@ import type {
   ISyncService,
 } from '../interfaces/services';
 import { logger } from '../lib/logger';
-import { createAppContainer } from '../compositionRoot';
+import { channelSyncService } from './sync/channelSync.service';
+import { playlistSyncService } from './sync/playlistSync.service';
 import { config } from '../config';
 
 export class SyncService implements ISyncService {
@@ -33,12 +34,4 @@ export class SyncService implements ISyncService {
   }
 }
 
-export async function syncChannels(): Promise<void> {
-  await createAppContainer().channelSync.sync();
-}
-export async function syncPlaylists(): Promise<void> {
-  await createAppContainer().playlistSync.sync();
-}
-export function runScheduler(): void {
-  createAppContainer().syncService.runScheduler();
-}
+export const syncService = new SyncService(channelSyncService, playlistSyncService);

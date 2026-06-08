@@ -141,7 +141,7 @@ const { state, mockedKnex, ids } = vi.hoisted(() => {
 
 vi.mock('../db', () => ({ default: mockedKnex }));
 
-import { DictionaryService } from './dictionary.service';
+import { MediaLibraryService } from './dictionary';
 
 describe('DictionaryService.importMediaLibrary', () => {
   beforeEach(() => {
@@ -160,7 +160,7 @@ describe('DictionaryService.importMediaLibrary', () => {
     ids.dictionary_artist_memberships = 0;
   });
   it('imports group-level songs and creates song-group links', async () => {
-    const service = new DictionaryService();
+    const service = new MediaLibraryService();
     await service.importMediaLibrary({
       mode: 'merge',
       groups: [{ name: 'ITZY', type: 'female', songs: [{ title: 'LOCO' }] }],
@@ -175,7 +175,7 @@ describe('DictionaryService.importMediaLibrary', () => {
   });
 
   it('imports solo artist songs and creates song-artist links', async () => {
-    const service = new DictionaryService();
+    const service = new MediaLibraryService();
     await service.importMediaLibrary({
       mode: 'merge',
       soloArtists: [{ name: 'IU', songs: [{ title: 'Palette' }] }],
@@ -190,7 +190,7 @@ describe('DictionaryService.importMediaLibrary', () => {
   });
 
   it('imports group -> artist -> song and creates membership without KnexTimeoutError', async () => {
-    const service = new DictionaryService();
+    const service = new MediaLibraryService();
 
     const result = await service.importMediaLibrary({
       mode: 'merge',
@@ -225,7 +225,7 @@ describe('DictionaryService.importMediaLibrary', () => {
   });
 
   it('imports song aliases and avoids duplicates on repeated import', async () => {
-    const service = new DictionaryService();
+    const service = new MediaLibraryService();
     const payload = {
       mode: 'merge',
       groups: [
@@ -265,7 +265,7 @@ describe('DictionaryService.importMediaLibrary', () => {
   });
 
   it('imports aliases for group, artist, song and event and skips invalid aliases', async () => {
-    const service = new DictionaryService();
+    const service = new MediaLibraryService();
     const payload = {
       version: 1,
       mode: 'merge',
@@ -322,7 +322,7 @@ describe('DictionaryService.importMediaLibrary', () => {
   });
 
   it('imports media-library json end-to-end with nested aliases', async () => {
-    const service = new DictionaryService();
+    const service = new MediaLibraryService();
     await service.importMediaLibrary({
       version: 1,
       mode: 'merge',

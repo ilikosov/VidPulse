@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import express from 'express';
 import { AddressInfo } from 'net';
-import router from './video.routes';
+import router from './video';
 
 // Runs against the dedicated, migrated test DB (see tests/vitest.global-setup.ts).
 // With no videos seeded the endpoint still echoes the requested pagination.

@@ -48,7 +48,7 @@ vi.mock('../services/tag.service', () => ({
 }));
 
 describe('POST /api/videos/batch/tag-shorts-by-duration', async () => {
-  const { default: router } = await import('./video.routes');
+  const { default: router } = await import('./video');
 
   beforeEach(() => {
     state.tagged.clear();

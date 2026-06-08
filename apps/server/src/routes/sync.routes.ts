@@ -1,20 +1,15 @@
 import { Router, Request, Response } from 'express';
-import { logger } from '../lib/logger';
-import type { ISyncService } from '../interfaces/services';
-import { createAppContainer } from '../compositionRoot';
+import { asyncHandler } from '../middleware/asyncHandler';
+import { syncService } from '../services/sync.service';
 
-export function createSyncRouter(syncService: ISyncService): Router {
-  const router = Router();
-  router.post('/trigger', async (_req: Request, res: Response) => {
-    try {
-      await syncService.syncAll();
-      res.json({ message: 'Sync completed successfully' });
-    } catch (error) {
-      logger.error('Error during sync:', error);
-      res.status(500).json({ error: 'Sync failed' });
-    }
-  });
-  return router;
-}
+const router = Router();
 
-export default createSyncRouter(createAppContainer().syncService);
+router.post(
+  '/trigger',
+  asyncHandler(async (_req: Request, res: Response) => {
+    await syncService.syncAll();
+    res.json({ message: 'Sync completed successfully' });
+  }),
+);
+
+export default router;

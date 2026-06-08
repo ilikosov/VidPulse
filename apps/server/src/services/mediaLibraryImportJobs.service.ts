@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { MediaLibraryImportSummary } from './dictionary.service';
+import { MediaLibraryImportSummary } from './dictionary';
 
 export type ImportJobStatus = 'queued' | 'running' | 'completed' | 'failed';
 
