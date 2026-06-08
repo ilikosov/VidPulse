@@ -15,6 +15,7 @@ import eventsRoutes from './routes/events.routes';
 import settingsRoutes from './routes/settings.routes';
 import videoListsRoutes from './routes/video-lists.routes';
 import { syncService } from './services/sync.service';
+import healthRoutes from './routes/health.routes';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 import { config, validateConfig } from './config';
 
@@ -29,6 +30,8 @@ export function createApp() {
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
+
+  app.use('/api/health', healthRoutes);
 
   app.use('/api/channels', channelRoutes);
   app.use('/api/playlists', playlistRoutes);

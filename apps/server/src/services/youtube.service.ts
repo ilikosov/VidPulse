@@ -647,3 +647,21 @@ export class YouTubeService {
 
 // Export singleton instance for sharing across modules
 export const youtubeService = new YouTubeService();
+
+/** Run a lightweight connectivity check against the YouTube API. */
+export async function checkYouTubeApiConnectivity(): Promise<{ ok: boolean; error?: string }> {
+  if (!config.youtube.apiKey) {
+    return { ok: false, error: 'YOUTUBE_API_KEY is not set' };
+  }
+  try {
+    const params = { key: config.youtube.apiKey, part: ['id'], id: ['UC_x5XG1OV2P6uZZ5FSM9Ttw'] };
+    await youtube.channels.list(params);
+    return { ok: true };
+  } catch (error: any) {
+    const status = error?.response?.status ?? error?.code;
+    // 403 means the API is reachable (quota/auth issue on our end, not a network problem)
+    if (status === 403) return { ok: true };
+    const message: string = error?.message ?? String(error);
+    return { ok: false, error: message };
+  }
+}

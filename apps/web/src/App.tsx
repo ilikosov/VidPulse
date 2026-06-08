@@ -1,5 +1,7 @@
-import { Layout, Menu, Typography } from 'antd';
+import { Alert, Button, Layout, Menu, Typography } from 'antd';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { fetchApi } from './api/client';
 import ReviewQueue from './components/ReviewQueue';
 import VideoCard from './components/VideoCard';
 import VideoTable from './components/VideoTable';
@@ -39,8 +41,29 @@ function RedirectEntityDetail({ entity }: { entity: 'groups' | 'artists' | 'song
   return <Navigate to={`/dictionary/${entity}/${id}`} replace />;
 }
 
+type YouTubeHealthState = { ok: boolean | null; error?: string; checking: boolean };
+
+function useYouTubeHealth() {
+  const [state, setState] = useState<YouTubeHealthState>({ ok: null, checking: true });
+
+  const check = useCallback(async () => {
+    setState((s) => ({ ...s, checking: true }));
+    try {
+      const result = await fetchApi<{ ok: boolean; error?: string }>('/health/youtube');
+      setState({ ok: result.ok, error: result.error, checking: false });
+    } catch (e: any) {
+      setState({ ok: false, error: e?.message ?? 'Не удалось связаться с сервером', checking: false });
+    }
+  }, []);
+
+  useEffect(() => { check(); }, [check]);
+
+  return { state, retry: check };
+}
+
 function App() {
   const location = useLocation();
+  const { state: ytHealthState, retry: retryYtHealth } = useYouTubeHealth();
   let selectedKey = location.pathname;
   if (location.pathname.startsWith('/dictionary')) selectedKey = '/dictionary';
   else if (/^\/videos\/[^/]+/.test(location.pathname)) selectedKey = '/videos';
@@ -70,6 +93,20 @@ function App() {
           style={{ minWidth: 640 }}
         />
       </Header>
+      {ytHealthState.ok === false && (
+        <Alert
+          type="error"
+          showIcon
+          banner
+          message="Ошибка подключения к YouTube API"
+          description={ytHealthState.error}
+          action={
+            <Button size="small" onClick={retryYtHealth} loading={ytHealthState.checking}>
+              Повторная проверка
+            </Button>
+          }
+        />
+      )}
       <Content style={{ padding: 24 }}>
         <Routes>
           <Route path="/videos" element={<VideoTable />} />
