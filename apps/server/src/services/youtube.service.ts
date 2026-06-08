@@ -647,3 +647,24 @@ export class YouTubeService {
 
 // Export singleton instance for sharing across modules
 export const youtubeService = new YouTubeService();
+
+/**
+ * Lightweight connectivity check: calls the YouTube API with the configured key.
+ * Logs a warning on failure but does not throw — the server starts regardless.
+ */
+export async function checkYouTubeApiConnectivity(): Promise<void> {
+  if (!config.youtube.apiKey) return;
+  try {
+    const params = { key: config.youtube.apiKey, part: ['id'], id: ['UC_x5XG1OV2P6uZZ5FSM9Ttw'] };
+    await youtube.channels.list(params);
+    logger.info('YouTube API connectivity: OK');
+  } catch (error: any) {
+    const code = error?.response?.status ?? error?.code ?? 'unknown';
+    // 403/quotaExceeded still means the API is reachable
+    if (code === 403) {
+      logger.info('YouTube API connectivity: OK (quota/auth response received)');
+    } else {
+      logger.warn(`YouTube API connectivity check failed (code=${code}): ${error?.message ?? error}`);
+    }
+  }
+}
