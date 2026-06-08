@@ -26,7 +26,7 @@ acceptance criteria.
 ## Code quality (code-review)
 
 - [x] **TASK-9** (medium) — Remove dead code (`parser_new`) & unused dep (`sqlite3`) — [details](./docs/tasks/task-09-remove-dead-code.md)
-- [ ] **TASK-12** (medium) — Consolidate DB access; split god files — [details](./docs/tasks/task-12-consolidate-db-access.md)
+- [x] **TASK-12** (medium) — Consolidate DB access; split god files
 - [x] **TASK-13** (medium) — Standardize request validation (ajv) — [details](./docs/tasks/task-13-request-validation.md)
 
 ## Tests (code-review)
