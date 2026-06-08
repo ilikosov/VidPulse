@@ -1,9 +1,14 @@
 import { google } from 'googleapis';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { LRUCache } from 'lru-cache';
 import { logger } from '../lib/logger';
 import type { VideoInfo, VideoDetails } from '../models/youtube.types';
 import { logEvent } from './eventLog.service';
 import { config } from '../config';
+
+if (config.youtube.proxy) {
+  google.options({ agent: new HttpsProxyAgent(config.youtube.proxy) });
+}
 
 const youtube = google.youtube('v3');
 
