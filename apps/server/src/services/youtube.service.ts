@@ -1,9 +1,17 @@
 import { google } from 'googleapis';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { LRUCache } from 'lru-cache';
 import { logger } from '../lib/logger';
 import type { VideoInfo, VideoDetails } from '../models/youtube.types';
 import { logEvent } from './eventLog.service';
 import { config } from '../config';
+
+if (config.youtube.proxy) {
+  const proxyUrl = new URL(config.youtube.proxy);
+  if (config.youtube.proxyUser) proxyUrl.username = config.youtube.proxyUser;
+  if (config.youtube.proxyPass) proxyUrl.password = config.youtube.proxyPass;
+  google.options({ agent: new HttpsProxyAgent(proxyUrl.toString()) });
+}
 
 const youtube = google.youtube('v3');
 

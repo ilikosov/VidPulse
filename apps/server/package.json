@@ -15,6 +15,8 @@
     "seed": "knex seed:run --knexfile src/db/knexfile.ts"
   },
   "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "better-sqlite3": "^12.9.0",
     "chokidar": "^5.0.0",
     "cors": "^2.8.6",
@@ -24,25 +26,24 @@
     "fs-extra": "^11.3.4",
     "googleapis": "^171.4.0",
     "helmet": "^8.1.0",
+    "https-proxy-agent": "^9.1.0",
     "knex": "^3.2.9",
     "lru-cache": "^11.3.5",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "sharp": "^0.34.5",
-    "yaml": "^2.8.3",
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1"
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.0",
-    "@types/node": "^25.6.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/fs-extra": "^11.0.4",
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.0.0",
+    "@types/node": "^25.6.0",
     "@types/sharp": "^0.31.1",
     "nock": "^14.0.5",
     "nodemon": "^3.1.14",

@@ -21,6 +21,9 @@ export const config = {
   youtube: {
     apiKey: process.env.YOUTUBE_API_KEY ?? null,
     logApiCalls: bool(process.env.LOG_YOUTUBE_API_CALLS, false),
+    proxy: process.env.YOUTUBE_API_PROXY ?? null,
+    proxyUser: process.env.YOUTUBE_API_PROXY_USER ?? null,
+    proxyPass: process.env.YOUTUBE_API_PROXY_PASS ?? null,
   },
 
   sync: {
