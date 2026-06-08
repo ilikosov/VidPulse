@@ -30,3 +30,6 @@ jobs:
 
       - name: Run tests
         run: npm test
+        env:
+          DATABASE_PATH: /tmp/ci-dev.sqlite3
+          TEST_DATABASE_PATH: /tmp/ci-test.sqlite3
