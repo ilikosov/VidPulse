@@ -67,9 +67,9 @@ export const deleteVideoList = (id: number | string): Promise<{ ok: boolean }> =
 export const batchVideoOperation = (
   id: number | string,
   operation: string,
-  videoIds: number[],
+  options?: { videoIds?: number[]; tagName?: string; confirm?: boolean },
 ): Promise<VideoListOperationResponse> => {
-  const payload: VideoListBatchOperationRequest = { operation, videoIds };
+  const payload: VideoListBatchOperationRequest = { operation, ...options };
   return fetchApi<VideoListOperationResponse>(`/video-lists/${id}/batch`, {
     method: 'POST',
     body: JSON.stringify(payload),
