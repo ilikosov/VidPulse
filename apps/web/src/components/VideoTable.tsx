@@ -34,6 +34,7 @@ import {
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
 import { SongLinks } from './SongLinks';
+import AddToListModal from './AddToListModal';
 
 const statusOptions = [
   { value: '', label: 'All' },
@@ -78,6 +79,7 @@ function VideoTable() {
   });
   const [batchTagName, setBatchTagName] = useState('');
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [addToListOpen, setAddToListOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const from = `${location.pathname}${location.search}`;
@@ -431,6 +433,9 @@ function VideoTable() {
           >
             Remove Tag from Selected
           </Button>
+          <Button type="primary" ghost onClick={() => setAddToListOpen(true)}>
+            Add to List
+          </Button>
         </Space>
       ) : null}
 
@@ -504,6 +509,16 @@ function VideoTable() {
           </Form.Item>
         </Form>
       </Modal>
+
+      <AddToListModal
+        open={addToListOpen}
+        onClose={() => setAddToListOpen(false)}
+        videoIds={selectedRowKeys}
+        onSuccess={() => {
+          setSelectedRowKeys([]);
+          void fetchVideos(page, limit, statusFilter, showIgnored);
+        }}
+      />
     </Space>
   );
 }
