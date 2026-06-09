@@ -124,6 +124,7 @@ export interface VideoListEntity {
   id: number;
   name: string;
   color: string;
+  status?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -332,14 +333,18 @@ export interface IVideoListRepository {
         artist: string | null;
         group: string | null;
         duration: number | null;
+        status: string;
         tags: string[];
       }
     >;
   }>;
-  create(data: Pick<VideoListEntity, 'name' | 'color'>): Promise<number>;
+  create(
+    data: Pick<VideoListEntity, 'name' | 'color'> & { status?: string | null },
+  ): Promise<number>;
   update(id: number, data: Partial<VideoListEntity>): Promise<void>;
   delete(id: number): Promise<void>;
   getVideoIds(listId: number): Promise<number[]>;
+  getMemberStatuses(listId: number): Promise<string[]>;
   addVideos(listId: number, videoIds: number[]): Promise<void>;
   removeVideos(listId: number, videoIds: number[]): Promise<void>;
   videoCount(listId: number): Promise<number>;
