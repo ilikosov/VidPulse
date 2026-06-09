@@ -1,0 +1,725 @@
+{
+  "version": 1,
+  "mode": "merge",
+  "groups": [
+    {
+      "name": "BLACKPINK",
+      "type": "female",
+      "active": true,
+      "aliases": ["블랙핑크"],
+      "artists": [
+        {
+          "name": "Jisoo",
+          "aliases": ["김지수"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2016-06-15",
+            "isPrimary": true
+          },
+          "songs": [
+            {
+              "title": "Shut Down",
+              "aliases": []
+            },
+            {
+              "title": "Pink Venom",
+              "aliases": []
+            }
+          ]
+        },
+        {
+          "name": "Jennie",
+          "aliases": ["제니"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2016-06-15",
+            "isPrimary": true
+          },
+          "songs": [
+            {
+              "title": "Shut Down",
+              "aliases": []
+            },
+            {
+              "title": "Pink Venom",
+              "aliases": []
+            }
+          ]
+        },
+        {
+          "name": "Rosé",
+          "aliases": ["로제"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2016-06-15",
+            "isPrimary": true
+          },
+          "songs": [
+            {
+              "title": "Shut Down",
+              "aliases": []
+            },
+            {
+              "title": "Pink Venom",
+              "aliases": []
+            }
+          ]
+        },
+        {
+          "name": "Lisa",
+          "aliases": ["리사"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2016-06-15",
+            "isPrimary": true
+          },
+          "songs": [
+            {
+              "title": "Shut Down",
+              "aliases": []
+            },
+            {
+              "title": "Pink Venom",
+              "aliases": []
+            }
+          ]
+        }
+      ],
+      "songs": [
+        {
+          "title": "Shut Down",
+          "aliases": []
+        },
+        {
+          "title": "Pink Venom",
+          "aliases": []
+        },
+        {
+          "title": "DDU-DU DDU-DU",
+          "aliases": []
+        },
+        {
+          "title": "Kill This Love",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "TWICE",
+      "type": "female",
+      "active": true,
+      "aliases": ["트와이스"],
+      "artists": [
+        {
+          "name": "Nayeon",
+          "aliases": ["나연"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-10-20",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Jeongyeon",
+          "aliases": ["정연"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-10-20",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Momo",
+          "aliases": ["모모"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-10-20",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Sana",
+          "aliases": ["사나"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-10-20",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Jihyo",
+          "aliases": ["지효"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-10-20",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Mina",
+          "aliases": ["미나"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-10-20",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Dahyun",
+          "aliases": ["다현"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-10-20",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Chaeyoung",
+          "aliases": ["채영"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-10-20",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Tzuyu",
+          "aliases": ["쯔위"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-10-20",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": [
+        {
+          "title": "Set Me Free",
+          "aliases": []
+        },
+        {
+          "title": "Set Me Free (Japanese Ver.)",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "NewJeans",
+      "type": "female",
+      "active": true,
+      "aliases": ["뉴진스"],
+      "artists": [
+        {
+          "name": "Hanni",
+          "aliases": ["한니"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2022-08-01",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Danielle",
+          "aliases": ["다니엘"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2022-08-01",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Hype",
+          "aliases": ["해린"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2022-08-01",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Hyein",
+          "aliases": ["혜인"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2022-08-01",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": [
+        {
+          "title": "Attention, attention",
+          "aliases": []
+        },
+        {
+          "title": "Cookie",
+          "aliases": []
+        },
+        {
+          "title": "Super Shy",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "BTS",
+      "type": "male",
+      "active": false,
+      "aliases": ["방탄소년단"],
+      "artists": [
+        {
+          "name": "V",
+          "aliases": ["뷔", "김태형"],
+          "membership": {
+            "activityType": "group",
+            "status": "former",
+            "from": "2013-06-13",
+            "to": "2023-06-13",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Jungkook",
+          "aliases": ["정국"],
+          "membership": {
+            "activityType": "group",
+            "status": "former",
+            "from": "2013-06-13",
+            "to": "2023-06-13",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "RM",
+          "aliases": ["알엠", "김남준"],
+          "membership": {
+            "activityType": "group",
+            "status": "former",
+            "from": "2013-06-13",
+            "to": "2023-06-13",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": [
+        {
+          "title": "Dynamite",
+          "aliases": []
+        },
+        {
+          "title": "Butter",
+          "aliases": []
+        },
+        {
+          "title": "Permission to Dance",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "SEVENTEEN",
+      "type": "male",
+      "active": true,
+      "aliases": ["세븐틴"],
+      "artists": [
+        {
+          "name": "S.Coups",
+          "aliases": ["에스쿱스"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-01-22",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Jeonghan",
+          "aliases": ["정한"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2015-01-22",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": [
+        {
+          "title": "God's Menu",
+          "aliases": []
+        },
+        {
+          "title": "Fearless",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "Stray Kids",
+      "type": "male",
+      "active": true,
+      "aliases": ["스트레이 키즈"],
+      "artists": [
+        {
+          "name": "Bang Chan",
+          "aliases": ["방찬"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2018-03-25",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Felix",
+          "aliases": ["필릭스"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2018-03-25",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": [
+        {
+          "title": "S-Class",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "IVE",
+      "type": "female",
+      "active": true,
+      "aliases": ["아이브"],
+      "artists": [
+        {
+          "name": "Leeseo",
+          "aliases": ["리세오"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2021-12-01",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": [
+        {
+          "title": "Either Way",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "LE SSERAFIM",
+      "type": "female",
+      "active": true,
+      "aliases": ["르세라핌"],
+      "artists": [
+        {
+          "name": "Sakura",
+          "aliases": ["사쿠라"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2022-04-08",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": [
+        {
+          "title": "Unforgiven",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "ENHYPEN",
+      "type": "male",
+      "active": true,
+      "aliases": ["엔하이픈"],
+      "artists": [
+        {
+          "name": "Heeseung",
+          "aliases": ["희승"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2020-11-30",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": [
+        {
+          "title": "XO Tour",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "KARD",
+      "type": "mixed",
+      "active": true,
+      "aliases": ["카드"],
+      "artists": [
+        {
+          "name": "J.Seph",
+          "aliases": ["제이셉"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2016-07-14",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": [
+        {
+          "title": "Dumb Litty",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "ITZY",
+      "type": "female",
+      "active": true,
+      "aliases": ["있지"],
+      "artists": [
+        {
+          "name": "YUNA",
+          "aliases": ["유나"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2019-02-12",
+            "isPrimary": true
+          },
+          "songs": [
+            {
+              "title": "Ice Cream",
+              "aliases": []
+            }
+          ]
+        }
+      ],
+      "songs": []
+    },
+    {
+      "name": "KICKFLIP",
+      "type": "male",
+      "active": true,
+      "aliases": [],
+      "artists": [
+        {
+          "name": "DONGHYEON",
+          "aliases": ["동현"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2023-01-01",
+            "isPrimary": true
+          },
+          "songs": [
+            {
+              "title": "눈에 거슬리고 싶어 (Eye-Poppin')",
+              "aliases": []
+            }
+          ]
+        }
+      ],
+      "songs": []
+    },
+    {
+      "name": "KISS OF LIFE",
+      "type": "female",
+      "active": true,
+      "aliases": [],
+      "artists": [
+        {
+          "name": "HANEUL",
+          "aliases": ["하늘"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2023-06-01",
+            "isPrimary": true
+          },
+          "songs": [
+            {
+              "title": "Who is she",
+              "aliases": []
+            }
+          ]
+        }
+      ],
+      "songs": []
+    }
+  ],
+  "soloArtists": [
+    {
+      "name": "Jennie",
+      "aliases": ["제니"],
+      "membership": {
+        "activityType": "solo",
+        "status": "active",
+        "from": "2023-01-01",
+        "isPrimary": true
+      },
+      "songs": [
+        {
+          "title": "Solo",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "BoA",
+      "aliases": ["보아"],
+      "membership": {
+        "activityType": "solo",
+        "status": "active",
+        "from": "2000-08-25",
+        "isPrimary": true
+      },
+      "songs": [
+        {
+          "title": "Camo",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "SOMI",
+      "aliases": ["소미"],
+      "membership": {
+        "activityType": "solo",
+        "status": "active",
+        "from": "2019-06-13",
+        "isPrimary": true
+      },
+      "songs": [
+        {
+          "title": "Birthday",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "MOONBYUL",
+      "aliases": ["문별"],
+      "membership": {
+        "activityType": "solo",
+        "status": "active",
+        "isPrimary": true
+      },
+      "songs": [
+        {
+          "title": "Hertz",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "DAYOUNG",
+      "aliases": ["다영"],
+      "membership": {
+        "activityType": "solo",
+        "status": "active",
+        "isPrimary": true
+      },
+      "songs": [
+        {
+          "title": "What's a girl to do",
+          "aliases": []
+        }
+      ]
+    },
+    {
+      "name": "DONGHYEON",
+      "aliases": ["동현"],
+      "membership": {
+        "activityType": "solo",
+        "status": "active",
+        "isPrimary": true
+      },
+      "songs": [
+        {
+          "title": "눈에 거슬리고 싶어 (Eye-Poppin')",
+          "aliases": []
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "MCOUNTDOWN",
+      "aliases": ["엠카운트다운"]
+    },
+    {
+      "name": "MUSICCORE",
+      "aliases": ["뮤직코어"]
+    },
+    {
+      "name": "SBS INKIGAYO",
+      "aliases": ["인기가요"]
+    },
+    {
+      "name": "MUSICBANK",
+      "aliases": ["뮤직뱅크"]
+    },
+    {
+      "name": "THE SHOW",
+      "aliases": ["더쇼"]
+    },
+    {
+      "name": "SHOW CHAMPION",
+      "aliases": ["쇼챔피언"]
+    }
+  ]
+}
