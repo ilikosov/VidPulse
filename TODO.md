@@ -21,7 +21,7 @@ acceptance criteria.
 ## Migrations & DB hygiene (migrations-review)
 
 - [x] **TASK-7** (medium) — Consolidate & harden migrations (squash to a baseline)
-- [ ] **TASK-17** (low) — Populate a development seed dataset — [details](./docs/tasks/task-17-seed-dataset.md)
+- [x] **TASK-17** (low) — Populate a development seed dataset
 
 ## Code quality (code-review)
 
