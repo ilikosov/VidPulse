@@ -40,6 +40,12 @@ export default function VideoListsPage() {
     { title: 'Group', dataIndex: 'group', key: 'group' },
     { title: 'Duration', dataIndex: 'duration', key: 'duration' },
     {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status?: string | null) => (status ? <Tag>{status}</Tag> : null),
+    },
+    {
       title: 'Tags',
       dataIndex: 'tags',
       key: 'tags',
@@ -64,6 +70,12 @@ export default function VideoListsPage() {
             dataIndex: 'color',
             key: 'color',
             render: (c: string) => <Tag color={c}>{c}</Tag>,
+          },
+          {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            render: (status?: string | null) => (status ? <Tag color="blue">{status}</Tag> : null),
           },
           { title: 'Videos Count', dataIndex: 'countVideos', key: 'countVideos' },
         ]}

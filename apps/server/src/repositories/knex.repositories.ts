@@ -667,6 +667,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
         artist: string | null;
         group: string | null;
         duration: number | null;
+        status: string;
         tags: string[];
       }
     >;
@@ -684,6 +685,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
         'v.artist_name as artist',
         'v.group_name as `group`',
         'v.duration_seconds as duration',
+        'v.status as status',
         't.name as tag',
       );
     const videos = new Map<
@@ -694,6 +696,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
         artist: string | null;
         group: string | null;
         duration: number | null;
+        status: string;
         tags: string[];
       }
     >();
@@ -705,6 +708,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
           artist: row.artist,
           group: row.group,
           duration: row.duration,
+          status: row.status,
           tags: [],
         });
       if (row.tag) videos.get(row.id)!.tags.push(row.tag);
@@ -712,7 +716,9 @@ export class KnexVideoListRepository implements IVideoListRepository {
     return { list, videos };
   }
 
-  async create(data: Pick<VideoListEntity, 'name' | 'color'>): Promise<number> {
+  async create(
+    data: Pick<VideoListEntity, 'name' | 'color'> & { status?: string | null },
+  ): Promise<number> {
     const result = await knex('video_lists').insert(data).returning('id');
     const inserted = singleResult(result);
     return typeof inserted === 'object' ? inserted.id : inserted;
@@ -729,6 +735,11 @@ export class KnexVideoListRepository implements IVideoListRepository {
   async getVideoIds(listId: number): Promise<number[]> {
     const rows = await knex('videos').where('video_list_id', listId).select('id');
     return rows.map((r: { id: number }) => r.id);
+  }
+
+  async getMemberStatuses(listId: number): Promise<string[]> {
+    const rows = await knex('videos').where('video_list_id', listId).distinct('status');
+    return rows.map((r: { status: string }) => r.status);
   }
 
   async addVideos(listId: number, videoIds: number[]): Promise<void> {

@@ -1,5 +1,10 @@
 # Video Lists API
 
+A video list groups videos that **share a single status**. The list's `status`
+equals the status of its videos (or `null` when the list is empty). Operations on
+a list are applied to **all** its videos so the list advances through the pipeline
+as a unit.
+
 ## Endpoints
 
 ### Create List
@@ -21,7 +26,8 @@
 
 **GET /api/video-lists**
 
-- Response: array of lists `{id, name, color, countVideos}`
+- Response: array of lists `{id, name, color, status, countVideos}`
+  - `status` is the shared status of the list's videos, or `null` when empty/mixed
 
 ### Get List Details
 
@@ -42,7 +48,9 @@
   ```
 - Response:
   - `200 OK` with summary
-  - `409 Conflict` if any video already in another list or list limit exceeded
+  - `409 Conflict` if any video already in another list, list limit exceeded, or the
+    video's status differs from the list's status (all videos in a list must share
+    one status; an empty list adopts the status of the first videos added)
 
 ### Remove Video from List
 
@@ -79,12 +87,27 @@
 
 **POST /api/video-lists/:id/batch**
 
+Operations are applied to the **whole list** so it stays homogeneous and advances
+its status as a unit. The list `status` is recomputed and returned afterwards.
+
 - Request:
+
   ```json
   {
-    "operation": "removeFromList | addTag | removeTag | confirmDownload | reparse",
+    "operation": "confirmDownload | complete | ignore | addTag | removeTag | removeFromList",
+    "tagName": "fancam",
+    "confirm": false,
     "videoIds": [1, 2, 3]
   }
   ```
-- Response: summary of operation results
-- Confirmation modal required only for operations affecting video visibility (e.g., adding `shorts` or `private` tags)
+
+  - `confirmDownload` (`new → downloaded`), `complete`
+    (`thumbnails_generated|ready_for_upload → completed`), `ignore` (`→ ignored`)
+    apply to every video in the list; `videoIds` is ignored for these.
+  - `addTag` / `removeTag` require `tagName`; `confirm: true` is needed for protected
+    tags (`shorts`, `long_video`, `private`). Tags don't change status.
+  - `removeFromList` detaches `videoIds` from the list (or the whole list if omitted).
+
+- Response: `BatchResult`-style summary `{operation, processed, succeeded, failed, errors, status}`
+- Note: `reparse` / `resync` are not exposed at the list level yet — they can split a
+  list's status (e.g. `needs_review` vs `new`) and break the single-status invariant.

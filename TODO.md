@@ -33,6 +33,13 @@ acceptance criteria.
 
 - [x] **TASK-15** (high) — Fix the test suite (DB bootstrap, schema drift, real failures) — [details](./docs/tasks/task-15-fix-tests.md)
 
+## Features
+
+- [ ] **TASK-20** (low) — List-level `reparse` / `resync`. These re-parse titles and can
+      split a list's status (`needs_review` vs `new`), breaking the single-status invariant.
+      Decide a UX (e.g. re-bucket diverged videos out of the list, or relax the invariant for
+      this op) before exposing them in `videoListService.batchOperation`.
+
 ---
 
 > **Background docs.** Findings behind TASK-4…7 → [`docs/migrations-review.md`](./docs/migrations-review.md);

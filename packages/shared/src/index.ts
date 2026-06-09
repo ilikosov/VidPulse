@@ -305,6 +305,8 @@ export interface VideoListSummary {
   id: number;
   name: string;
   color: string;
+  /** Shared status of the videos in the list; null when the list is empty or mixed. */
+  status?: string | null;
   countVideos: number;
   created_at?: string;
   updated_at?: string;
@@ -316,6 +318,7 @@ export interface VideoListVideo {
   artist: string | null;
   group: string | null;
   duration: number | null;
+  status?: string | null;
   tags: string[];
 }
 
@@ -338,7 +341,12 @@ export interface RenameVideoListRequest {
 
 export interface VideoListBatchOperationRequest {
   operation: string;
-  videoIds: number[];
+  /** Optional: only used by removeFromList; status operations apply to the whole list. */
+  videoIds?: number[];
+  /** Required for addTag / removeTag. */
+  tagName?: string;
+  /** Required to apply protected tags (shorts, long_video, private). */
+  confirm?: boolean;
 }
 
 export interface VideoListOperationResponse {
@@ -346,4 +354,8 @@ export interface VideoListOperationResponse {
   processed: number;
   succeeded?: number;
   skipped?: number;
+  failed?: number;
+  errors?: Array<{ videoId: number; error: string }>;
+  /** List status after the operation; null when empty or mixed. */
+  status?: string | null;
 }

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Button, notification } from 'antd';
+import React, { useState } from 'react';
+import { Button, Input, Modal, Space, notification } from 'antd';
 import { batchVideoOperation } from '../api/videoListsApi';
 
 interface VideoListOperationsProps {
@@ -8,18 +8,19 @@ interface VideoListOperationsProps {
   refreshVideos: () => void;
 }
 
+type TagMode = 'addTag' | 'removeTag';
+
 export default function VideoListOperations({
   listId,
   selectedVideoIds,
   refreshVideos,
 }: VideoListOperationsProps) {
-  async function handleOperation(operation: string) {
-    if (selectedVideoIds.length === 0) {
-      notification.error({ message: 'No videos selected' });
-      return;
-    }
+  const [tagModal, setTagModal] = useState<TagMode | null>(null);
+  const [tagName, setTagName] = useState('');
+
+  async function run(operation: string, options?: { videoIds?: number[]; tagName?: string }) {
     try {
-      await batchVideoOperation(listId, operation, selectedVideoIds);
+      await batchVideoOperation(listId, operation, options);
       notification.success({ message: `Operation ${operation} applied` });
       refreshVideos();
     } catch (err: any) {
@@ -27,39 +28,54 @@ export default function VideoListOperations({
     }
   }
 
+  // Status operations apply to the whole list, so it moves through the pipeline as a unit.
+  const handleStatusOp = (operation: string) => run(operation);
+
+  const handleRemoveFromList = () => {
+    if (selectedVideoIds.length === 0) {
+      notification.error({ message: 'No videos selected' });
+      return;
+    }
+    run('removeFromList', { videoIds: selectedVideoIds });
+  };
+
+  const handleTagConfirm = async () => {
+    if (!tagName.trim() || !tagModal) return;
+    await run(tagModal, { tagName: tagName.trim() });
+    setTagModal(null);
+    setTagName('');
+  };
+
   return (
     <div style={{ marginBottom: 16 }}>
-      <Button
-        onClick={() => handleOperation('removeFromList')}
-        disabled={selectedVideoIds.length === 0}
-        style={{ marginRight: 8 }}
+      <Space wrap>
+        <Button onClick={() => handleStatusOp('confirmDownload')}>Confirm Download</Button>
+        <Button onClick={() => handleStatusOp('complete')}>Complete</Button>
+        <Button onClick={() => handleStatusOp('ignore')}>Ignore</Button>
+        <Button onClick={() => setTagModal('addTag')}>Add Tag</Button>
+        <Button onClick={() => setTagModal('removeTag')}>Remove Tag</Button>
+        <Button danger onClick={handleRemoveFromList} disabled={selectedVideoIds.length === 0}>
+          Remove from List
+        </Button>
+      </Space>
+
+      <Modal
+        title={tagModal === 'addTag' ? 'Add tag to all videos' : 'Remove tag from all videos'}
+        open={tagModal !== null}
+        onOk={handleTagConfirm}
+        onCancel={() => {
+          setTagModal(null);
+          setTagName('');
+        }}
+        okButtonProps={{ disabled: !tagName.trim() }}
       >
-        Remove from List
-      </Button>
-      <Button
-        onClick={() => handleOperation('addTag')}
-        disabled={selectedVideoIds.length === 0}
-        style={{ marginRight: 8 }}
-      >
-        Add Tag
-      </Button>
-      <Button
-        onClick={() => handleOperation('removeTag')}
-        disabled={selectedVideoIds.length === 0}
-        style={{ marginRight: 8 }}
-      >
-        Remove Tag
-      </Button>
-      <Button
-        onClick={() => handleOperation('confirmDownload')}
-        disabled={selectedVideoIds.length === 0}
-        style={{ marginRight: 8 }}
-      >
-        Confirm Download
-      </Button>
-      <Button onClick={() => handleOperation('reparse')} disabled={selectedVideoIds.length === 0}>
-        Reparse
-      </Button>
+        <Input
+          placeholder="Tag name"
+          value={tagName}
+          onChange={(e) => setTagName(e.target.value)}
+          onPressEnter={handleTagConfirm}
+        />
+      </Modal>
     </div>
   );
 }

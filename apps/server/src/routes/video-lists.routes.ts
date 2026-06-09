@@ -87,7 +87,9 @@ router.post(
     const id = Number(req.params.id);
     const operation = req.body?.operation;
     const videoIds = req.body?.videoIds;
-    const result = await videoListService.batchOperation(id, operation, videoIds);
+    const tagName = req.body?.tagName;
+    const confirm = req.body?.confirm;
+    const result = await videoListService.batchOperation(id, operation, videoIds, tagName, confirm);
     res.json(result);
   }),
 );
