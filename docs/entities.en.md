@@ -170,15 +170,17 @@ Snapshot of finalized metadata per video, used as ML training data.
 
 ### `video_lists`
 
-User-defined collections of videos.
+User-defined collections of videos. All videos in a list share one status, and the
+list's `status` mirrors it (NULL when empty); list operations apply to the whole list.
 
-| Column       | Type      | Notes          |
-| ------------ | --------- | -------------- |
-| `id` 🔑      | INTEGER   | auto-increment |
-| `name` \*    | TEXT      |                |
-| `color` \*   | TEXT      | _(unique)_     |
-| `created_at` | TIMESTAMP | default now    |
-| `updated_at` | TIMESTAMP | default now    |
+| Column       | Type      | Notes                                |
+| ------------ | --------- | ------------------------------------ |
+| `id` 🔑      | INTEGER   | auto-increment                       |
+| `name` \*    | TEXT      |                                      |
+| `color` \*   | TEXT      | _(unique)_                           |
+| `status`     | TEXT      | shared video status; NULL when empty |
+| `created_at` | TIMESTAMP | default now                          |
+| `updated_at` | TIMESTAMP | default now                          |
 
 ### `tags`
 
