@@ -24,13 +24,22 @@ export default async function setup() {
   // Calling knex.migrate.latest() in-process relies on the runtime already
   // handling `.ts` requires, which fails under a clean `npm ci` on CI
   // (SyntaxError: Unexpected token '{').
+  // knex CLI changes cwd to the knexfile directory, so relative DATABASE_PATH
+  // values break. Resolve to absolute paths before passing to the child process.
+  const absEnv = {
+    ...process.env,
+    NODE_ENV: 'test',
+    DATABASE_PATH: path.resolve(process.env.DATABASE_PATH!),
+    TEST_DATABASE_PATH: path.resolve(process.env.TEST_DATABASE_PATH!),
+  };
+
   execFileSync('npx', ['knex', 'migrate:latest', '--knexfile', 'src/db/knexfile.ts'], {
     stdio: 'inherit',
-    env: { ...process.env, NODE_ENV: 'test' },
+    env: absEnv,
   });
 
   execFileSync('npx', ['knex', 'seed:run', '--knexfile', 'src/db/knexfile.ts'], {
     stdio: 'inherit',
-    env: { ...process.env, NODE_ENV: 'test' },
+    env: absEnv,
   });
 }
