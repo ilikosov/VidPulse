@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Tag, notification } from 'antd';
-import { getVideoLists } from '../api/videoListsApi';
+import { Button, Input, Modal, Space, Table, Tag, notification } from 'antd';
+import { createVideoList, getVideoLists } from '../api/videoListsApi';
 import type { VideoListSummary } from '../api/videoListsApi';
 
 export default function VideoListsPage() {
   const navigate = useNavigate();
   const [lists, setLists] = useState<VideoListSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     fetchLists();
@@ -22,6 +25,25 @@ export default function VideoListsPage() {
       notification.error({ message: 'Failed to fetch video lists' });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCreate() {
+    if (!newName.trim()) {
+      notification.error({ message: 'Please enter a list name' });
+      return;
+    }
+    setCreating(true);
+    try {
+      await createVideoList({ name: newName.trim() });
+      notification.success({ message: `Created list "${newName.trim()}"` });
+      setCreateOpen(false);
+      setNewName('');
+      await fetchLists();
+    } catch (err: any) {
+      notification.error({ message: err?.message || 'Failed to create list' });
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -44,7 +66,12 @@ export default function VideoListsPage() {
 
   return (
     <div>
-      <h1>Video Lists</h1>
+      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h1 style={{ margin: 0 }}>Video Lists</h1>
+        <Button type="primary" onClick={() => setCreateOpen(true)}>
+          + New List
+        </Button>
+      </Space>
       <Table
         dataSource={lists}
         rowKey="id"
@@ -55,6 +82,25 @@ export default function VideoListsPage() {
         })}
         columns={columns}
       />
+
+      <Modal
+        title="Create new list"
+        open={createOpen}
+        onOk={handleCreate}
+        onCancel={() => {
+          setCreateOpen(false);
+          setNewName('');
+        }}
+        confirmLoading={creating}
+        okText="Create"
+      >
+        <Input
+          placeholder="List name"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onPressEnter={handleCreate}
+        />
+      </Modal>
     </div>
   );
 }

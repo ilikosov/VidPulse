@@ -35,6 +35,7 @@ import {
 } from '../api';
 import AutocompleteField from './AutocompleteField';
 import SongTitlesField from './SongTitlesField';
+import AddToListModal from './AddToListModal';
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
 import { getBackPath } from '../utils/navigation';
@@ -116,6 +117,7 @@ function VideoCard() {
   const [llmParsing, setLlmParsing] = useState(false);
   const [reparsing, setReparsing] = useState(false);
   const [resyncing, setResyncing] = useState(false);
+  const [addToListOpen, setAddToListOpen] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [operationLog, setOperationLog] = useState<
     | { type: 'reparse'; log: ParserLog }
@@ -691,6 +693,7 @@ function VideoCard() {
                 <Button onClick={() => void handleLlmParse()} loading={llmParsing}>
                   ✨ LLM Parse Metadata
                 </Button>
+                <Button onClick={() => setAddToListOpen(true)}>Add to list</Button>
               </Space>
             </div>
 
@@ -713,6 +716,13 @@ function VideoCard() {
           />
         ) : null}
       </Card>
+
+      <AddToListModal
+        open={addToListOpen}
+        onClose={() => setAddToListOpen(false)}
+        videoIds={[video.id]}
+        onSuccess={() => void fetchVideo()}
+      />
     </div>
   );
 }
