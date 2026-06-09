@@ -6,10 +6,8 @@ import { fetchApi } from './api/client';
 import ReviewQueue from './components/ReviewQueue';
 import VideoCard from './components/VideoCard';
 import VideoTable from './components/VideoTable';
-import AddVideoPage from './pages/AddVideoPage';
-import ChannelsPage from './pages/ChannelsPage';
 import ChannelPage from './pages/ChannelPage';
-import PlaylistsPage from './pages/PlaylistsPage';
+import SourcesPage from './pages/SourcesPage';
 import EventLogPage from './pages/EventLogPage';
 import SettingsPage from './pages/SettingsPage';
 import DictionaryToolsPage from './pages/DictionaryToolsPage';
@@ -29,9 +27,7 @@ const { Header, Content } = Layout;
 const menuItems = [
   { key: '/videos', label: <Link to="/videos">Videos</Link> },
   { key: '/review', label: <Link to="/review">Review Queue</Link> },
-  { key: '/channels', label: <Link to="/channels">Channels</Link> },
-  { key: '/playlists', label: <Link to="/playlists">Playlists</Link> },
-  { key: '/add-video', label: <Link to="/add-video">Add Video</Link> },
+  { key: '/sources', label: <Link to="/sources">Sources</Link> },
   { key: '/dictionary', label: <Link to="/dictionary/overview">Media Library</Link> },
   { key: '/events', label: <Link to="/events">Activity Log</Link> },
   { key: '/settings', label: <Link to="/settings">Settings</Link> },
@@ -74,8 +70,7 @@ function App() {
   let selectedKey = location.pathname;
   if (location.pathname.startsWith('/dictionary')) selectedKey = '/dictionary';
   else if (/^\/videos\/[^/]+/.test(location.pathname)) selectedKey = '/videos';
-  else if (/^\/channels\/[^/]+/.test(location.pathname)) selectedKey = '/channels';
-  else if (/^\/playlists\/[^/]+/.test(location.pathname)) selectedKey = '/playlists';
+  else if (/^\/channels\/[^/]+/.test(location.pathname)) selectedKey = '/sources';
   else if (!menuItems.some((item) => item.key === selectedKey)) selectedKey = '/videos';
 
   return (
@@ -145,10 +140,8 @@ function App() {
           <Route path="/videos" element={<VideoTable />} />
           <Route path="/videos/:id" element={<VideoCard />} />
           <Route path="/review" element={<ReviewQueue />} />
-          <Route path="/channels" element={<ChannelsPage />} />
+          <Route path="/sources" element={<SourcesPage />} />
           <Route path="/channels/:id" element={<ChannelPage />} />
-          <Route path="/playlists" element={<PlaylistsPage />} />
-          <Route path="/add-video" element={<AddVideoPage />} />
 
           <Route path="/dictionary" element={<MediaLibraryPage />}>
             <Route index element={<Navigate to="overview" replace />} />
