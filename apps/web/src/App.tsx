@@ -1,4 +1,5 @@
-import { Alert, Button, Layout, Menu, Typography } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined } from '@ant-design/icons';
+import { Alert, Button, Layout, Menu, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { fetchApi } from './api/client';
@@ -52,11 +53,17 @@ function useYouTubeHealth() {
       const result = await fetchApi<{ ok: boolean; error?: string }>('/health/youtube');
       setState({ ok: result.ok, error: result.error, checking: false });
     } catch (e: any) {
-      setState({ ok: false, error: e?.message ?? 'Не удалось связаться с сервером', checking: false });
+      setState({
+        ok: false,
+        error: e?.message ?? 'Не удалось связаться с сервером',
+        checking: false,
+      });
     }
   }, []);
 
-  useEffect(() => { check(); }, [check]);
+  useEffect(() => {
+    check();
+  }, [check]);
 
   return { state, retry: check };
 }
@@ -86,12 +93,38 @@ function App() {
         <Typography.Title level={4} style={{ margin: 0, color: '#eb2f96' }}>
           K-pop Archive Manager
         </Typography.Title>
-        <Menu
-          mode="horizontal"
-          selectedKeys={[selectedKey]}
-          items={menuItems}
-          style={{ minWidth: 640 }}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Tooltip
+            title={
+              ytHealthState.ok === false
+                ? ytHealthState.error
+                : ytHealthState.ok === true
+                  ? 'YouTube API доступен'
+                  : 'Проверка...'
+            }
+          >
+            <Button
+              type="text"
+              size="small"
+              icon={
+                ytHealthState.checking ? (
+                  <LoadingOutlined style={{ color: '#8c8c8c' }} />
+                ) : ytHealthState.ok ? (
+                  <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                ) : (
+                  <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                )
+              }
+              onClick={retryYtHealth}
+            />
+          </Tooltip>
+          <Menu
+            mode="horizontal"
+            selectedKeys={[selectedKey]}
+            items={menuItems}
+            style={{ minWidth: 640 }}
+          />
+        </div>
       </Header>
       {ytHealthState.ok === false && (
         <Alert
