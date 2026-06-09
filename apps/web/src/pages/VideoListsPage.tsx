@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Tag, notification } from 'antd';
-import { getVideoLists, getListDetails } from '../api/videoListsApi';
+import { useNavigate } from 'react-router-dom';
+import { Table, Tag, notification } from 'antd';
+import { getVideoLists } from '../api/videoListsApi';
+import type { VideoListSummary } from '../api/videoListsApi';
 
 export default function VideoListsPage() {
-  const [lists, setLists] = useState([]);
+  const navigate = useNavigate();
+  const [lists, setLists] = useState<VideoListSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedListId, setSelectedListId] = useState<number | null>(null);
-  const [videos, setVideos] = useState([]);
 
   useEffect(() => {
     fetchLists();
@@ -24,33 +25,21 @@ export default function VideoListsPage() {
     }
   }
 
-  async function openList(listId: number) {
-    setSelectedListId(listId);
-    try {
-      const res = await getListDetails(listId);
-      setVideos(res.videos);
-    } catch (err) {
-      notification.error({ message: 'Failed to fetch list details' });
-    }
-  }
-
   const columns = [
-    { title: 'Title', dataIndex: 'title', key: 'title' },
-    { title: 'Artist', dataIndex: 'artist', key: 'artist' },
-    { title: 'Group', dataIndex: 'group', key: 'group' },
-    { title: 'Duration', dataIndex: 'duration', key: 'duration' },
+    { title: 'Name', dataIndex: 'name', key: 'name' },
+    {
+      title: 'Color',
+      dataIndex: 'color',
+      key: 'color',
+      render: (c: string) => <Tag color={c}>{c}</Tag>,
+    },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status?: string | null) => (status ? <Tag>{status}</Tag> : null),
+      render: (status?: string | null) => (status ? <Tag color="blue">{status}</Tag> : null),
     },
-    {
-      title: 'Tags',
-      dataIndex: 'tags',
-      key: 'tags',
-      render: (tags: string[]) => tags.map((t) => <Tag key={t}>{t}</Tag>),
-    },
+    { title: 'Videos Count', dataIndex: 'countVideos', key: 'countVideos' },
   ];
 
   return (
@@ -61,31 +50,11 @@ export default function VideoListsPage() {
         rowKey="id"
         loading={loading}
         onRow={(record) => ({
-          onClick: () => openList(record.id),
+          onClick: () => navigate(`/video-lists/${record.id}`),
+          style: { cursor: 'pointer' },
         })}
-        columns={[
-          { title: 'Name', dataIndex: 'name', key: 'name' },
-          {
-            title: 'Color',
-            dataIndex: 'color',
-            key: 'color',
-            render: (c: string) => <Tag color={c}>{c}</Tag>,
-          },
-          {
-            title: 'Status',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status?: string | null) => (status ? <Tag color="blue">{status}</Tag> : null),
-          },
-          { title: 'Videos Count', dataIndex: 'countVideos', key: 'countVideos' },
-        ]}
+        columns={columns}
       />
-      {selectedListId && (
-        <div>
-          <h2>Videos in List</h2>
-          <Table dataSource={videos} rowKey="id" columns={columns} />
-        </div>
-      )}
     </div>
   );
 }

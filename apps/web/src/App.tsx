@@ -21,11 +21,14 @@ import MediaLibraryPage from './pages/MediaLibraryPage';
 import EventDictionaryPage from './pages/EventDictionaryPage';
 import EventPage from './pages/EventPage';
 import MediaLibraryOverviewPage from './pages/MediaLibraryOverviewPage';
+import VideoListsPage from './pages/VideoListsPage';
+import VideoListDetailsPage from './pages/VideoListDetailsPage';
 
 const { Header, Content } = Layout;
 
 const menuItems = [
   { key: '/videos', label: <Link to="/videos">Videos</Link> },
+  { key: '/video-lists', label: <Link to="/video-lists">Video Lists</Link> },
   { key: '/review', label: <Link to="/review">Review Queue</Link> },
   { key: '/sources', label: <Link to="/sources">Sources</Link> },
   { key: '/dictionary', label: <Link to="/dictionary/overview">Media Library</Link> },
@@ -69,6 +72,7 @@ function App() {
   const { state: ytHealthState, retry: retryYtHealth } = useYouTubeHealth();
   let selectedKey = location.pathname;
   if (location.pathname.startsWith('/dictionary')) selectedKey = '/dictionary';
+  else if (/^\/video-lists\/[^/]+/.test(location.pathname)) selectedKey = '/video-lists';
   else if (/^\/videos\/[^/]+/.test(location.pathname)) selectedKey = '/videos';
   else if (/^\/channels\/[^/]+/.test(location.pathname)) selectedKey = '/sources';
   else if (!menuItems.some((item) => item.key === selectedKey)) selectedKey = '/videos';
@@ -117,7 +121,7 @@ function App() {
             mode="horizontal"
             selectedKeys={[selectedKey]}
             items={menuItems}
-            style={{ minWidth: 640 }}
+            style={{ minWidth: 760 }}
           />
         </div>
       </Header>
@@ -139,6 +143,8 @@ function App() {
         <Routes>
           <Route path="/videos" element={<VideoTable />} />
           <Route path="/videos/:id" element={<VideoCard />} />
+          <Route path="/video-lists" element={<VideoListsPage />} />
+          <Route path="/video-lists/:id" element={<VideoListDetailsPage />} />
           <Route path="/review" element={<ReviewQueue />} />
           <Route path="/sources" element={<SourcesPage />} />
           <Route path="/channels/:id" element={<ChannelPage />} />
