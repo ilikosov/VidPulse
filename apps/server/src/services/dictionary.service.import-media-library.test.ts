@@ -74,6 +74,10 @@ const { state, mockedKnex, ids } = vi.hoisted(() => {
         filters.push((row) => row[field] == null);
         return builder;
       },
+      select(..._columns: string[]) {
+        (builder as any)._isSelect = true;
+        return builder;
+      },
       async first() {
         return db[tableName].find((row) => filters.every((f) => f(row)));
       },
@@ -116,6 +120,10 @@ const { state, mockedKnex, ids } = vi.hoisted(() => {
         };
       },
       then(resolve: (value: any) => any) {
+        if ((builder as any)._isSelect) {
+          const rows = db[tableName].filter((row) => filters.every((f) => f(row)));
+          return Promise.resolve(rows).then(resolve);
+        }
         return Promise.resolve([(builder as any)._lastInsertId ?? 1]).then(resolve);
       },
     };
