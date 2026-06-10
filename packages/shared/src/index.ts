@@ -360,3 +360,34 @@ export interface VideoListOperationResponse {
   /** List status after the operation; null when empty or mixed. */
   status?: string | null;
 }
+
+// ── Files ─────────────────────────────────────────────────
+
+/** A physical file on disk, optionally linked to a video by youtube_id prefix. */
+export interface FileRecord {
+  id: number;
+  filename: string;
+  directory: string;
+  extension: string | null;
+  size_bytes: number | null;
+  youtube_id: string | null;
+  video_id: number | null;
+  /** Joined from the linked video, when present. */
+  video_title?: string | null;
+  scanned_at: string;
+}
+
+export interface FilesResponse {
+  files: FileRecord[];
+  total: number;
+}
+
+export interface ScanResult {
+  scanned: number;
+  linked: number;
+  errors: string[];
+}
+
+export interface LinkFileRequest {
+  videoId: number | null;
+}

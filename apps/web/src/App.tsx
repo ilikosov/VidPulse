@@ -23,12 +23,14 @@ import EventPage from './pages/EventPage';
 import MediaLibraryOverviewPage from './pages/MediaLibraryOverviewPage';
 import VideoListsPage from './pages/VideoListsPage';
 import VideoListDetailsPage from './pages/VideoListDetailsPage';
+import FilesPage from './pages/FilesPage';
 
 const { Header, Content } = Layout;
 
 const menuItems = [
   { key: '/videos', label: <Link to="/videos">Videos</Link> },
   { key: '/video-lists', label: <Link to="/video-lists">Video Lists</Link> },
+  { key: '/files', label: <Link to="/files">Files</Link> },
   { key: '/review', label: <Link to="/review">Review Queue</Link> },
   { key: '/sources', label: <Link to="/sources">Sources</Link> },
   { key: '/dictionary', label: <Link to="/dictionary/overview">Media Library</Link> },
@@ -144,6 +146,7 @@ function App() {
             <Route path="/videos" element={<VideoTable />} />
             <Route path="/video-lists" element={<VideoListsPage />} />
             <Route path="/video-lists/:id" element={<VideoListDetailsPage />} />
+            <Route path="/files" element={<FilesPage />} />
             <Route path="/review" element={<ReviewQueue />} />
             <Route path="/sources" element={<SourcesPage />} />
             <Route path="/channels/:id" element={<ChannelPage />} />

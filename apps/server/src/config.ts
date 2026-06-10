@@ -46,6 +46,13 @@ export const config = {
   maxVideoListItems: num(process.env.MAX_VIDEO_LIST_ITEMS, 100),
 
   hideFlaggedVideos: bool(process.env.HIDE_FLAGGED_VIDEOS, false),
+
+  files: {
+    /** Directory scanned for new files. */
+    inputDir: process.env.FILES_INPUT_DIR ?? null,
+    /** Directory files are moved to after renaming. */
+    outputDir: process.env.FILES_OUTPUT_DIR ?? null,
+  },
 };
 
 /** Call once at startup (in index.ts) to fail fast when required vars are missing. */
