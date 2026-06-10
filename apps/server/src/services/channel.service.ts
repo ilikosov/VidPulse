@@ -4,10 +4,16 @@ import { youtubeService } from './youtube.service';
 import { logEvent } from './eventLog.service';
 import { parseTitle } from './parser/parser.service';
 import { assignAutoTags } from './tag.service';
-import { resolveParsedMetadata } from './parser/metadataResolver.service';
-import { syncVideoSongs } from './parser/videoSongs.service';
-import { channelRepository } from '../repositories/knex.repositories';
+import { ingestVideo, type IngestDeps } from './sync/ingestVideo';
+import { channelRepository, videoRepository } from '../repositories/knex.repositories';
 import { AppError } from '../middleware/AppError';
+
+const ingestDeps: IngestDeps = {
+  videos: videoRepository,
+  youtube: youtubeService,
+  parser: { parseTitle },
+  tags: { assignAutoTags },
+};
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -68,23 +74,13 @@ class ChannelService {
 
     const videos = await youtubeService.fetchChannelVideos(channelId, publishedAfter);
 
-    await knex.transaction(async (trx: any) => {
-      for (const video of videos) {
-        const existingVideo = await trx('videos').where('youtube_id', video.videoId).first();
-        if (!existingVideo) {
-          await trx('videos').insert({
-            youtube_id: video.videoId,
-            channel_id: newChannelId,
-            original_title: video.title,
-            published_at: video.publishedAt,
-            status: 'new',
-            description: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-        }
+    for (const video of videos) {
+      try {
+        await ingestVideo(ingestDeps, video, { channelId: newChannelId });
+      } catch (e) {
+        logger.error(`Failed to ingest ${video.videoId}:`, e);
       }
-    });
+    }
 
     return newChannel;
   }
@@ -153,53 +149,8 @@ class ChannelService {
 
     for (const item of fetchedVideos) {
       try {
-        const exists = await knex('videos').where('youtube_id', item.videoId).first();
-        if (exists) continue;
-
-        const details = await youtubeService.getVideoDetails(item.videoId);
-        const { metadata } = await parseTitle(
-          details.title || item.title,
-          details.publishedAt || item.publishedAt,
-          details.tags,
-        );
-
-        const resolved = await resolveParsedMetadata(metadata);
-
-        const [createdVideo] = await knex('videos')
-          .insert({
-            youtube_id: item.videoId,
-            channel_id: channel.id,
-            original_title: details.title || item.title,
-            published_at: details.publishedAt || item.publishedAt,
-            duration_seconds: details.durationSeconds ?? null,
-            description: details.description ?? null,
-            status: 'needs_review',
-            perf_date: metadata.perf_date
-              ? new Date(
-                  `20${metadata.perf_date.slice(0, 2)}-${metadata.perf_date.slice(2, 4)}-${metadata.perf_date.slice(4, 6)}`,
-                ).toISOString()
-              : null,
-            group_id: resolved.group_id,
-            artist_id: resolved.artist_id,
-            event_id: resolved.event_id,
-            group_name: resolved.group_name,
-            artist_name: resolved.artist_name,
-            event: resolved.event,
-            camera_type: metadata.camera_type || null,
-            is_own_group_song: metadata.is_own_group_song ?? null,
-            is_own_artist_song: metadata.is_own_artist_song ?? null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .returning('*');
-
-        await assignAutoTags(createdVideo.id, details.durationSeconds, details.privacyStatus);
-        await syncVideoSongs(
-          createdVideo.id,
-          resolved.song_title ?? undefined,
-          metadata.song_titles,
-        );
-        loaded += 1;
+        const id = await ingestVideo(ingestDeps, item, { channelId: channel.id });
+        if (id) loaded += 1;
       } catch (videoError: any) {
         errors.push(`${item.videoId}: ${videoError?.message ?? 'Unknown error'}`);
       }
