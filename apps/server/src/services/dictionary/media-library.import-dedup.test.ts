@@ -55,6 +55,58 @@ describe('media library import — artist dedup', () => {
     expect(rows.length).toBe(1);
   });
 
+  it('does not duplicate membership when seed stores ISO timestamp and import stores a date string', async () => {
+    // The seed writes started_at via new Date(from), which better-sqlite3 serializes to an ISO
+    // timestamp ("2024-01-01T00:00:00.000Z"); the import passes the raw JSON string ("2024-01-01").
+    // addOrUpdateArtistMembership must treat these as the same date and update, not insert a second
+    // membership — a duplicate membership row makes the artist appear twice on export.
+    const [groupId] = await knex('dictionary_groups').insert({
+      name: `${TAG} GROUP`,
+      type: 'female',
+      active: true,
+    });
+    const [artistId] = await knex('dictionary_artists').insert({
+      name: 'SEEDARTIST',
+      group_id: groupId,
+    });
+    await knex('dictionary_artist_memberships').insert({
+      artist_id: artistId,
+      group_id: groupId,
+      activity_type: 'group',
+      status: 'active',
+      started_at: new Date('2024-01-01').toISOString(),
+      is_primary: 1,
+    });
+
+    await mediaLibraryService.importMediaLibrary({
+      version: 1,
+      mode: 'merge',
+      groups: [
+        {
+          name: `${TAG} GROUP`,
+          type: 'female',
+          artists: [
+            {
+              name: 'SEEDARTIST',
+              membership: {
+                activityType: 'group',
+                status: 'active',
+                from: '2024-01-01',
+                isPrimary: true,
+              },
+            },
+          ],
+          songs: [],
+        },
+      ],
+      soloArtists: [],
+      events: [],
+    });
+
+    const memberships = await knex('dictionary_artist_memberships').where({ artist_id: artistId });
+    expect(memberships.length).toBe(1);
+  });
+
   it('reuses a group artist that already exists from a prior run (seed-then-import)', async () => {
     // Simulate the seed having created the artist in the group already.
     const [groupId] = await knex('dictionary_groups').insert({
