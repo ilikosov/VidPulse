@@ -12,6 +12,7 @@
     "start": "dotenv -e .env -- npm run start -w apps/server",
     "test": "dotenv -e .env.test -- npm run test -w apps/server",
     "test:e2e": "npm run test:e2e -w apps/server",
+    "seed": "dotenv -e .env -- npm run seed -w apps/server",
     "launch": "dotenv -e .env -- concurrently -n BE,FE -c blue,green \"npm run dev -w apps/server\" \"npm run dev -w apps/web\"",
     "dev:all": "npm install && dotenv -e .env -- npm run migrate -w apps/server && npm run launch",
     "prepare": "husky",
