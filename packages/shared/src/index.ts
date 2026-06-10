@@ -314,6 +314,7 @@ export interface VideoListSummary {
 
 export interface VideoListVideo {
   id: number;
+  youtube_id: string;
   title: string;
   artist: string | null;
   group: string | null;

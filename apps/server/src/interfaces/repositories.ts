@@ -329,6 +329,7 @@ export interface IVideoListRepository {
       number,
       {
         id: number;
+        youtube_id: string;
         title: string;
         artist: string | null;
         group: string | null;

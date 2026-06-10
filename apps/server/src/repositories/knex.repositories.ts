@@ -663,6 +663,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
       number,
       {
         id: number;
+        youtube_id: string;
         title: string;
         artist: string | null;
         group: string | null;
@@ -681,6 +682,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
       .orderBy('v.updated_at', 'asc')
       .select(
         'v.id',
+        'v.youtube_id as youtube_id',
         'v.original_title as title',
         'v.artist_name as artist',
         'v.group_name as `group`',
@@ -692,6 +694,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
       number,
       {
         id: number;
+        youtube_id: string;
         title: string;
         artist: string | null;
         group: string | null;
@@ -704,6 +707,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
       if (!videos.has(row.id))
         videos.set(row.id, {
           id: row.id,
+          youtube_id: row.youtube_id,
           title: row.title,
           artist: row.artist,
           group: row.group,
