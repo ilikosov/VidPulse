@@ -52,6 +52,16 @@ export const config = {
     inputDir: process.env.FILES_INPUT_DIR ?? null,
     /** Directory files are moved to after renaming. */
     outputDir: process.env.FILES_OUTPUT_DIR ?? null,
+    /**
+     * Comma-separated list of extensions to include during scan (without dot,
+     * case-insensitive). When null/empty, all files are included.
+     * Example: "mp4,mkv,avi,mov"
+     */
+    filter: process.env.FILES_FILTER
+      ? process.env.FILES_FILTER.split(',')
+          .map((e) => e.trim().toLowerCase())
+          .filter(Boolean)
+      : null,
   },
 };
 
