@@ -18,7 +18,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import {
   batchComplete,
@@ -35,6 +35,7 @@ import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
 import { SongLinks } from './SongLinks';
 import AddToListModal from './AddToListModal';
+import { useVideoDrawer } from './VideoDrawerProvider';
 
 const statusOptions = [
   { value: '', label: 'All' },
@@ -80,7 +81,7 @@ function VideoTable() {
   const [batchTagName, setBatchTagName] = useState('');
   const [allTags, setAllTags] = useState<string[]>([]);
   const [addToListOpen, setAddToListOpen] = useState(false);
-  const navigate = useNavigate();
+  const { openVideo } = useVideoDrawer();
   const location = useLocation();
   const from = `${location.pathname}${location.search}`;
   const requiresManualTagConfirmation = (tagName: string) =>
@@ -451,9 +452,7 @@ function VideoTable() {
           dataSource={videos}
           onRow={(record) => ({
             onClick: () =>
-              navigate(`/videos/${record.id}`, {
-                state: { from: `${location.pathname}${location.search}` },
-              }),
+              openVideo(record.id, () => fetchVideos(page, limit, statusFilter, showIgnored)),
             style: { cursor: 'pointer' },
           })}
           pagination={{

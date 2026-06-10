@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Table, Tag, notification } from 'antd';
 import { getListDetails } from '../api/videoListsApi';
-import type { VideoListDetails } from '../api/videoListsApi';
+import type { VideoListDetails, VideoListVideo } from '../api/videoListsApi';
 import VideoListOperations from '../components/VideoListOperations';
+import { useVideoDrawer } from '../components/VideoDrawerProvider';
 
 export default function VideoListDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  const { openVideo } = useVideoDrawer();
   const [list, setList] = useState<VideoListDetails | null>(null);
-  const [videos, setVideos] = useState([]);
+  const [videos, setVideos] = useState<VideoListVideo[]>([]);
   const [selectedVideoIds, setSelectedVideoIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +37,27 @@ export default function VideoListDetailsPage() {
   };
 
   const columns = [
-    { title: 'Title', dataIndex: 'title', key: 'title' },
+    {
+      title: 'Thumbnail',
+      dataIndex: 'youtube_id',
+      key: 'youtube_id',
+      width: 140,
+      render: (youtubeId: string, record: VideoListVideo) => (
+        <a onClick={() => openVideo(record.id, fetchVideos)} style={{ cursor: 'pointer' }}>
+          <img src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`} width={120} />
+        </a>
+      ),
+    },
+    {
+      title: 'Title',
+      dataIndex: 'title',
+      key: 'title',
+      render: (title: string, record: VideoListVideo) => (
+        <a onClick={() => openVideo(record.id, fetchVideos)} style={{ cursor: 'pointer' }}>
+          {title}
+        </a>
+      ),
+    },
     { title: 'Artist', dataIndex: 'artist', key: 'artist' },
     { title: 'Group', dataIndex: 'group', key: 'group' },
     { title: 'Duration', dataIndex: 'duration', key: 'duration' },

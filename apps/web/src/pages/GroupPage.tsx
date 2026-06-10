@@ -7,6 +7,7 @@ import { dictionaryApi, type DictionaryGroup, type DictionarySong } from '../api
 import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
 import { SongLinks } from '../components/SongLinks';
+import { useVideoDrawer } from '../components/VideoDrawerProvider';
 
 const defaultVideosLimit = 20;
 const defaultSongsLimit = 10;
@@ -15,6 +16,7 @@ export default function GroupPage() {
   const { id = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { openVideo } = useVideoDrawer();
   const [searchParams, setSearchParams] = useSearchParams();
   const backPath = getBackPath(location.state, '/dictionary/groups');
   const from = `${location.pathname}${location.search}`;
@@ -53,9 +55,9 @@ export default function GroupPage() {
         title: 'Thumbnail',
         dataIndex: 'youtube_id',
         render: (youtubeId, row: any) => (
-          <Link to={`/videos/${row.id}`} state={{ from }}>
+          <a onClick={() => openVideo(row.id)} style={{ cursor: 'pointer' }}>
             <img src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`} width={120} />
-          </Link>
+          </a>
         ),
       },
       { title: 'Title', dataIndex: 'original_title' },
