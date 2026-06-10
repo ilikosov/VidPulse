@@ -12,8 +12,7 @@ import {
   IYouTubeService,
 } from '../../interfaces/services';
 import { logger } from '../../lib/logger';
-import { parseVideoMetadata } from './metadata.utils';
-import { syncVideoSongs } from '../parser/videoSongs.service';
+import { ingestVideo } from './ingestVideo';
 
 export class PlaylistSyncService implements IPlaylistSyncService {
   constructor(
@@ -33,28 +32,12 @@ export class PlaylistSyncService implements IPlaylistSyncService {
         const existing = await this.videos.findYoutubeIdsByPlaylistId(playlist.id);
         const items = await this.youtube.fetchPlaylistItems(playlist.youtube_id);
         for (const item of items.filter((v) => !existing.has(v.videoId))) {
-          if (await this.videos.findByYoutubeId(item.videoId)) continue;
-          const details = await this.youtube.getVideoDetails(item.videoId);
-          const { metadata, songTitle, songTitles } = await parseVideoMetadata(
-            this.parser,
-            details.title || item.title,
-            details.publishedAt || item.publishedAt,
-            details.tags,
+          const id = await ingestVideo(
+            { videos: this.videos, youtube: this.youtube, parser: this.parser, tags: this.tags },
+            item,
+            { playlistId: playlist.id },
           );
-          const id = await this.videos.insert({
-            youtube_id: item.videoId,
-            playlist_id: playlist.id,
-            original_title: details.title || item.title,
-            published_at: details.publishedAt || item.publishedAt,
-            duration_seconds: details.durationSeconds ?? null,
-            status: 'needs_review',
-            ...metadata,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-          await syncVideoSongs(id, songTitle, songTitles);
-          await this.tags.assignAutoTags(id, details.durationSeconds, details.privacyStatus);
-          newVideosTotal += 1;
+          if (id) newVideosTotal += 1;
         }
         await this.playlists.updateLastCheckedAt(playlist.id, new Date().toISOString());
         playlistsProcessed += 1;
