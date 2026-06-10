@@ -16,6 +16,9 @@ if (config.youtube.proxy) {
 
 const youtube = google.youtube('v3');
 
+// Abort any YouTube API request that exceeds the configured timeout (gaxios default).
+google.options({ timeout: config.youtube.requestTimeoutMs });
+
 const cache = new LRUCache<string, any>({
   max: 500,
   ttl: 3600000,
