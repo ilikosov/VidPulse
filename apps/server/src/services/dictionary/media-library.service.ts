@@ -67,6 +67,25 @@ export interface ClearMediaLibrarySummary {
 type ImportRecord = Record<string, unknown> & { type?: string };
 
 export class MediaLibraryService {
+  // Dedupe artists within a single group. Same name in a different group is a
+  // legitimately distinct row (dictionary_artists has UNIQUE(name, group_id)), so we
+  // scope by group_id and only compare names — never match an artist from another group.
+  // Names are compared via normalizeName (NFKC + collapsed whitespace), like
+  // ArtistService.findArtistByNameOrAlias, because SQLite LOWER() only folds ASCII.
+  private async findArtistInGroup(db: DbClient, name: string, groupId: number) {
+    const normalized = normalizeName(name);
+    const byName = await db('dictionary_artists')
+      .where({ group_id: groupId })
+      .whereRaw('LOWER(name) = ?', [normalized])
+      .first();
+    if (byName) return byName;
+    const match = (
+      await db('dictionary_artists').where({ group_id: groupId }).select('id', 'name')
+    ).find((a) => normalizeName(a.name) === normalized);
+    if (match) return db('dictionary_artists').where({ id: match.id }).first();
+    return null;
+  }
+
   private async importSongNode(
     db: DbClient,
     songPayload: any,
@@ -395,9 +414,13 @@ export class MediaLibraryService {
           ? groupPayload.artists
           : []) {
           const artistName = String(artistPayload.name || '').trim();
-          let artist = await artistService.findArtistByNameOrAlias(
+          // Dedupe within this group only. A name-only lookup would treat "YUNA in ITZY"
+          // and a solo "YUNA" as the same artist and skip the insert, attaching the artist
+          // to the wrong group (and producing a phantom duplicate on export).
+          let artist = await this.findArtistInGroup(
             trx as unknown as DbClient,
             artistName,
+            group.id,
           );
           if (!artist) {
             const [artistId] = await trx('dictionary_artists').insert({
@@ -449,16 +472,36 @@ export class MediaLibraryService {
         }
       }
 
+      // Solo artists live under a dedicated "Solo Artists" group, mirroring
+      // seeds/02_dictionary.ts. dictionary_artists.group_id is NOT NULL, so a real
+      // group id is required; inserting group_id: null here crashes the transaction.
+      let soloGroupId: number | null = null;
+      if (soloArtists.length > 0) {
+        const soloGroupName = 'Solo Artists';
+        let soloGroup = await trx('dictionary_groups').where({ name: soloGroupName }).first();
+        if (!soloGroup) {
+          const [id] = await trx('dictionary_groups').insert({
+            name: soloGroupName,
+            type: 'solo',
+            active: true,
+          });
+          soloGroup = await trx('dictionary_groups').where({ id }).first();
+        }
+        soloGroupId = soloGroup.id;
+      }
+
       for (const soloPayload of soloArtists) {
         const artistName = String(soloPayload.name || '').trim();
-        let artist = await artistService.findArtistByNameOrAlias(
+        // Dedupe within the "Solo Artists" group — consistent with the seed and group path.
+        let artist = await this.findArtistInGroup(
           trx as unknown as DbClient,
           artistName,
+          soloGroupId as number,
         );
         if (!artist) {
           const [artistId] = await trx('dictionary_artists').insert({
             name: artistName,
-            group_id: null,
+            group_id: soloGroupId,
           });
           artist = await trx('dictionary_artists').where({ id: artistId }).first();
           summary.artists.inserted += 1;

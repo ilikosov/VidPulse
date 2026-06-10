@@ -42,11 +42,6 @@ acceptance criteria.
 
 ## Bugs / tech debt
 
-- [ ] **Media-library import: solo artists crash** — `MediaLibraryService.importMediaLibrary`
-      inserts solo artists with `group_id: null`, but `dictionary_artists.group_id` is
-      `NOT NULL` (baseline migration). The whole import transaction rolls back. The seed
-      (`seeds/02_dictionary.ts`) works around this with a dedicated "Solo Artists" group —
-      the import should do the same (or the column should be made nullable).
 - [ ] **Dedup normalization parity for group/event/song** — `findArtistByNameOrAlias` was
       fixed to compare names via `normalizeName` (NFKC + collapsed whitespace) instead of
       relying on SQLite `LOWER()`. `GroupService.findGroupByNameOrAlias`,
