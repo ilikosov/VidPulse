@@ -1,17 +1,19 @@
 import { Button, Card, Descriptions, Empty, Table, Tabs, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Video } from '../api';
 import { dictionaryApi } from '../api/dictionary';
 import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
 import { SongLinks } from '../components/SongLinks';
+import { useVideoDrawer } from '../components/VideoDrawerProvider';
 
 export default function EventPage() {
   const { id = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { openVideo } = useVideoDrawer();
   const [searchParams, setSearchParams] = useSearchParams();
   const from = `${location.pathname}${location.search}`;
   const backPath = getBackPath(location.state, '/dictionary/events');
@@ -28,9 +30,9 @@ export default function EventPage() {
         title: 'Title',
         dataIndex: 'original_title',
         render: (_v, row: any) => (
-          <Link to={`/videos/${row.id}`} state={{ from }}>
+          <a onClick={() => openVideo(row.id)} style={{ cursor: 'pointer' }}>
             {row.original_title}
-          </Link>
+          </a>
         ),
       },
       { title: 'Group', dataIndex: 'group_name' },

@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { Avatar, Button, Card, Descriptions, message, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { getChannel, getVideos, loadMoreChannelVideos, type Channel, type Video } from '../api';
 import { SongLinks } from '../components/SongLinks';
+import { useVideoDrawer } from '../components/VideoDrawerProvider';
 
 type ChannelDetails = Channel & { videoCount: number };
 
 function ChannelPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const { openVideo } = useVideoDrawer();
   const location = useLocation();
   const [channel, setChannel] = useState<ChannelDetails | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
@@ -152,7 +153,7 @@ function ChannelPage() {
           columns={columns}
           dataSource={videos}
           onRow={(record) => ({
-            onClick: () => navigate(`/videos/${record.id}`),
+            onClick: () => openVideo(record.id, () => fetchData(page)),
             style: { cursor: 'pointer' },
           })}
           pagination={{

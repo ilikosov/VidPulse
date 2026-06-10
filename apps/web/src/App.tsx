@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { fetchApi } from './api/client';
 import ReviewQueue from './components/ReviewQueue';
-import VideoCard from './components/VideoCard';
 import VideoTable from './components/VideoTable';
+import { VideoDrawerProvider } from './components/VideoDrawerProvider';
 import ChannelPage from './pages/ChannelPage';
 import SourcesPage from './pages/SourcesPage';
 import EventLogPage from './pages/EventLogPage';
@@ -73,110 +73,110 @@ function App() {
   let selectedKey = location.pathname;
   if (location.pathname.startsWith('/dictionary')) selectedKey = '/dictionary';
   else if (/^\/video-lists\/[^/]+/.test(location.pathname)) selectedKey = '/video-lists';
-  else if (/^\/videos\/[^/]+/.test(location.pathname)) selectedKey = '/videos';
   else if (/^\/channels\/[^/]+/.test(location.pathname)) selectedKey = '/sources';
   else if (!menuItems.some((item) => item.key === selectedKey)) selectedKey = '/videos';
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: '#fff',
-          borderBottom: '1px solid #f0f0f0',
-          paddingInline: 24,
-        }}
-      >
-        <Typography.Title level={4} style={{ margin: 0, color: '#eb2f96' }}>
-          K-pop Archive Manager
-        </Typography.Title>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Tooltip
-            title={
-              ytHealthState.ok === false
-                ? ytHealthState.error
-                : ytHealthState.ok === true
-                  ? 'YouTube API доступен'
-                  : 'Проверка...'
-            }
-          >
-            <Button
-              type="text"
-              size="small"
-              icon={
-                ytHealthState.checking ? (
-                  <LoadingOutlined style={{ color: '#8c8c8c' }} />
-                ) : ytHealthState.ok ? (
-                  <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                ) : (
-                  <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
-                )
+    <VideoDrawerProvider>
+      <Layout style={{ minHeight: '100vh' }}>
+        <Header
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#fff',
+            borderBottom: '1px solid #f0f0f0',
+            paddingInline: 24,
+          }}
+        >
+          <Typography.Title level={4} style={{ margin: 0, color: '#eb2f96' }}>
+            K-pop Archive Manager
+          </Typography.Title>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Tooltip
+              title={
+                ytHealthState.ok === false
+                  ? ytHealthState.error
+                  : ytHealthState.ok === true
+                    ? 'YouTube API доступен'
+                    : 'Проверка...'
               }
-              onClick={retryYtHealth}
+            >
+              <Button
+                type="text"
+                size="small"
+                icon={
+                  ytHealthState.checking ? (
+                    <LoadingOutlined style={{ color: '#8c8c8c' }} />
+                  ) : ytHealthState.ok ? (
+                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                  ) : (
+                    <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                  )
+                }
+                onClick={retryYtHealth}
+              />
+            </Tooltip>
+            <Menu
+              mode="horizontal"
+              selectedKeys={[selectedKey]}
+              items={menuItems}
+              style={{ minWidth: 760 }}
             />
-          </Tooltip>
-          <Menu
-            mode="horizontal"
-            selectedKeys={[selectedKey]}
-            items={menuItems}
-            style={{ minWidth: 760 }}
+          </div>
+        </Header>
+        {ytHealthState.ok === false && (
+          <Alert
+            type="error"
+            showIcon
+            banner
+            message="Ошибка подключения к YouTube API"
+            description={ytHealthState.error}
+            action={
+              <Button size="small" onClick={retryYtHealth} loading={ytHealthState.checking}>
+                Повторная проверка
+              </Button>
+            }
           />
-        </div>
-      </Header>
-      {ytHealthState.ok === false && (
-        <Alert
-          type="error"
-          showIcon
-          banner
-          message="Ошибка подключения к YouTube API"
-          description={ytHealthState.error}
-          action={
-            <Button size="small" onClick={retryYtHealth} loading={ytHealthState.checking}>
-              Повторная проверка
-            </Button>
-          }
-        />
-      )}
-      <Content style={{ padding: 24 }}>
-        <Routes>
-          <Route path="/videos" element={<VideoTable />} />
-          <Route path="/videos/:id" element={<VideoCard />} />
-          <Route path="/video-lists" element={<VideoListsPage />} />
-          <Route path="/video-lists/:id" element={<VideoListDetailsPage />} />
-          <Route path="/review" element={<ReviewQueue />} />
-          <Route path="/sources" element={<SourcesPage />} />
-          <Route path="/channels/:id" element={<ChannelPage />} />
+        )}
+        <Content style={{ padding: 24 }}>
+          <Routes>
+            <Route path="/videos" element={<VideoTable />} />
+            <Route path="/video-lists" element={<VideoListsPage />} />
+            <Route path="/video-lists/:id" element={<VideoListDetailsPage />} />
+            <Route path="/review" element={<ReviewQueue />} />
+            <Route path="/sources" element={<SourcesPage />} />
+            <Route path="/channels/:id" element={<ChannelPage />} />
 
-          <Route path="/dictionary" element={<MediaLibraryPage />}>
-            <Route index element={<Navigate to="overview" replace />} />
-            <Route path="overview" element={<MediaLibraryOverviewPage />} />
-            <Route path="groups" element={<GroupsListPage />} />
-            <Route path="groups/:id" element={<GroupPage />} />
-            <Route path="artists" element={<ArtistsListPage />} />
-            <Route path="artists/:id" element={<ArtistPage />} />
-            <Route path="songs" element={<SongsListPage />} />
-            <Route path="songs/:id" element={<SongPage />} />
-            <Route path="events" element={<EventDictionaryPage />} />
-            <Route path="events/:id" element={<EventPage />} />
-            <Route path="tools" element={<DictionaryToolsPage />} />
-          </Route>
+            <Route path="/dictionary" element={<MediaLibraryPage />}>
+              <Route index element={<Navigate to="overview" replace />} />
+              <Route path="overview" element={<MediaLibraryOverviewPage />} />
+              <Route path="groups" element={<GroupsListPage />} />
+              <Route path="groups/:id" element={<GroupPage />} />
+              <Route path="artists" element={<ArtistsListPage />} />
+              <Route path="artists/:id" element={<ArtistPage />} />
+              <Route path="songs" element={<SongsListPage />} />
+              <Route path="songs/:id" element={<SongPage />} />
+              <Route path="events" element={<EventDictionaryPage />} />
+              <Route path="events/:id" element={<EventPage />} />
+              <Route path="tools" element={<DictionaryToolsPage />} />
+            </Route>
 
-          <Route path="/events" element={<EventLogPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/events" element={<EventLogPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
 
-          <Route path="/groups" element={<Navigate to="/dictionary/groups" replace />} />
-          <Route path="/groups/:id" element={<RedirectEntityDetail entity="groups" />} />
-          <Route path="/artists" element={<Navigate to="/dictionary/artists" replace />} />
-          <Route path="/artists/:id" element={<RedirectEntityDetail entity="artists" />} />
-          <Route path="/songs" element={<Navigate to="/dictionary/songs" replace />} />
-          <Route path="/songs/:id" element={<RedirectEntityDetail entity="songs" />} />
+            <Route path="/groups" element={<Navigate to="/dictionary/groups" replace />} />
+            <Route path="/groups/:id" element={<RedirectEntityDetail entity="groups" />} />
+            <Route path="/artists" element={<Navigate to="/dictionary/artists" replace />} />
+            <Route path="/artists/:id" element={<RedirectEntityDetail entity="artists" />} />
+            <Route path="/songs" element={<Navigate to="/dictionary/songs" replace />} />
+            <Route path="/songs/:id" element={<RedirectEntityDetail entity="songs" />} />
 
-          <Route path="*" element={<VideoTable />} />
-        </Routes>
-      </Content>
-    </Layout>
+            <Route path="*" element={<VideoTable />} />
+          </Routes>
+        </Content>
+      </Layout>
+    </VideoDrawerProvider>
   );
 }
 

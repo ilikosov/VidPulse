@@ -20,7 +20,6 @@ import {
   message,
 } from 'antd';
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   addTagToVideo,
   getVideo,
@@ -38,7 +37,6 @@ import SongTitlesField from './SongTitlesField';
 import AddToListModal from './AddToListModal';
 import { getTagColor } from '../utils/tagColors';
 import { formatDuration } from '../utils/formatDuration';
-import { getBackPath } from '../utils/navigation';
 import OperationLogWidget from './OperationLogWidget';
 
 const { Text, Title } = Typography;
@@ -100,11 +98,12 @@ const SectionHeader = ({ title, extra }: { title: string; extra?: React.ReactNod
   </Flex>
 );
 
-function VideoCard() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const backPath = getBackPath(location.state, '/videos');
+interface VideoCardProps {
+  videoId: number;
+  onChanged?: () => void;
+}
+
+function VideoCard({ videoId, onChanged }: VideoCardProps) {
   const [video, setVideo] = useState<Video | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,11 +135,11 @@ function VideoCard() {
     ['short', 'private'].includes(tagName.trim().toLowerCase());
 
   const fetchVideo = async () => {
-    if (!id) return;
+    if (!videoId) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await getVideo(id);
+      const data = await getVideo(String(videoId));
       setVideo(data);
       setForm(toForm(data));
       setTagSuggestions((data.tags ?? []).map((tag) => tag.name));
@@ -149,6 +148,12 @@ function VideoCard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Refetch the video AND notify the parent list so it can refresh too.
+  const refresh = async () => {
+    await fetchVideo();
+    onChanged?.();
   };
 
   const handleAddTag = async () => {
@@ -174,7 +179,7 @@ function VideoCard() {
       await addTagToVideo(video.id, tagName, confirm);
       message.success('Tag added');
       setNewTagName('');
-      await fetchVideo();
+      await refresh();
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Failed to add tag');
     } finally {
@@ -194,7 +199,7 @@ function VideoCard() {
         try {
           await addTagToVideo(video.id, tagName, true);
           message.success(`Tag "${tagName}" added`);
-          await fetchVideo();
+          await refresh();
         } catch (err) {
           message.error(err instanceof Error ? err.message : `Failed to add ${tagName} tag`);
         } finally {
@@ -216,7 +221,7 @@ function VideoCard() {
         try {
           await ignoreVideo(video.id);
           message.success('Video ignored');
-          await fetchVideo();
+          await refresh();
         } catch (err) {
           message.error(err instanceof Error ? err.message : 'Failed to ignore video');
         }
@@ -230,7 +235,7 @@ function VideoCard() {
     try {
       await llmParseVideo(video.id);
       message.success('LLM parse completed');
-      await fetchVideo();
+      await refresh();
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Failed LLM parse');
     } finally {
@@ -245,7 +250,7 @@ function VideoCard() {
       const response = await reparseVideo(video.id);
       setOperationLog({ type: 'reparse', log: response.reparseLog });
       message.success('Reparse completed');
-      await fetchVideo();
+      await refresh();
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Failed to reparse video');
     } finally {
@@ -260,7 +265,7 @@ function VideoCard() {
       const response = await resyncVideo(video.id);
       setOperationLog({ type: 'resync', log: response.resyncLog });
       message.success('Resync completed');
-      await fetchVideo();
+      await refresh();
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Failed to resync video');
     } finally {
@@ -274,7 +279,7 @@ function VideoCard() {
     try {
       await removeTagFromVideo(video.id, tagId);
       message.success('Tag removed');
-      await fetchVideo();
+      await refresh();
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Failed to remove tag');
     } finally {
@@ -284,7 +289,7 @@ function VideoCard() {
 
   useEffect(() => {
     void fetchVideo();
-  }, [id]);
+  }, [videoId]);
 
   const handleSave = async () => {
     if (!video || !form) return;
@@ -300,7 +305,7 @@ function VideoCard() {
       });
       message.success('Metadata updated');
       setEditing(false);
-      await fetchVideo();
+      await refresh();
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Failed to save changes');
     } finally {
@@ -313,15 +318,7 @@ function VideoCard() {
   if (!video || !form) return <Alert type="warning" message="Video not found" />;
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 16px' }}>
-      <Button
-        type="text"
-        onClick={() => navigate(backPath)}
-        style={{ paddingLeft: 0, marginBottom: 24, color: '#666' }}
-      >
-        ← Back to Videos
-      </Button>
-
+    <div>
       <Card
         bordered={false}
         style={{
@@ -721,7 +718,7 @@ function VideoCard() {
         open={addToListOpen}
         onClose={() => setAddToListOpen(false)}
         videoIds={[video.id]}
-        onSuccess={() => void fetchVideo()}
+        onSuccess={() => void refresh()}
       />
     </div>
   );

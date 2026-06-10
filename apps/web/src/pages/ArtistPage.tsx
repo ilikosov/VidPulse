@@ -7,6 +7,7 @@ import { dictionaryApi, type DictionaryArtist, type DictionarySong } from '../ap
 import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
 import { SongLinks } from '../components/SongLinks';
+import { useVideoDrawer } from '../components/VideoDrawerProvider';
 
 const defaultVideosLimit = 20;
 const defaultSongsLimit = 10;
@@ -15,6 +16,7 @@ export default function ArtistPage() {
   const { id = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { openVideo } = useVideoDrawer();
   const [searchParams, setSearchParams] = useSearchParams();
   const backPath = getBackPath(location.state, '/dictionary/artists');
   const from = `${location.pathname}${location.search}`;
@@ -53,9 +55,9 @@ export default function ArtistPage() {
         title: 'Thumbnail',
         dataIndex: 'youtube_id',
         render: (youtubeId, r: any) => (
-          <Link to={`/videos/${r.id}`} state={{ from }}>
+          <a onClick={() => openVideo(r.id)} style={{ cursor: 'pointer' }}>
             <img src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`} width={120} />
-          </Link>
+          </a>
         ),
       },
       { title: 'Title', dataIndex: 'original_title' },
