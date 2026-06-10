@@ -673,6 +673,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
         group: string | null;
         duration: number | null;
         status: string;
+        has_file: boolean;
         tags: string[];
       }
     >;
@@ -693,6 +694,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
         'v.duration_seconds as duration',
         'v.status as status',
         't.name as tag',
+        knex.raw('EXISTS(SELECT 1 FROM files f WHERE f.video_id = v.id) as has_file'),
       );
     const videos = new Map<
       number,
@@ -704,6 +706,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
         group: string | null;
         duration: number | null;
         status: string;
+        has_file: boolean;
         tags: string[];
       }
     >();
@@ -717,6 +720,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
           group: row.group,
           duration: row.duration,
           status: row.status,
+          has_file: Boolean(row.has_file),
           tags: [],
         });
       if (row.tag) videos.get(row.id)!.tags.push(row.tag);

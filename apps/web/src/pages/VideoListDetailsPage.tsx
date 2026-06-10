@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Table, Tag, notification } from 'antd';
+import { Table, Tag, Tooltip, Typography, notification } from 'antd';
+import { PaperClipOutlined } from '@ant-design/icons';
 import { getListDetails } from '../api/videoListsApi';
 import type { VideoListDetails, VideoListVideo } from '../api/videoListsApi';
 import VideoListOperations from '../components/VideoListOperations';
@@ -66,6 +67,21 @@ export default function VideoListDetailsPage() {
       dataIndex: 'status',
       key: 'status',
       render: (status?: string | null) => (status ? <Tag>{status}</Tag> : null),
+    },
+    {
+      title: 'File',
+      dataIndex: 'has_file',
+      key: 'has_file',
+      width: 60,
+      align: 'center' as const,
+      render: (hasFile: boolean) =>
+        hasFile ? (
+          <Tooltip title="Linked file on disk">
+            <PaperClipOutlined style={{ color: '#52c41a' }} />
+          </Tooltip>
+        ) : (
+          <Typography.Text type="secondary">—</Typography.Text>
+        ),
     },
     {
       title: 'Tags',
