@@ -148,6 +148,22 @@ export interface DuplicateGroupEntity {
   created_at: string;
 }
 
+export interface FileEntity {
+  id: number;
+  filename: string;
+  directory: string;
+  extension: string | null;
+  size_bytes: number | null;
+  youtube_id: string | null;
+  video_id: number | null;
+  scanned_at: string;
+}
+
+/** FileEntity joined with the linked video's title. */
+export interface FileWithVideo extends FileEntity {
+  video_title: string | null;
+}
+
 export interface StatusHistoryEntity {
   id: number;
   video_id: number;
@@ -309,6 +325,19 @@ export interface ISettingsRepository {
   getAll(): Promise<SettingsEntity[]>;
   get(key: string): Promise<SettingsEntity | null>;
   upsert(key: string, value: string): Promise<void>;
+}
+
+export interface IFileRepository {
+  getAll(params?: {
+    videoId?: number;
+    page?: number;
+    limit?: number;
+  }): Promise<{ files: FileWithVideo[]; total: number }>;
+  getById(id: number): Promise<FileWithVideo | null>;
+  upsert(data: Omit<FileEntity, 'id' | 'scanned_at'>): Promise<void>;
+  linkVideo(id: number, videoId: number | null): Promise<void>;
+  linkAllByYoutubeId(): Promise<number>;
+  deleteById(id: number): Promise<void>;
 }
 
 export interface VideoListVideoRow {

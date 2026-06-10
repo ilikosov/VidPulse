@@ -1,3 +1,4 @@
+import type { Knex } from 'knex';
 import knex from '../db';
 import { config } from '../config';
 import type {
@@ -11,6 +12,7 @@ import type {
   IDictionaryEventRepository,
   IDictionaryAliasRepository,
   ISettingsRepository,
+  IFileRepository,
   IVideoListRepository,
   IEventLogRepository,
   IDuplicateGroupRepository,
@@ -30,6 +32,8 @@ import type {
   EventLogEntity,
   SettingsEntity,
   DuplicateGroupEntity,
+  FileEntity,
+  FileWithVideo,
   IVideoFilters,
 } from '../interfaces/repositories';
 
@@ -813,6 +817,91 @@ export class KnexDuplicateGroupRepository implements IDuplicateGroupRepository {
   }
 }
 
+// ── Files ─────────────────────────────────────────────────
+
+export class KnexFileRepository implements IFileRepository {
+  private withVideo() {
+    return knex('files as f')
+      .leftJoin('videos as v', 'f.video_id', 'v.id')
+      .select('f.*', 'v.original_title as video_title');
+  }
+
+  async getAll(params?: {
+    videoId?: number;
+    page?: number;
+    limit?: number;
+  }): Promise<{ files: FileWithVideo[]; total: number }> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 50;
+
+    const baseFilter = (qb: Knex.QueryBuilder) => {
+      if (params?.videoId != null) qb.where('f.video_id', params.videoId);
+    };
+
+    const rowsQuery = this.withVideo()
+      .modify(baseFilter)
+      .orderBy('f.scanned_at', 'desc')
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    const countQuery = knex('files as f')
+      .modify(baseFilter)
+      .count<{ count: number }>('f.id as count')
+      .first();
+
+    const [files, countResult] = await Promise.all([rowsQuery, countQuery]);
+    return { files: files as FileWithVideo[], total: Number(countResult?.count ?? 0) };
+  }
+
+  async getById(id: number): Promise<FileWithVideo | null> {
+    return ((await this.withVideo().where('f.id', id).first()) as FileWithVideo) ?? null;
+  }
+
+  async upsert(data: Omit<FileEntity, 'id' | 'scanned_at'>): Promise<void> {
+    await knex('files')
+      .insert({ ...data, scanned_at: knex.fn.now() })
+      .onConflict(['directory', 'filename'])
+      .merge({
+        extension: data.extension,
+        size_bytes: data.size_bytes,
+        youtube_id: data.youtube_id,
+        scanned_at: knex.fn.now(),
+      });
+  }
+
+  async linkVideo(id: number, videoId: number | null): Promise<void> {
+    await knex('files').where('id', id).update({ video_id: videoId });
+  }
+
+  /** Link every unlinked file whose youtube_id matches a video. Returns rows linked. */
+  async linkAllByYoutubeId(): Promise<number> {
+    const matchesUnlinked = (qb: Knex.QueryBuilder) =>
+      qb
+        .from('files')
+        .whereNull('files.video_id')
+        .whereNotNull('files.youtube_id')
+        .whereExists((sub) => sub.from('videos').whereRaw('videos.youtube_id = files.youtube_id'));
+
+    const before = await matchesUnlinked(knex.queryBuilder())
+      .count<{ count: number }>('files.id as count')
+      .first();
+
+    await knex.raw(
+      `UPDATE files
+         SET video_id = (SELECT id FROM videos WHERE videos.youtube_id = files.youtube_id)
+       WHERE video_id IS NULL
+         AND youtube_id IS NOT NULL
+         AND EXISTS (SELECT 1 FROM videos WHERE videos.youtube_id = files.youtube_id)`,
+    );
+
+    return Number(before?.count ?? 0);
+  }
+
+  async deleteById(id: number): Promise<void> {
+    await knex('files').where('id', id).del();
+  }
+}
+
 // ── Singletons ────────────────────────────────────────────
 
 export const channelRepository = new KnexChannelRepository();
@@ -825,6 +914,7 @@ export const dictionarySongRepository = new KnexDictionarySongRepository();
 export const dictionaryEventRepository = new KnexDictionaryEventRepository();
 export const dictionaryAliasRepository = new KnexDictionaryAliasRepository();
 export const settingsRepository = new KnexSettingsRepository();
+export const fileRepository = new KnexFileRepository();
 export const videoListRepository = new KnexVideoListRepository();
 export const eventLogRepository = new KnexEventLogRepository();
 export const duplicateGroupRepository = new KnexDuplicateGroupRepository();

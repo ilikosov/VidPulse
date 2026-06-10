@@ -86,7 +86,10 @@ describe('syncVideoSongs', () => {
     await syncVideoSongs(42, undefined, ['ASAP', 'BEAUTIFUL MONSTER']);
 
     const rows = await testKnex('video_songs').where('video_id', 42).orderBy('position');
-    expect(rows.map((r: Record<string, unknown>) => r.raw_title)).toEqual(['ASAP', 'BEAUTIFUL MONSTER']);
+    expect(rows.map((r: Record<string, unknown>) => r.raw_title)).toEqual([
+      'ASAP',
+      'BEAUTIFUL MONSTER',
+    ]);
   });
 
   it('removes all rows when the new set is empty', async () => {
