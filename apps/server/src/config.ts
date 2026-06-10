@@ -25,6 +25,7 @@ export const config = {
     proxyUser: process.env.YOUTUBE_API_PROXY_USER ?? null,
     proxyPass: process.env.YOUTUBE_API_PROXY_PASS ?? null,
     connectivityTimeoutMs: num(process.env.YOUTUBE_API_CONNECTIVITY_TIMEOUT, 5000),
+    requestTimeoutMs: num(process.env.YOUTUBE_API_REQUEST_TIMEOUT, 10000),
   },
 
   sync: {

@@ -72,14 +72,17 @@ class ChannelService {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const publishedAfter = thirtyDaysAgo.toISOString();
 
-    const videos = await youtubeService.fetchChannelVideos(channelId, publishedAfter);
-
-    for (const video of videos) {
-      try {
-        await ingestVideo(ingestDeps, video, { channelId: newChannelId });
-      } catch (e) {
-        logger.error(`Failed to ingest ${video.videoId}:`, e);
+    try {
+      const videos = await youtubeService.fetchChannelVideos(channelId, publishedAfter);
+      for (const video of videos) {
+        try {
+          await ingestVideo(ingestDeps, video, { channelId: newChannelId });
+        } catch (e) {
+          logger.error(`Failed to ingest ${video.videoId}:`, e);
+        }
       }
+    } catch (e) {
+      logger.error(`Failed to fetch initial videos for channel ${channelId}:`, e);
     }
 
     return newChannel;
