@@ -11,16 +11,34 @@ import {
 export class ArtistService {
   async findArtistByNameOrAlias(trx: DbClient, name: string) {
     const normalized = normalizeName(name);
+
+    // Fast path: SQL LOWER() matches the JS-normalized name (true for clean ASCII names).
     const byName = await trx('dictionary_artists')
       .whereRaw('LOWER(name) = ?', [normalized])
       .first();
     if (byName) return byName;
+
+    // Robust path: SQLite LOWER() only folds ASCII and keeps irregular whitespace, so it
+    // disagrees with normalizeName() (NFKC + collapsed whitespace + Unicode lowercasing).
+    // Re-check candidates in JS so e.g. "RED  VELVET" and "RED VELVET" dedupe correctly.
+    const byNormalizedName = (await trx('dictionary_artists').select('id', 'name')).find(
+      (a) => normalizeName(a.name) === normalized,
+    );
+    if (byNormalizedName) {
+      return trx('dictionary_artists').where({ id: byNormalizedName.id }).first();
+    }
+
     const alias = await trx('dictionary_aliases')
       .where({ entity_type: 'artist' })
       .andWhereRaw('LOWER(alias) = ?', [normalized])
       .first();
-    if (!alias) return null;
-    return trx('dictionary_artists').where({ id: alias.entity_id }).first();
+    if (alias) return trx('dictionary_artists').where({ id: alias.entity_id }).first();
+
+    const byNormalizedAlias = (
+      await trx('dictionary_aliases').where({ entity_type: 'artist' }).select('alias', 'entity_id')
+    ).find((a) => normalizeName(a.alias) === normalized);
+    if (!byNormalizedAlias) return null;
+    return trx('dictionary_artists').where({ id: byNormalizedAlias.entity_id }).first();
   }
 
   async getArtistMemberships(artistId: number) {

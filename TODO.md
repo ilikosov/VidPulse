@@ -40,6 +40,19 @@ acceptance criteria.
       Decide a UX (e.g. re-bucket diverged videos out of the list, or relax the invariant for
       this op) before exposing them in `videoListService.batchOperation`.
 
+## Bugs / tech debt
+
+- [ ] **Media-library import: solo artists crash** — `MediaLibraryService.importMediaLibrary`
+      inserts solo artists with `group_id: null`, but `dictionary_artists.group_id` is
+      `NOT NULL` (baseline migration). The whole import transaction rolls back. The seed
+      (`seeds/02_dictionary.ts`) works around this with a dedicated "Solo Artists" group —
+      the import should do the same (or the column should be made nullable).
+- [ ] **Dedup normalization parity for group/event/song** — `findArtistByNameOrAlias` was
+      fixed to compare names via `normalizeName` (NFKC + collapsed whitespace) instead of
+      relying on SQLite `LOWER()`. `GroupService.findGroupByNameOrAlias`,
+      `EventService.findEventByNameOrAlias` and `SongService.findSongByTitleOrAlias` share
+      the same latent mismatch and should get the same treatment (ideally a shared helper).
+
 ---
 
 > **Background docs.** Findings behind TASK-4…7 → [`docs/migrations-review.md`](./docs/migrations-review.md);
