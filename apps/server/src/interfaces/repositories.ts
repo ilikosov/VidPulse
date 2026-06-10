@@ -364,6 +364,7 @@ export interface IVideoListRepository {
         group: string | null;
         duration: number | null;
         status: string;
+        has_file: boolean;
         tags: string[];
       }
     >;

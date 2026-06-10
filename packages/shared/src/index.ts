@@ -320,6 +320,7 @@ export interface VideoListVideo {
   group: string | null;
   duration: number | null;
   status?: string | null;
+  has_file: boolean;
   tags: string[];
 }
 
