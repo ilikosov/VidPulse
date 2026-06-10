@@ -42,10 +42,16 @@ export class FileService {
     const errors: string[] = [];
     let scanned = 0;
 
+    const allowedExts = config.files.filter;
+
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isFile()) continue;
       const filename = entry.name;
+      if (allowedExts) {
+        const ext = path.extname(filename).replace(/^\./, '').toLowerCase();
+        if (!allowedExts.includes(ext)) continue;
+      }
       try {
         const fullPath = path.join(dir, filename);
         const stat = fs.statSync(fullPath);
