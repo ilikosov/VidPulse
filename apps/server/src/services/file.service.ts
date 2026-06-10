@@ -50,7 +50,7 @@ export class FileService {
       const filename = entry.name;
       if (allowedExts) {
         const ext = path.extname(filename).replace(/^\./, '').toLowerCase();
-        if (!allowedExts.includes(ext)) continue;
+        if (!allowedExts.includes(ext) || !ext) continue;
       }
       try {
         const fullPath = path.join(dir, filename);
