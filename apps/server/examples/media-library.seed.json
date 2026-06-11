@@ -516,8 +516,8 @@
           "songs": []
         },
         {
-          "name": "Moonbyul",
-          "aliases": ["문별"],
+          "name": "MOONBYUL",
+          "aliases": ["문별", "Moon Byul"],
           "membership": {
             "activityType": "group",
             "status": "active",
@@ -2136,6 +2136,25 @@
       ]
     },
     {
+      "name": "KISS OF LIFE",
+      "type": "female",
+      "active": true,
+      "aliases": ["키스오브라이프"],
+      "artists": [
+        {
+          "name": "HANEUL",
+          "aliases": ["하늘"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": []
+    },
+    {
       "name": "ITZY",
       "type": "female",
       "active": true,
@@ -2186,7 +2205,7 @@
           "songs": []
         },
         {
-          "name": "Yuna",
+          "name": "YUNA",
           "aliases": ["유나"],
           "membership": {
             "activityType": "group",
