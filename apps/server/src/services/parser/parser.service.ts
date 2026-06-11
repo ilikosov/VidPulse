@@ -113,7 +113,10 @@ export class ParserService {
         currentMetadata.event;
     }
 
-    const parsedSongTitles = splitSongTitles(currentMetadata.song_title);
+    const parsedSongTitles = splitSongTitles(
+      currentMetadata.song_title,
+      currentMetadata.song_titles,
+    );
     if (parsedSongTitles.length > 0) {
       currentMetadata.song_titles = parsedSongTitles;
       currentMetadata.song_title = parsedSongTitles[parsedSongTitles.length - 1];
