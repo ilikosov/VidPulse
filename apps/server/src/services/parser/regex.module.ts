@@ -222,9 +222,17 @@ export class RegexModule implements ParserModule {
   private countKoreanNameTokens(title: string): number {
     // Performer names sit between the leading "[..]" tag and the song quote.
     // Bracketed tags and parenthetical credits are not names, so drop them first.
+    // Korean camera markers ("아이오아이 세정 직캠 4K") are not names either: counting
+    // 직캠 made a solo credit look like "<group> <member>" and split it apart.
     const withoutTags = title.replace(/\[[^\]]*\]/g, ' ').replace(/\([^)]*\)/g, ' ');
     const prefix = this.stripLeadingDate(withoutTags.split(/['"‘“「＜@]/)[0]);
-    return prefix.split(/\s+/).filter((token) => /[가-힣]/.test(token)).length;
+    return prefix
+      .split(/\s+/)
+      .filter((token) => /[가-힣]/.test(token) && !this.isKoreanCameraMarkerToken(token)).length;
+  }
+
+  private isKoreanCameraMarkerToken(token: string): boolean {
+    return /(?:얼빡직캠|페이스캠|직캠|풀캠|세로|가로)/.test(token);
   }
 
   private extractKoreanPrefix(title: string, songTitle?: string): Partial<ParsedMetadata> {

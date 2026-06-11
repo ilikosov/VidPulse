@@ -47,6 +47,12 @@ acceptance criteria.
       relying on SQLite `LOWER()`. `GroupService.findGroupByNameOrAlias`,
       `EventService.findEventByNameOrAlias` and `SongService.findSongByTitleOrAlias` share
       the same latent mismatch and should get the same treatment (ideally a shared helper).
+- [ ] **`\b` never matches before Hangul in `extractKoreanPrefix`** — the `koreanCam` /
+      `koreanParen` patterns in `regex.module.ts` start with `\b`, but JS `\b` requires a
+      `\w` transition and Hangul is non-word, so purely Korean group names ("아이오아이 세정
+      직캠") never match and the fallback stays silent. Fixing it (e.g. a lookbehind) would
+      make Korean prefixes override English fancam credits across many titles — decide that
+      precedence first.
 
 ---
 

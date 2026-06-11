@@ -186,6 +186,22 @@ export class DictionaryModule implements ParserModule {
     let correctionsMade = 0;
     let fieldsChecked = 0;
 
+    // A fancam credit like "(I.O.I SE JEONG FanCam)" is split by word position, so a
+    // multi-word artist lands wrong: group="I.O.I SE", artist="JEONG". Re-split against
+    // known groups before correcting the fields separately — otherwise findBestMatch can
+    // fix the group but the stray word ("SE") is lost from the artist for good.
+    if (metadata.group_name && metadata.artist_name && metadata.group_name !== 'SOLO') {
+      const resplit = this.resplitGroupArtist(
+        metadata.group_name,
+        metadata.artist_name,
+        dictionary,
+      );
+      if (resplit) {
+        metadata.group_name = resplit.group;
+        metadata.artist_name = resplit.artist;
+      }
+    }
+
     fieldsChecked++;
     if (metadata.group_name) {
       const corrected = this.findBestMatch(
@@ -293,6 +309,28 @@ export class DictionaryModule implements ParserModule {
 
     const confidence = fieldsChecked > 0 ? correctionsMade / fieldsChecked : 0;
     return { metadata, confidence };
+  }
+
+  // Longest word-prefix of "<group words> <artist words>" that exactly matches a known
+  // group (name or alias) wins; the remaining words are the artist. Returns null when no
+  // prefix resolves — unknown groups keep the original positional split.
+  private resplitGroupArtist(
+    group: string,
+    artist: string,
+    dictionary: KpopDictionary,
+  ): { group: string; artist: string } | null {
+    const words = `${group} ${artist}`.split(/\s+/).filter(Boolean);
+    for (let k = words.length - 1; k >= 1; k--) {
+      const candidate = words.slice(0, k).join(' ');
+      const normalized = this.normalizeLookup(candidate);
+      const resolved =
+        dictionary.aliases.group[normalized] ??
+        dictionary.groups.find((g) => this.normalizeLookup(g) === normalized);
+      if (resolved) {
+        return { group: resolved, artist: words.slice(k).join(' ') };
+      }
+    }
+    return null;
   }
 
   private normalizeCameraType(cameraType: string): string | undefined {
