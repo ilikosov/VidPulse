@@ -6,6 +6,10 @@ export const SOLO_GROUP = 'SOLO';
 export class RegexModule implements ParserModule {
   private readonly datePattern = /\b(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))\b/g;
 
+  // MPD-style dotted dates: "@MCOUNTDOWN_2026.5.14" / "26.5.14" → "260514".
+  // (?<!\d) instead of \b — "_" before the year is a word char, so \b never fires there.
+  private readonly dottedDatePattern = /(?<!\d)(20\d{2}|\d{2})\.(\d{1,2})\.(\d{1,2})(?!\d)/g;
+
   async parse(
     title: string,
     currentMeta: Partial<ParsedMetadata>,
@@ -58,7 +62,25 @@ export class RegexModule implements ParserModule {
     }
 
     const matches = [...title.matchAll(this.datePattern)];
-    return matches.length > 0 ? matches[matches.length - 1][1] : undefined;
+    if (matches.length > 0) {
+      return matches[matches.length - 1][1];
+    }
+
+    // Fallback: dotted "YYYY.M.D" / "YY.M.D" dates, normalized to YYMMDD. Month/day range
+    // checks keep version-like numbers ("1.2.345") from being read as dates.
+    const dotted = [...title.matchAll(this.dottedDatePattern)]
+      .map(([, year, month, day]) => ({
+        year: year.slice(-2),
+        month: Number(month),
+        day: Number(day),
+      }))
+      .filter(({ month, day }) => month >= 1 && month <= 12 && day >= 1 && day <= 31);
+    if (dotted.length > 0) {
+      const last = dotted[dotted.length - 1];
+      return `${last.year}${String(last.month).padStart(2, '0')}${String(last.day).padStart(2, '0')}`;
+    }
+
+    return undefined;
   }
 
   private extractCameraType(title: string): string | undefined {
