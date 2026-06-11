@@ -15,6 +15,7 @@ import {
   Typography,
   message,
 } from 'antd';
+import { CopyOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { useEffect, useState } from 'react';
@@ -25,6 +26,7 @@ import {
   batchAddTags,
   batchConfirmDownload,
   batchRemoveTags,
+  buildFileCommand,
   getVideos,
   reparseBatch,
   llmParseBatch,
@@ -250,6 +252,23 @@ function VideoTable() {
     }
   };
 
+  const handleFileCommand = async () => {
+    if (selectedRowKeys.length === 0) {
+      return;
+    }
+
+    setBatchLoading(true);
+    try {
+      const { command } = await buildFileCommand(selectedRowKeys);
+      await navigator.clipboard.writeText(command);
+      message.success('Команда скопирована в буфер');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Не удалось сформировать команду');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
   const handleBatchPresetTag = async (tagName: 'short' | 'private') => {
     if (selectedRowKeys.length === 0) {
       return;
@@ -437,6 +456,16 @@ function VideoTable() {
           <Button type="primary" ghost onClick={() => setAddToListOpen(true)}>
             Add to List
           </Button>
+          <Tooltip title="Сформировать команду для файлов и скопировать в буфер">
+            <Button
+              icon={<CopyOutlined />}
+              onClick={() => void handleFileCommand()}
+              loading={batchLoading}
+              disabled={batchLoading}
+            >
+              Команда для файлов
+            </Button>
+          </Tooltip>
         </Space>
       ) : null}
 

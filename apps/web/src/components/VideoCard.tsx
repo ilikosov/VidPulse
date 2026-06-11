@@ -19,9 +19,11 @@ import {
   Typography,
   message,
 } from 'antd';
+import { CopyOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import {
   addTagToVideo,
+  buildFileCommand,
   getVideo,
   ignoreVideo,
   llmParseVideo,
@@ -116,6 +118,7 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
   const [llmParsing, setLlmParsing] = useState(false);
   const [reparsing, setReparsing] = useState(false);
   const [resyncing, setResyncing] = useState(false);
+  const [fileCommandLoading, setFileCommandLoading] = useState(false);
   const [addToListOpen, setAddToListOpen] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [operationLog, setOperationLog] = useState<
@@ -270,6 +273,20 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
       message.error(err instanceof Error ? err.message : 'Failed to resync video');
     } finally {
       setResyncing(false);
+    }
+  };
+
+  const handleFileCommand = async () => {
+    if (!video) return;
+    setFileCommandLoading(true);
+    try {
+      const { command } = await buildFileCommand([video.id]);
+      await navigator.clipboard.writeText(command);
+      message.success('Команда скопирована в буфер');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Не удалось сформировать команду');
+    } finally {
+      setFileCommandLoading(false);
     }
   };
 
@@ -691,6 +708,15 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
                   ✨ LLM Parse Metadata
                 </Button>
                 <Button onClick={() => setAddToListOpen(true)}>Add to list</Button>
+                <Tooltip title="Сформировать команду для файлов и скопировать в буфер">
+                  <Button
+                    icon={<CopyOutlined />}
+                    onClick={() => void handleFileCommand()}
+                    loading={fileCommandLoading}
+                  >
+                    Команда для файлов
+                  </Button>
+                </Tooltip>
               </Space>
             </div>
 

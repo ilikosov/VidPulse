@@ -122,6 +122,13 @@ export async function batchComplete(videoIds: number[]): Promise<BatchResult> {
   });
 }
 
+export async function buildFileCommand(videoIds: number[]): Promise<{ command: string }> {
+  return fetchApi<{ command: string }>('/videos/batch/file-command', {
+    method: 'POST',
+    body: JSON.stringify({ videoIds }),
+  });
+}
+
 export async function reparseBatch(videoIds: number[]): Promise<{ updated: number }> {
   return fetchApi<{ updated: number }>('/parser/reparse-batch', {
     method: 'POST',
