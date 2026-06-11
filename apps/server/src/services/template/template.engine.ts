@@ -3,7 +3,7 @@
  *
  * Syntax:
  *   - Token: `{{entity.param}}` — substituted with `context[entity][param]`.
- *   - Loop:  `{{#each entity}}…{{/each}}` — the body is rendered once per record in
+ *   - Loop:  `{{each entity}}…{{/each}}` — the body is rendered once per record in
  *            `context[entity]`, with `{{entity.param}}` inside the body resolving to the
  *            current record. This yields a single string for the whole collection
  *            (e.g. `mv "url1" "url2" /dest/`).
@@ -18,7 +18,7 @@ export type EntityContext = Record<string, unknown>;
 /** Each entity maps to an array of records (the loop iterations). */
 export type TemplateContext = Record<string, EntityContext[]>;
 
-const EACH_BLOCK = /\{\{#each\s+([a-zA-Z_]\w*)\s*\}\}([\s\S]*?)\{\{\/each\}\}/g;
+const EACH_BLOCK = /\{\{each\s+([a-zA-Z_]\w*)\s*\}\}([\s\S]*?)\{\{\/each\}\}/g;
 const TOKEN = /\{\{\s*([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)(?:\|([^}]*))?\s*\}\}/g;
 
 /** Build a scope that exposes the first record of every entity. */

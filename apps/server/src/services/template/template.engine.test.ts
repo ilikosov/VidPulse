@@ -42,8 +42,8 @@ describe('renderTemplate', () => {
     expect(result).toBe('');
   });
 
-  it('expands an #each loop into a single command across all videos', () => {
-    const template = 'mv {{#each video}}"{{video.youtube_url}}" {{/each}}/dest/';
+  it('expands an each loop into a single command across all videos', () => {
+    const template = 'mv {{each video}}"{{video.youtube_url}}" {{/each}}/dest/';
     const result = renderTemplate(template, {
       video: [
         { youtube_url: 'https://yt/1' },
@@ -55,7 +55,7 @@ describe('renderTemplate', () => {
   });
 
   it('resolves a token outside a loop against the first video', () => {
-    const template = '{{video.group_name}}: {{#each video}}{{video.song_title}} {{/each}}';
+    const template = '{{video.group_name}}: {{each video}}{{video.song_title}} {{/each}}';
     const result = renderTemplate(template, {
       video: [
         { group_name: 'aespa', song_title: 'Drama' },
@@ -66,7 +66,7 @@ describe('renderTemplate', () => {
   });
 
   it('renders an empty loop body when the entity has no records', () => {
-    const result = renderTemplate('mv {{#each video}}"{{video.youtube_url}}" {{/each}}/dest/', {
+    const result = renderTemplate('mv {{each video}}"{{video.youtube_url}}" {{/each}}/dest/', {
       video: [],
     });
     expect(result).toBe('mv /dest/');
