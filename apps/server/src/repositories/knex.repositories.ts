@@ -680,7 +680,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
   }> {
     const list = await knex('video_lists').where({ id }).first();
     if (!list) throw new Error('List not found');
-    const rows = await knex('videos as v')
+    const baseQuery = knex('videos as v')
       .leftJoin('video_tags as vt', 'vt.video_id', 'v.id')
       .leftJoin('tags as t', 't.id', 'vt.tag_id')
       .where('v.video_list_id', id)
@@ -696,6 +696,16 @@ export class KnexVideoListRepository implements IVideoListRepository {
         't.name as tag',
         knex.raw('EXISTS(SELECT 1 FROM files f WHERE f.video_id = v.id) as has_file'),
       );
+    if (config.hideFlaggedVideos) {
+      baseQuery.whereNotIn('v.id', function () {
+        this.select('v2.id')
+          .from('videos as v2')
+          .join('video_tags as vt2', 'vt2.video_id', 'v2.id')
+          .join('tags as t2', 't2.id', 'vt2.tag_id')
+          .whereIn('t2.name', ['shorts', 'private']);
+      });
+    }
+    const rows = await baseQuery;
     const videos = new Map<
       number,
       {
