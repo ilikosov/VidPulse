@@ -708,13 +708,13 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
                   ✨ LLM Parse Metadata
                 </Button>
                 <Button onClick={() => setAddToListOpen(true)}>Add to list</Button>
-                <Tooltip title="Сформировать команду для файлов и скопировать в буфер">
+                <Tooltip title="Сформировать команду для видео и скопировать в буфер">
                   <Button
                     icon={<CopyOutlined />}
                     onClick={() => void handleFileCommand()}
                     loading={fileCommandLoading}
                   >
-                    Команда для файлов
+                    Команда для видео
                   </Button>
                 </Tooltip>
               </Space>
