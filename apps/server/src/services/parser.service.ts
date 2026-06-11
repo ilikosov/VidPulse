@@ -136,7 +136,7 @@ class ParserService {
 
     const resolved = await resolveParsedMetadata(metadata);
     const forceReview = hasUnresolvedEntity(metadata, resolved);
-    const nextStatus = needsReview || forceReview ? 'needs_review' : 'new';
+    const nextStatus = needsReview || forceReview ? 'needs_review' : video.status;
 
     const updateData: Record<string, any> = {
       ...buildMetadataUpdate(metadata, resolved),
