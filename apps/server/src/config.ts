@@ -63,6 +63,11 @@ export const config = {
           .map((e) => e.trim().toLowerCase())
           .filter(Boolean)
       : null,
+    /**
+     * Command-line template for the "file command" action. Uses {{entity.param}} syntax
+     * with an optional {{#each video}}…{{/each}} loop. See services/template/template.engine.ts.
+     */
+    shellCommand: process.env.SHELL_COMMAND_VIDEO ?? null,
   },
 };
 

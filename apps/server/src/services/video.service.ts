@@ -17,6 +17,8 @@ import {
 import type { IVideoFilters, VideoEntity } from '../interfaces/repositories';
 import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
 import { config } from '../config';
+import { renderTemplate } from './template/template.engine';
+import { buildVideoContext } from './template/videoContext';
 
 export interface VideoListItem {
   id: number;
@@ -719,6 +721,26 @@ class VideoService {
 
     const updated = await videoRepository.findById(videoId);
     return { video: updated!, parsedMetadata: metadata, needsReview };
+  }
+
+  /**
+   * Render the SHELL_COMMAND_VIDEO template for the given videos into a single shell command.
+   * The template may iterate the selection with {{#each video}}…{{/each}} (one command for the
+   * whole selection, e.g. `mv "url1" "url2" /dest/`) or address a single video directly.
+   */
+  async buildFileCommand(videoIds: number[]): Promise<{ command: string }> {
+    const template = config.files.shellCommand;
+    if (!template) {
+      throw AppError.badRequest('SHELL_COMMAND_VIDEO is not configured');
+    }
+
+    const videoContexts = [];
+    for (const videoId of videoIds) {
+      const video = await this.getVideoById(videoId);
+      videoContexts.push(buildVideoContext(video));
+    }
+
+    return { command: renderTemplate(template, { video: videoContexts }) };
   }
 }
 
