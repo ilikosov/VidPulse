@@ -53,6 +53,15 @@ acceptance criteria.
       직캠") never match and the fallback stays silent. Fixing it (e.g. a lookbehind) would
       make Korean prefixes override English fancam credits across many titles — decide that
       precedence first.
+- [ ] **Guest artists ("with 윤하") are dropped** — `parseSegmentedTitle` (and the parser in
+      general) keeps a single `artist_name`, so the `with <guest>` part of a credit is
+      discarded. Supporting featured/guest performers needs a data-model decision (extra
+      column or a credits table) before the parser can carry them.
+- [ ] **Hangul substring matching in `containsTerm`** — for Hangul needles `containsTerm`
+      falls back to plain `includes()`, so an artist alias like `수영` matches inside the
+      unrelated song `수영해`. `findArtistInTitle` now picks the earliest/longest match to
+      dodge the worst case, but the underlying matcher should require non-Hangul boundaries;
+      that touches every lookup path, so do it as its own change.
 
 ---
 

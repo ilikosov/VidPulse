@@ -32,6 +32,14 @@ export class RegexModule implements ParserModule {
     const koreanPrefixMeta = this.extractKoreanPrefix(compacted, metadata.song_title);
     Object.assign(metadata, englishFancamMeta, koreanPrefixMeta);
 
+    // Show-channel titles ("[channel] group artist | song, song | SHOW") are pipe-segmented
+    // rather than quote/@-delimited, so the generic extractors above misread them. When the
+    // structural parse recognises that shape it wins, overriding event/songs/credit.
+    const segmentedMeta = this.parseSegmentedTitle(compacted);
+    if (segmentedMeta) {
+      Object.assign(metadata, segmentedMeta);
+    }
+
     const fancam = this.assessFancam(compacted);
     metadata.is_fancam = fancam.is_fancam;
     metadata.fancam_confidence = fancam.fancam_confidence;
@@ -103,6 +111,59 @@ export class RegexModule implements ParserModule {
       .replace(/#.*$/g, '')
       .replace(/\b방송\b/gi, '')
       .trim();
+  }
+
+  /**
+   * Parse show-channel titles of the form
+   * `[channel] group artist [with guest] | song, song, ... | SHOW NAME (langs)`.
+   *
+   * These use `|` as a structural separator (credit / song-list / show), so the generic
+   * single-pipe `extractEvent` would grab the song list as the event. Only fires when the
+   * title has at least three pipe segments and no `@` (the @-fancam format is handled
+   * elsewhere). Returns null when the shape does not match, leaving the generic path intact.
+   */
+  private parseSegmentedTitle(title: string): Partial<ParsedMetadata> | null {
+    const withoutTag = this.compact(title.replace(/^\s*\[[^\]]+\]\s*/, ''));
+    if (withoutTag.includes('@')) {
+      return null;
+    }
+
+    const segments = withoutTag.split('|').map((segment) => this.compact(segment));
+    if (segments.length < 3) {
+      return null;
+    }
+
+    const metadata: Partial<ParsedMetadata> = {};
+
+    // Last segment is the event/show; drop trailing parentheticals like "(ENG/JPN)".
+    const eventRaw = this.cleanEvent(segments[segments.length - 1].replace(/\([^)]*\)/g, ''));
+    if (eventRaw) {
+      metadata.event = `@${/[A-Za-z]/.test(eventRaw) ? eventRaw.toUpperCase() : eventRaw}`;
+    }
+
+    // Middle segments hold a comma-separated song list.
+    const songs = segments
+      .slice(1, -1)
+      .join(',')
+      .split(',')
+      .map((song) => this.compact(song))
+      .filter(Boolean);
+    if (songs.length) {
+      metadata.song_titles = songs;
+      metadata.song_title = songs[songs.length - 1];
+    }
+
+    // First segment is the credit "group artist [with guest]"; the guest is dropped because
+    // the data model only carries a single artist (tracked in the backlog).
+    const credit = segments[0].match(
+      /^([가-힣A-Za-z0-9_&.-]+)\s+([가-힣A-Za-z0-9'.-]+)(?:\s+with\s+.+)?$/i,
+    );
+    if (credit && !this.looksLikeDateToken(credit[1])) {
+      metadata.group_name = credit[1];
+      metadata.artist_name = credit[2];
+    }
+
+    return Object.keys(metadata).length ? metadata : null;
   }
 
   private extractSongTitle(title: string): string | undefined {

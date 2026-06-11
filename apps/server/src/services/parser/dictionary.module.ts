@@ -575,30 +575,51 @@ export class DictionaryModule implements ParserModule {
     title: string,
     dictionary: KpopDictionary,
   ): { name: string; group?: string } | null {
-    for (const [alias, canonical] of Object.entries(dictionary.aliases.artist)) {
-      if (this.containsTerm(title, alias)) {
-        for (const [group, artists] of Object.entries(dictionary.artists)) {
-          if (
-            artists.some(
-              (artist) => this.normalizeLookup(artist) === this.normalizeLookup(canonical),
-            )
-          ) {
-            return { name: canonical, group };
-          }
-        }
-        return { name: canonical };
+    // Pick the artist whose name/alias appears earliest in the title (ties broken by the
+    // longer match) instead of the first one in dictionary iteration order. Otherwise a song
+    // word that happens to contain an artist alias as a substring (e.g. the alias "수영"
+    // inside the song "수영해") could outrank the real performer purely because of DB order.
+    const haystack = this.normalizeLookup(title);
+    const matches: Array<{ name: string; group?: string; pos: number; len: number }> = [];
+
+    const consider = (needle: string, name: string, group?: string) => {
+      if (!this.containsTerm(title, needle)) {
+        return;
       }
+      const normalizedNeedle = this.normalizeLookup(needle);
+      const pos = haystack.indexOf(normalizedNeedle);
+      if (pos < 0) {
+        return;
+      }
+      matches.push({ name, group, pos, len: normalizedNeedle.length });
+    };
+
+    for (const [alias, canonical] of Object.entries(dictionary.aliases.artist)) {
+      let group: string | undefined;
+      for (const [g, artists] of Object.entries(dictionary.artists)) {
+        if (
+          artists.some((artist) => this.normalizeLookup(artist) === this.normalizeLookup(canonical))
+        ) {
+          group = g;
+          break;
+        }
+      }
+      consider(alias, canonical, group);
     }
 
     for (const [group, artists] of Object.entries(dictionary.artists)) {
       for (const artist of artists) {
-        if (this.containsTerm(title, artist)) {
-          return { name: artist, group };
-        }
+        consider(artist, artist, group);
       }
     }
 
-    return null;
+    if (matches.length === 0) {
+      return null;
+    }
+
+    // Earliest occurrence wins; ties broken by the longer (more specific) match.
+    matches.sort((a, b) => a.pos - b.pos || b.len - a.len);
+    return { name: matches[0].name, group: matches[0].group };
   }
 
   private findSongInTitle(title: string, dictionary: KpopDictionary): string | null {
