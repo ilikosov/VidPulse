@@ -1,5 +1,5 @@
 import { ParsedMetadata, ParserModule } from './parser.types';
-import { RegexModule } from './regex.module';
+import { RegexModule, SOLO_GROUP } from './regex.module';
 import { DictionaryModule } from './dictionary.module';
 import { logger } from '../../lib/logger';
 import { splitSongTitles } from './songTitles.util';
@@ -93,6 +93,20 @@ export class ParserService {
         }
       } catch (error) {
         logger.warn('Parser module failed:', error);
+      }
+    }
+
+    // "(I.O.I FanCam)" credits the whole group: the regex heuristic can only guess SOLO for
+    // a single-name credit, so flip it back to a group stage when the "artist" is a known group.
+    if (
+      currentMetadata.group_name === SOLO_GROUP &&
+      currentMetadata.artist_name &&
+      this.dictionaryModule
+    ) {
+      const group = await this.dictionaryModule.resolveGroupOnlyCredit(currentMetadata.artist_name);
+      if (group) {
+        currentMetadata.group_name = group;
+        delete currentMetadata.artist_name;
       }
     }
 

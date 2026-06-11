@@ -65,4 +65,15 @@ describe('parseTitle - MPD fancam credits with multi-word artist names', () => {
     expect(metadata.song_title).toBe('Flower Way');
     expect(needsReview).toBe(false);
   });
+
+  it('flags a group-only fancam credit as the group, not a SOLO artist', async () => {
+    const title = "[MPD직캠] 아이오아이 직캠 8K '갑자기' (I.O.I FanCam) | @MCOUNTDOWN_2026.5.21";
+    const { metadata, needsReview } = await parseTitle(title, PUBLISHED_AT);
+
+    expect(metadata.group_name).toBe('I.O.I');
+    expect(metadata.artist_name).toBeUndefined();
+    expect(metadata.song_title).toBe('갑자기');
+    expect(metadata.event).toBe('@MCOUNTDOWN');
+    expect(needsReview).toBe(false);
+  });
 });
