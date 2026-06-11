@@ -1,6 +1,7 @@
 import knex from '../../db';
 import type Knex from 'knex';
 import { type DbClient, normalizeName, attachSongs } from './utils';
+import { config } from '../../config';
 
 export class SongService {
   async findSongByTitleOrAlias(trx: DbClient, title: string) {
@@ -106,6 +107,15 @@ export class SongService {
       'videos.id',
       knex('video_songs').select('video_id').where('song_id', songId),
     );
+    if (config.hideFlaggedVideos) {
+      base.whereNotIn('videos.id', function () {
+        this.select('v2.id')
+          .from('videos as v2')
+          .join('video_tags as vt2', 'vt2.video_id', 'v2.id')
+          .join('tags as t2', 't2.id', 'vt2.tag_id')
+          .whereIn('t2.name', ['shorts', 'private']);
+      });
+    }
     const videos = await base
       .clone()
       .select('videos.*')

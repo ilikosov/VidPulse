@@ -1,5 +1,6 @@
 import knex from '../../db';
 import type Knex from 'knex';
+import { config } from '../../config';
 import {
   type DbClient,
   type MembershipActivityType,
@@ -243,6 +244,15 @@ export class ArtistService {
     const safeLimit = Math.max(1, limit);
     const offset = (safePage - 1) * safeLimit;
     const base = knex('videos_display as videos').where('videos.artist_id', artistId);
+    if (config.hideFlaggedVideos) {
+      base.whereNotIn('videos.id', function () {
+        this.select('v2.id')
+          .from('videos as v2')
+          .join('video_tags as vt2', 'vt2.video_id', 'v2.id')
+          .join('tags as t2', 't2.id', 'vt2.tag_id')
+          .whereIn('t2.name', ['shorts', 'private']);
+      });
+    }
     const videos = await base
       .clone()
       .select('videos.*')
@@ -272,6 +282,15 @@ export class ArtistService {
     const safeLimit = Math.max(1, limit);
     const offset = (safePage - 1) * safeLimit;
     const base = knex('videos_display as videos').where(`videos.${field}`, value);
+    if (config.hideFlaggedVideos) {
+      base.whereNotIn('videos.id', function () {
+        this.select('v2.id')
+          .from('videos as v2')
+          .join('video_tags as vt2', 'vt2.video_id', 'v2.id')
+          .join('tags as t2', 't2.id', 'vt2.tag_id')
+          .whereIn('t2.name', ['shorts', 'private']);
+      });
+    }
     const videos = await base
       .clone()
       .select('videos.*')
