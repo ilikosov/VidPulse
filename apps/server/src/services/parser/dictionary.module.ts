@@ -333,6 +333,32 @@ export class DictionaryModule implements ParserModule {
     return null;
   }
 
+  /**
+   * Resolve a name to a known group (exact name/alias match only) when it is NOT a known
+   * artist. Detects group-stage credits ("(I.O.I FanCam)") that the regex SOLO heuristic
+   * mislabels as a solo artist. Fuzzy matching is deliberately avoided: a real solo artist
+   * whose name merely resembles a group must stay a solo stage.
+   */
+  public async resolveGroupOnlyCredit(name: string): Promise<string | null> {
+    const dictionary = await this.loadDictionary();
+    const normalized = this.normalizeLookup(name);
+
+    const isKnownArtist =
+      Boolean(dictionary.aliases.artist[normalized]) ||
+      Object.values(dictionary.artists)
+        .flat()
+        .some((artist) => this.normalizeLookup(artist) === normalized);
+    if (isKnownArtist) {
+      return null;
+    }
+
+    return (
+      dictionary.aliases.group[normalized] ??
+      dictionary.groups.find((group) => this.normalizeLookup(group) === normalized) ??
+      null
+    );
+  }
+
   private normalizeCameraType(cameraType: string): string | undefined {
     const normalized = this.normalizeLookup(cameraType);
     if (this.cameraTypeMap[normalized]) {
