@@ -125,7 +125,12 @@ export class ArtistService {
         }
       })
       .where((qb) => {
-        if (startedAt) qb.where({ started_at: startedAt });
+        // SQLite DATE() normalizes both formats to "YYYY-MM-DD" so a membership seeded as an
+        // ISO timestamp ("2025-02-24T00:00:00.000Z", from new Date()) matches the same date
+        // imported as a raw string ("2025-02-24"). A plain `=` compares the raw text, treats
+        // them as distinct, and inserts a duplicate membership (which then duplicates the
+        // artist on export).
+        if (startedAt) qb.whereRaw('DATE(started_at) = DATE(?)', [startedAt]);
         else qb.whereNull('started_at');
       });
 
