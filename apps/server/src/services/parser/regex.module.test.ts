@@ -35,4 +35,37 @@ describe('RegexModule', () => {
     expect(result.metadata.camera_type).toContain('FanCam');
     expect(result.metadata.is_fancam).toBe(true);
   });
+
+  describe('dotted dates (MPD style)', () => {
+    it('extracts "YYYY.M.D" after an event suffix, normalized to YYMMDD', async () => {
+      const module = new RegexModule();
+      const title =
+        "[MPD직캠] 빌리 츠키 직캠 4K 'ZAP' (Billlie TSUKI FanCam) | @MCOUNTDOWN_2026.5.14";
+
+      const result = await module.parse(title, {});
+
+      expect(result.metadata.perf_date).toBe('260514');
+    });
+
+    it('extracts a two-digit-year dotted date', async () => {
+      const module = new RegexModule();
+      const result = await module.parse("그룹 멤버 직캠 'Song' @SHOW_26.5.14", {});
+
+      expect(result.metadata.perf_date).toBe('260514');
+    });
+
+    it('prefers a YYMMDD date over a dotted one', async () => {
+      const module = new RegexModule();
+      const result = await module.parse("260101 그룹 멤버 'Song' @SHOW_2026.5.14", {});
+
+      expect(result.metadata.perf_date).toBe('260101');
+    });
+
+    it('ignores dotted numbers with an invalid month', async () => {
+      const module = new RegexModule();
+      const result = await module.parse("그룹 멤버 'Song' @SHOW_2026.13.5", {});
+
+      expect(result.metadata.perf_date).toBeUndefined();
+    });
+  });
 });
