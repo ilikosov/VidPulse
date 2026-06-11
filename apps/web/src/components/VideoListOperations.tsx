@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Button, Input, Modal, Space, notification } from 'antd';
+import { Button, Input, Modal, Space, notification, message } from 'antd';
+import { CopyOutlined } from '@ant-design/icons';
 import { batchVideoOperation } from '../api/videoListsApi';
+import { buildFileCommand } from '../api';
 
 interface VideoListOperationsProps {
   listId: number;
@@ -39,6 +41,21 @@ export default function VideoListOperations({
     run('removeFromList', { videoIds: selectedVideoIds });
   };
 
+  const handleFileCommand = async () => {
+    const ids = selectedVideoIds.length > 0 ? selectedVideoIds : undefined;
+    if (!ids) {
+      notification.error({ message: 'Выберите видео' });
+      return;
+    }
+    try {
+      const { command } = await buildFileCommand(ids);
+      await navigator.clipboard.writeText(command);
+      message.success('Скопировано в буфер');
+    } catch (err: any) {
+      message.error(err?.message || 'Ошибка при формировании команды');
+    }
+  };
+
   const handleTagConfirm = async () => {
     if (!tagName.trim() || !tagModal) return;
     await run(tagModal, { tagName: tagName.trim() });
@@ -56,6 +73,13 @@ export default function VideoListOperations({
         <Button onClick={() => setTagModal('removeTag')}>Remove Tag</Button>
         <Button danger onClick={handleRemoveFromList} disabled={selectedVideoIds.length === 0}>
           Remove from List
+        </Button>
+        <Button
+          icon={<CopyOutlined />}
+          onClick={() => void handleFileCommand()}
+          disabled={selectedVideoIds.length === 0}
+        >
+          Команда для видео
         </Button>
       </Space>
 

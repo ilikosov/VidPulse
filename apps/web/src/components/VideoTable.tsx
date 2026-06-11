@@ -456,14 +456,14 @@ function VideoTable() {
           <Button type="primary" ghost onClick={() => setAddToListOpen(true)}>
             Add to List
           </Button>
-          <Tooltip title="Сформировать команду для файлов и скопировать в буфер">
+          <Tooltip title="Сформировать команду для видео и скопировать в буфер">
             <Button
               icon={<CopyOutlined />}
               onClick={() => void handleFileCommand()}
               loading={batchLoading}
               disabled={batchLoading}
             >
-              Команда для файлов
+              Команда для видео
             </Button>
           </Tooltip>
         </Space>
