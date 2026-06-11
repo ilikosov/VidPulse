@@ -1,7 +1,30 @@
-import { Button, Card, Collapse, Space, Typography } from 'antd';
+import { CopyOutlined } from '@ant-design/icons';
+import { Button, Card, Collapse, Space, Typography, message } from 'antd';
 import type { ParserLog } from '../api';
 
 const { Text } = Typography;
+
+function formatReparseCopy(log: { input?: unknown; output?: unknown }): string {
+  const title = (log.input as any)?.title ?? '';
+  const out = (log.output as any) ?? {};
+  const meta = out.metadata ?? out;
+
+  const fields = [
+    meta.group_name != null && `group_name=${meta.group_name}`,
+    meta.artist_name != null && `artist_name=${meta.artist_name}`,
+    meta.song_title != null && `song_title=${meta.song_title}`,
+    meta.event != null && `event=${meta.event}`,
+    meta.camera_type != null && `camera_type=${meta.camera_type}`,
+    meta.perf_date != null && `perf_date=${meta.perf_date}`,
+    meta.is_fancam != null && `is_fancam=${meta.is_fancam}`,
+    meta.confidence != null && `confidence=${meta.confidence}`,
+    out.needsReview != null && `needs_review=${out.needsReview}`,
+  ]
+    .filter(Boolean)
+    .join(' | ');
+
+  return `input: ${title}\noutput: ${fields}`;
+}
 
 interface OperationLogWidgetProps {
   type: 'reparse' | 'resync';
@@ -43,9 +66,24 @@ function OperationLogWidget({ type, log, onClear }: OperationLogWidgetProps) {
       size="small"
       style={{ marginTop: 16, background: '#fcfcfc' }}
       extra={
-        <Button type="text" size="small" onClick={onClear}>
-          Clear
-        </Button>
+        <Space size={4}>
+          {type === 'reparse' && (
+            <Button
+              type="text"
+              size="small"
+              icon={<CopyOutlined />}
+              onClick={() => {
+                navigator.clipboard.writeText(formatReparseCopy(log));
+                message.success('Copied!');
+              }}
+            >
+              Copy
+            </Button>
+          )}
+          <Button type="text" size="small" onClick={onClear}>
+            Clear
+          </Button>
+        </Space>
       }
     >
       <Collapse
