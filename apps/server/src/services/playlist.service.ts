@@ -104,6 +104,88 @@ class PlaylistService {
     return newPlaylist;
   }
 
+  async getPlaylist(id: number) {
+    const playlist = await playlistRepository.findById(id);
+    if (!playlist) throw AppError.notFound('Playlist not found');
+    const total = await knex('videos').where('playlist_id', id).count('* as count').first();
+    return { ...playlist, videoCount: Number((total as any)?.count ?? 0) };
+  }
+
+  async syncPlaylist(id: number) {
+    const playlist = await playlistRepository.findById(id);
+    if (!playlist) throw AppError.notFound('Playlist not found');
+
+    const videos = await youtubeService.fetchPlaylistItems(playlist.youtube_id);
+    const existingIds = (await knex('videos')
+      .where('playlist_id', id)
+      .pluck('youtube_id')) as string[];
+    const existingSet = new Set(existingIds);
+
+    const newVideos = videos.filter((v) => !existingSet.has(v.videoId));
+
+    const prepared: Array<{
+      video: (typeof videos)[number];
+      status: string;
+      updateData: Record<string, any>;
+      songTitle?: string;
+      songTitles?: string[];
+    }> = [];
+
+    for (const video of newVideos) {
+      const { metadata, needsReview } = await parseTitle(video.title);
+      const resolved = await resolveParsedMetadata(metadata);
+      const forceReview = hasUnresolvedEntity(metadata, resolved);
+
+      const updateData: Record<string, any> = {};
+      if (metadata.perf_date) {
+        const dateStr = metadata.perf_date;
+        updateData.perf_date = new Date(
+          `20${dateStr.slice(0, 2)}-${dateStr.slice(2, 4)}-${dateStr.slice(4, 6)}`,
+        ).toISOString();
+      }
+      updateData.group_id = resolved.group_id;
+      updateData.artist_id = resolved.artist_id;
+      updateData.event_id = resolved.event_id;
+      updateData.group_name = resolved.group_name;
+      updateData.artist_name = resolved.artist_name;
+      updateData.event = resolved.event;
+      if (metadata.camera_type !== undefined) updateData.camera_type = metadata.camera_type || null;
+      updateData.is_own_group_song = metadata.is_own_group_song ?? null;
+      updateData.is_own_artist_song = metadata.is_own_artist_song ?? null;
+
+      prepared.push({
+        video,
+        status: needsReview || forceReview ? 'needs_review' : 'new',
+        updateData,
+        songTitle: resolved.song_title ?? undefined,
+        songTitles: metadata.song_titles,
+      });
+    }
+
+    await knex.transaction(async (trx: any) => {
+      for (const item of prepared) {
+        const [createdVideo] = await trx('videos')
+          .insert({
+            youtube_id: item.video.videoId,
+            playlist_id: id,
+            original_title: item.video.title,
+            published_at: item.video.publishedAt,
+            status: item.status,
+            description: null,
+            ...item.updateData,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .returning('*');
+        await syncVideoSongs(createdVideo.id, item.songTitle, item.songTitles, trx);
+      }
+    });
+
+    await playlistRepository.updateLastCheckedAt(id, new Date().toISOString());
+
+    return { loaded: prepared.length, total: videos.length };
+  }
+
   async deletePlaylist(id: number, removeVideos: boolean) {
     const playlist = await playlistRepository.findById(id);
     if (!playlist) throw AppError.notFound('Playlist not found');

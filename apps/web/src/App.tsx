@@ -24,6 +24,7 @@ import MediaLibraryOverviewPage from './pages/MediaLibraryOverviewPage';
 import VideoListsPage from './pages/VideoListsPage';
 import VideoListDetailsPage from './pages/VideoListDetailsPage';
 import FilesPage from './pages/FilesPage';
+import PlaylistPage from './pages/PlaylistPage';
 
 const { Header, Content } = Layout;
 
@@ -150,6 +151,7 @@ function App() {
             <Route path="/review" element={<ReviewQueue />} />
             <Route path="/sources" element={<SourcesPage />} />
             <Route path="/channels/:id" element={<ChannelPage />} />
+            <Route path="/playlists/:id" element={<PlaylistPage />} />
 
             <Route path="/dictionary" element={<MediaLibraryPage />}>
               <Route index element={<Navigate to="overview" replace />} />

@@ -56,6 +56,7 @@ export async function getVideos(filters?: {
   limit?: number;
   includeIgnored?: boolean;
   channel_id?: number;
+  playlist_id?: number;
 }): Promise<VideosResponse> {
   const params = new URLSearchParams();
   if (filters?.status) params.set('status', filters.status);
@@ -63,6 +64,7 @@ export async function getVideos(filters?: {
   if (filters?.limit) params.set('limit', String(filters.limit));
   if (filters?.includeIgnored) params.set('includeIgnored', 'true');
   if (filters?.channel_id) params.set('channel_id', String(filters.channel_id));
+  if (filters?.playlist_id) params.set('playlist_id', String(filters.playlist_id));
 
   const queryString = params.toString();
   return fetchApi<VideosResponse>(`/videos${queryString ? '?' + queryString : ''}`);
@@ -236,6 +238,18 @@ export async function addPlaylist(url: string): Promise<Playlist> {
 export async function deletePlaylist(id: number, removeVideos = false): Promise<void> {
   await fetchApi<unknown>(`/playlists/${id}?removeVideos=${removeVideos}`, {
     method: 'DELETE',
+  });
+}
+
+export async function getPlaylist(id: number | string): Promise<Playlist & { videoCount: number }> {
+  return fetchApi<Playlist & { videoCount: number }>(`/playlists/${id}`);
+}
+
+export async function syncPlaylist(
+  id: number | string,
+): Promise<{ loaded: number; total: number }> {
+  return fetchApi<{ loaded: number; total: number }>(`/playlists/${id}/sync`, {
+    method: 'POST',
   });
 }
 
