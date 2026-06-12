@@ -52,52 +52,67 @@ class PlaylistService {
 
     const videos = await youtubeService.fetchPlaylistItems(playlistId);
 
+    // Parse/resolve read the dictionary via the global knex pool. They must run BEFORE the
+    // transaction opens — running them while a trx holds SQLite's single write connection
+    // deadlocks the pool until acquireConnectionTimeout (~60s) → KnexTimeoutError.
+    const prepared: Array<{
+      video: (typeof videos)[number];
+      status: string;
+      updateData: Record<string, any>;
+      songTitle?: string;
+      songTitles?: string[];
+    }> = [];
+
+    for (const video of videos) {
+      const existingVideo = await knex('videos').where('youtube_id', video.videoId).first();
+      if (existingVideo) continue;
+
+      const { metadata, needsReview } = await parseTitle(video.title);
+      const resolved = await resolveParsedMetadata(metadata);
+      const forceReview = hasUnresolvedEntity(metadata, resolved);
+
+      const updateData: Record<string, any> = {};
+      if (metadata.perf_date) {
+        const dateStr = metadata.perf_date;
+        updateData.perf_date = new Date(
+          `20${dateStr.slice(0, 2)}-${dateStr.slice(2, 4)}-${dateStr.slice(4, 6)}`,
+        ).toISOString();
+      }
+      updateData.group_id = resolved.group_id;
+      updateData.artist_id = resolved.artist_id;
+      updateData.event_id = resolved.event_id;
+      updateData.group_name = resolved.group_name;
+      updateData.artist_name = resolved.artist_name;
+      updateData.event = resolved.event;
+      if (metadata.camera_type !== undefined) updateData.camera_type = metadata.camera_type || null;
+      updateData.is_own_group_song = metadata.is_own_group_song ?? null;
+      updateData.is_own_artist_song = metadata.is_own_artist_song ?? null;
+
+      prepared.push({
+        video,
+        status: needsReview || forceReview ? 'needs_review' : 'new',
+        updateData,
+        songTitle: resolved.song_title ?? undefined,
+        songTitles: metadata.song_titles,
+      });
+    }
+
     await knex.transaction(async (trx: any) => {
-      for (const video of videos) {
-        const existingVideo = await trx('videos').where('youtube_id', video.videoId).first();
-        if (!existingVideo) {
-          const { metadata, needsReview } = await parseTitle(video.title);
-          const resolved = await resolveParsedMetadata(metadata);
-          const forceReview = hasUnresolvedEntity(metadata, resolved);
-
-          const updateData: Record<string, any> = {};
-          if (metadata.perf_date) {
-            const dateStr = metadata.perf_date;
-            updateData.perf_date = new Date(
-              `20${dateStr.slice(0, 2)}-${dateStr.slice(2, 4)}-${dateStr.slice(4, 6)}`,
-            ).toISOString();
-          }
-          updateData.group_id = resolved.group_id;
-          updateData.artist_id = resolved.artist_id;
-          updateData.event_id = resolved.event_id;
-          updateData.group_name = resolved.group_name;
-          updateData.artist_name = resolved.artist_name;
-          updateData.event = resolved.event;
-          if (metadata.camera_type !== undefined)
-            updateData.camera_type = metadata.camera_type || null;
-          updateData.is_own_group_song = metadata.is_own_group_song ?? null;
-          updateData.is_own_artist_song = metadata.is_own_artist_song ?? null;
-
-          const [createdVideo] = await trx('videos')
-            .insert({
-              youtube_id: video.videoId,
-              playlist_id: newPlaylistId,
-              original_title: video.title,
-              published_at: video.publishedAt,
-              status: needsReview || forceReview ? 'needs_review' : 'new',
-              description: null,
-              ...updateData,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .returning('*');
-          await syncVideoSongs(
-            createdVideo.id,
-            resolved.song_title ?? undefined,
-            metadata.song_titles,
-            trx,
-          );
-        }
+      for (const item of prepared) {
+        const [createdVideo] = await trx('videos')
+          .insert({
+            youtube_id: item.video.videoId,
+            playlist_id: newPlaylistId,
+            original_title: item.video.title,
+            published_at: item.video.publishedAt,
+            status: item.status,
+            description: null,
+            ...item.updateData,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .returning('*');
+        await syncVideoSongs(createdVideo.id, item.songTitle, item.songTitles, trx);
       }
     });
 
