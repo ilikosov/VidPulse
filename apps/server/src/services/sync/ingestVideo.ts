@@ -1,8 +1,8 @@
 import type { IParser, ITagService, IYouTubeService } from '../../interfaces/services';
-import type { IVideoRepository } from '../../interfaces/repositories';
+import type { IVideoRepository } from '@vidpulse/db';
 import { parseVideoMetadata } from './metadata.utils';
 import { syncVideoSongs } from '../parser/videoSongs.service';
-import knex from '../../db';
+import { knex } from '@vidpulse/db';
 
 export interface IngestDeps {
   videos: IVideoRepository;

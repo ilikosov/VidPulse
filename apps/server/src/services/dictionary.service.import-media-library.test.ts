@@ -147,7 +147,10 @@ const { state, mockedKnex, ids } = vi.hoisted(() => {
   return { state: db, mockedKnex: knexMock, ids };
 });
 
-vi.mock('../db', () => ({ default: mockedKnex }));
+vi.mock('@vidpulse/db', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@vidpulse/db')>()),
+  knex: mockedKnex,
+}));
 
 import { MediaLibraryService } from './dictionary';
 

@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { config } from '../config';
 import { AppError } from '../middleware/AppError';
-import { fileRepository, videoRepository } from '../repositories/knex.repositories';
-import type { FileWithVideo } from '../interfaces/repositories';
+import { fileRepository, videoRepository } from '@vidpulse/db';
+import type { FileWithVideo } from '@vidpulse/db';
 
 /**
  * A YouTube video id is exactly 11 chars of [A-Za-z0-9_-]. Files are named

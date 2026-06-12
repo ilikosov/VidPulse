@@ -10,7 +10,10 @@ const { testKnex } = vi.hoisted(() => {
   return { testKnex };
 });
 
-vi.mock('../../db', () => ({ default: testKnex }));
+vi.mock('@vidpulse/db', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@vidpulse/db')>()),
+  knex: testKnex,
+}));
 
 import { syncVideoSongs, getVideoSongsMap } from './videoSongs.service';
 

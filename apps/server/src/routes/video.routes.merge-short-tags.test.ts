@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import { AddressInfo } from 'net';
 
-vi.mock('../db', () => ({ default: vi.fn(() => ({})) }));
+vi.mock('@vidpulse/db', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@vidpulse/db')>()),
+  knex: vi.fn(() => ({})),
+}));
 vi.mock('../models/videoStatus', () => ({ VALID_STATUSES: ['new'], isValidStatus: () => true }));
 vi.mock('../services/parser/parser.service', () => ({ parseTitle: vi.fn() }));
 vi.mock('../services/parser/metadataResolver.service', () => ({

@@ -1,0 +1,20 @@
+{
+  "name": "@vidpulse/db",
+  "version": "1.0.0",
+  "description": "Database connection, knex config, migrations, seeds, and repositories for VidPulse",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "migrate": "knex migrate:latest --knexfile src/knexfile.ts",
+    "seed": "knex seed:run --knexfile src/knexfile.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "knex": "^3.2.9"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}

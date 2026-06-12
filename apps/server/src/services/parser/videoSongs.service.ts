@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import knex from '../../db';
+import { knex } from '@vidpulse/db';
 import { dedupeTitlesCaseInsensitive, splitSongTitles } from './songTitles.util';
 
 /**

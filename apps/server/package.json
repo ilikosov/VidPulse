@@ -10,11 +10,10 @@
     "test:e2e": "playwright test",
     "backfill:video-entities": "tsx src/scripts/backfill-video-entity-ids.ts",
     "backfill:shorts-tags": "tsx src/scripts/backfill-shorts-tags.ts",
-    "merge:short-tags": "tsx src/scripts/merge-short-tags.ts",
-    "migrate": "knex migrate:latest --knexfile src/db/knexfile.ts",
-    "seed": "knex seed:run --knexfile src/db/knexfile.ts"
+    "merge:short-tags": "tsx src/scripts/merge-short-tags.ts"
   },
   "dependencies": {
+    "@vidpulse/db": "*",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "better-sqlite3": "^12.9.0",

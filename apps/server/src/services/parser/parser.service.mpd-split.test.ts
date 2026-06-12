@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import knex from '../../db';
+import { knex } from '@vidpulse/db';
 import { parseTitle } from './parser.service';
 
 // MPD-style titles romanize artist names with spaces ("SE JEONG"), which broke the

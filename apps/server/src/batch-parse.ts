@@ -1,4 +1,4 @@
-import knex from './db';
+import { knex } from '@vidpulse/db';
 import { parseTitle } from './services/parser/parser.service';
 import {
   hasUnresolvedEntity,

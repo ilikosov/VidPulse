@@ -1,4 +1,4 @@
-import knex from '../../db';
+import { knex } from '@vidpulse/db';
 import type { AliasEntityType } from './utils';
 
 export class AliasService {

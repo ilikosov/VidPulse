@@ -1,4 +1,4 @@
-import knex from '../../db';
+import { knex } from '@vidpulse/db';
 
 export class SettingsService {
   async getAllSettings() {

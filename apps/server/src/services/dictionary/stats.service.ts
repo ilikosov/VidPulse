@@ -1,4 +1,4 @@
-import knex from '../../db';
+import { knex } from '@vidpulse/db';
 import { groupService } from './group.service';
 import { artistService } from './artist.service';
 import { songService } from './song.service';

@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import knex from './index';
+import { knex } from '@vidpulse/db';
 
 /**
  * TASK-1 / ADR 0002 acceptance: the text columns hold the raw parse (evidence),
