@@ -9,6 +9,15 @@ export type VideoForContext = VideoEntity & {
   songs?: Array<{ title: string }>;
 };
 
+/** Convert ISO date string (2026-05-21T00:00:00.000Z) → YYMMDD (260521). */
+function toYYMMDD(iso: string): string {
+  const d = new Date(iso);
+  const yy = String(d.getUTCFullYear()).slice(-2);
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yy}${mm}${dd}`;
+}
+
 /**
  * Map a video to the curated set of template params exposed under the `video` entity.
  * Only these keys are addressable as `{{video.<param>}}` in SHELL_COMMAND_VIDEO.
@@ -22,7 +31,7 @@ export function buildVideoContext(video: VideoForContext): EntityContext {
     artist_name: video.artist_name ?? null,
     song_title: (video.songs ?? []).map((song) => song.title).join(' + ') || null,
     songs: (video.songs ?? []).map((song) => song.title),
-    perf_date: video.perf_date ?? null,
+    perf_date: video.perf_date ? toYYMMDD(video.perf_date) : null,
     event: video.event ?? null,
     camera_type: video.camera_type ?? null,
     channel_title: video.channel_title ?? null,
