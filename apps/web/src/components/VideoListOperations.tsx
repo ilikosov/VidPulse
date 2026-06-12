@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button, Input, Modal, Space, notification, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { batchVideoOperation } from '../api/videoListsApi';
-import { buildFileCommand } from '../api';
+import { buildFileCommand, renameFiles } from '../api';
 
 interface VideoListOperationsProps {
   listId: number;
@@ -56,6 +56,24 @@ export default function VideoListOperations({
     }
   };
 
+  const handleRename = async () => {
+    if (selectedVideoIds.length === 0) {
+      notification.error({ message: 'Выберите видео' });
+      return;
+    }
+    try {
+      const { moved, skipped, errors } = await renameFiles(selectedVideoIds);
+      if (errors.length > 0) {
+        message.error(`Перемещено: ${moved}, ошибки: ${errors.join('; ')}`);
+      } else {
+        message.success(`Перемещено файлов: ${moved}, пропущено: ${skipped}`);
+      }
+      refreshVideos();
+    } catch (err: any) {
+      message.error(err?.message || 'Ошибка при перемещении файлов');
+    }
+  };
+
   const handleTagConfirm = async () => {
     if (!tagName.trim() || !tagModal) return;
     await run(tagModal, { tagName: tagName.trim() });
@@ -80,6 +98,9 @@ export default function VideoListOperations({
           disabled={selectedVideoIds.length === 0}
         >
           Команда для видео
+        </Button>
+        <Button onClick={() => void handleRename()} disabled={selectedVideoIds.length === 0}>
+          Переименовать
         </Button>
       </Space>
 

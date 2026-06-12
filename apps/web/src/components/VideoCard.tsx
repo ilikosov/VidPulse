@@ -24,6 +24,7 @@ import { useEffect, useState } from 'react';
 import {
   addTagToVideo,
   buildFileCommand,
+  renameFiles,
   getVideo,
   ignoreVideo,
   llmParseVideo,
@@ -119,6 +120,7 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
   const [reparsing, setReparsing] = useState(false);
   const [resyncing, setResyncing] = useState(false);
   const [fileCommandLoading, setFileCommandLoading] = useState(false);
+  const [renameCommandLoading, setRenameCommandLoading] = useState(false);
   const [addToListOpen, setAddToListOpen] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [operationLog, setOperationLog] = useState<
@@ -287,6 +289,24 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
       message.error(err instanceof Error ? err.message : 'Не удалось сформировать команду');
     } finally {
       setFileCommandLoading(false);
+    }
+  };
+
+  const handleRename = async () => {
+    if (!video) return;
+    setRenameCommandLoading(true);
+    try {
+      const { moved, skipped, errors } = await renameFiles([video.id]);
+      if (errors.length > 0) {
+        message.error(`Перемещено: ${moved}, ошибки: ${errors.join('; ')}`);
+      } else {
+        message.success(`Перемещено файлов: ${moved}, пропущено: ${skipped}`);
+      }
+      await refresh();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Не удалось переместить файлы');
+    } finally {
+      setRenameCommandLoading(false);
     }
   };
 
@@ -715,6 +735,11 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
                     loading={fileCommandLoading}
                   >
                     Команда для видео
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Переместить файлы видео в выходную директорию по шаблону имени">
+                  <Button onClick={() => void handleRename()} loading={renameCommandLoading}>
+                    Переименовать
                   </Button>
                 </Tooltip>
               </Space>

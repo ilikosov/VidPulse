@@ -54,6 +54,16 @@ router.post(
 );
 
 router.post(
+  '/batch/rename',
+  validateBody(batchVideoIdsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const videoIds: number[] = req.body.videoIds;
+    const result = await videoService.renameFiles(videoIds);
+    res.json(result);
+  }),
+);
+
+router.post(
   '/:id/ignore',
   asyncHandler(async (req: Request, res: Response) => {
     const videoId = Number(req.params.id);

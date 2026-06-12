@@ -27,6 +27,7 @@ import {
   batchConfirmDownload,
   batchRemoveTags,
   buildFileCommand,
+  renameFiles,
   getVideos,
   reparseBatch,
   llmParseBatch,
@@ -269,6 +270,27 @@ function VideoTable() {
     }
   };
 
+  const handleRename = async () => {
+    if (selectedRowKeys.length === 0) {
+      return;
+    }
+
+    setBatchLoading(true);
+    try {
+      const { moved, skipped, errors } = await renameFiles(selectedRowKeys);
+      if (errors.length > 0) {
+        message.error(`Перемещено: ${moved}, ошибки: ${errors.join('; ')}`);
+      } else {
+        message.success(`Перемещено файлов: ${moved}, пропущено: ${skipped}`);
+      }
+      await fetchVideos(page, limit, statusFilter, showIgnored);
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Не удалось переместить файлы');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
   const handleBatchPresetTag = async (tagName: 'short' | 'private') => {
     if (selectedRowKeys.length === 0) {
       return;
@@ -464,6 +486,15 @@ function VideoTable() {
               disabled={batchLoading}
             >
               Команда для видео
+            </Button>
+          </Tooltip>
+          <Tooltip title="Переместить файлы выбранных видео в выходную директорию по шаблону имени">
+            <Button
+              onClick={() => void handleRename()}
+              loading={batchLoading}
+              disabled={batchLoading}
+            >
+              Переименовать
             </Button>
           </Tooltip>
         </Space>
