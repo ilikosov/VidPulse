@@ -13,12 +13,14 @@ import {
   videoRepository,
   tagRepository,
   channelRepository,
+  fileRepository,
 } from '../repositories/knex.repositories';
 import type { IVideoFilters, VideoEntity } from '../interfaces/repositories';
 import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
 import { config } from '../config';
 import { renderTemplate } from './template/template.engine';
 import { buildVideoContext } from './template/videoContext';
+import { buildRenameCommands, type RenameItem } from './template/renameCommand';
 
 export interface VideoListItem {
   id: number;
@@ -741,6 +743,33 @@ class VideoService {
     }
 
     return { command: renderTemplate(template, { video: videoContexts }) };
+  }
+
+  /**
+   * Build `mv` commands that rename each video's linked file(s) on disk using the
+   * RENAME_TEMPLATE_VIDEO new-name template. Videos without a linked file are skipped.
+   */
+  async buildRenameCommand(videoIds: number[]): Promise<{ command: string }> {
+    const template = config.files.renameTemplate;
+    if (!template) {
+      throw AppError.badRequest('RENAME_TEMPLATE_VIDEO is not configured');
+    }
+
+    const items: RenameItem[] = [];
+    for (const videoId of videoIds) {
+      const video = await this.getVideoById(videoId);
+      const { files } = await fileRepository.getAll({ videoId, limit: 1000 });
+      items.push({
+        context: buildVideoContext(video),
+        files: files.map((file) => ({
+          directory: file.directory,
+          filename: file.filename,
+          extension: file.extension,
+        })),
+      });
+    }
+
+    return { command: buildRenameCommands(template, items) };
   }
 }
 

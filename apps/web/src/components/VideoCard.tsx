@@ -24,6 +24,7 @@ import { useEffect, useState } from 'react';
 import {
   addTagToVideo,
   buildFileCommand,
+  buildRenameCommand,
   getVideo,
   ignoreVideo,
   llmParseVideo,
@@ -119,6 +120,7 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
   const [reparsing, setReparsing] = useState(false);
   const [resyncing, setResyncing] = useState(false);
   const [fileCommandLoading, setFileCommandLoading] = useState(false);
+  const [renameCommandLoading, setRenameCommandLoading] = useState(false);
   const [addToListOpen, setAddToListOpen] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [operationLog, setOperationLog] = useState<
@@ -287,6 +289,20 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
       message.error(err instanceof Error ? err.message : 'Не удалось сформировать команду');
     } finally {
       setFileCommandLoading(false);
+    }
+  };
+
+  const handleRenameCommand = async () => {
+    if (!video) return;
+    setRenameCommandLoading(true);
+    try {
+      const { command } = await buildRenameCommand([video.id]);
+      await navigator.clipboard.writeText(command);
+      message.success('Команда переименования скопирована в буфер');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Не удалось сформировать команду');
+    } finally {
+      setRenameCommandLoading(false);
     }
   };
 
@@ -715,6 +731,15 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
                     loading={fileCommandLoading}
                   >
                     Команда для видео
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Сформировать команду переименования файла и скопировать в буфер">
+                  <Button
+                    icon={<CopyOutlined />}
+                    onClick={() => void handleRenameCommand()}
+                    loading={renameCommandLoading}
+                  >
+                    Переименовать
                   </Button>
                 </Tooltip>
               </Space>

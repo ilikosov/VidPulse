@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button, Input, Modal, Space, notification, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { batchVideoOperation } from '../api/videoListsApi';
-import { buildFileCommand } from '../api';
+import { buildFileCommand, buildRenameCommand } from '../api';
 
 interface VideoListOperationsProps {
   listId: number;
@@ -56,6 +56,20 @@ export default function VideoListOperations({
     }
   };
 
+  const handleRenameCommand = async () => {
+    if (selectedVideoIds.length === 0) {
+      notification.error({ message: 'Выберите видео' });
+      return;
+    }
+    try {
+      const { command } = await buildRenameCommand(selectedVideoIds);
+      await navigator.clipboard.writeText(command);
+      message.success('Скопировано в буфер');
+    } catch (err: any) {
+      message.error(err?.message || 'Ошибка при формировании команды');
+    }
+  };
+
   const handleTagConfirm = async () => {
     if (!tagName.trim() || !tagModal) return;
     await run(tagModal, { tagName: tagName.trim() });
@@ -80,6 +94,13 @@ export default function VideoListOperations({
           disabled={selectedVideoIds.length === 0}
         >
           Команда для видео
+        </Button>
+        <Button
+          icon={<CopyOutlined />}
+          onClick={() => void handleRenameCommand()}
+          disabled={selectedVideoIds.length === 0}
+        >
+          Переименовать
         </Button>
       </Space>
 

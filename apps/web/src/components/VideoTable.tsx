@@ -27,6 +27,7 @@ import {
   batchConfirmDownload,
   batchRemoveTags,
   buildFileCommand,
+  buildRenameCommand,
   getVideos,
   reparseBatch,
   llmParseBatch,
@@ -269,6 +270,23 @@ function VideoTable() {
     }
   };
 
+  const handleRenameCommand = async () => {
+    if (selectedRowKeys.length === 0) {
+      return;
+    }
+
+    setBatchLoading(true);
+    try {
+      const { command } = await buildRenameCommand(selectedRowKeys);
+      await navigator.clipboard.writeText(command);
+      message.success('Команда переименования скопирована в буфер');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Не удалось сформировать команду');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
   const handleBatchPresetTag = async (tagName: 'short' | 'private') => {
     if (selectedRowKeys.length === 0) {
       return;
@@ -464,6 +482,16 @@ function VideoTable() {
               disabled={batchLoading}
             >
               Команда для видео
+            </Button>
+          </Tooltip>
+          <Tooltip title="Сформировать команду переименования файлов и скопировать в буфер">
+            <Button
+              icon={<CopyOutlined />}
+              onClick={() => void handleRenameCommand()}
+              loading={batchLoading}
+              disabled={batchLoading}
+            >
+              Переименовать
             </Button>
           </Tooltip>
         </Space>
