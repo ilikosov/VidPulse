@@ -38,6 +38,7 @@ export async function ingestVideo(
     details.title || item.title,
     details.publishedAt || item.publishedAt,
     details.tags,
+    details.description,
   );
 
   const now = new Date().toISOString();

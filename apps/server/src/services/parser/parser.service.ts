@@ -66,7 +66,7 @@ export class ParserService {
     private dictionaryModule?: DictionaryModule,
   ) {}
 
-  async parseTitle(title: string, publishedAt?: string, tags?: string[]) {
+  async parseTitle(title: string, publishedAt?: string, tags?: string[], description?: string) {
     const normalizedTitle = title.trim().toLowerCase();
     if (normalizedTitle === 'private video') {
       return {
@@ -125,6 +125,31 @@ export class ParserService {
         currentMetadata.event ||
         (await this.dictionaryModule.searchInTags(tags, 'event')) ||
         currentMetadata.event;
+    }
+
+    // The description often credits the performer/song when the title doesn't — use it as a
+    // last-resort source for identity fields the title (and tags) left empty.
+    if (description?.trim() && this.dictionaryModule) {
+      if (!currentMetadata.group_name && !currentMetadata.artist_name) {
+        const artist = await this.dictionaryModule.searchInText(description, 'artist');
+        if (artist) {
+          currentMetadata.artist_name = artist.name;
+          if (artist.group) {
+            currentMetadata.group_name = artist.group;
+          }
+        } else {
+          const group = await this.dictionaryModule.searchInText(description, 'group');
+          if (group) {
+            currentMetadata.group_name = group;
+          }
+        }
+      }
+      if (!currentMetadata.song_title) {
+        const song = await this.dictionaryModule.searchInText(description, 'song');
+        if (song) {
+          currentMetadata.song_title = song;
+        }
+      }
     }
 
     const parsedSongTitles = splitSongTitles(
@@ -193,8 +218,13 @@ const defaultParserService = new ParserService(
   defaultDictionaryModule,
 );
 
-export async function parseTitle(title: string, publishedAt?: string, tags?: string[]) {
-  return defaultParserService.parseTitle(title, publishedAt, tags);
+export async function parseTitle(
+  title: string,
+  publishedAt?: string,
+  tags?: string[],
+  description?: string,
+) {
+  return defaultParserService.parseTitle(title, publishedAt, tags, description);
 }
 
 export function validateField(

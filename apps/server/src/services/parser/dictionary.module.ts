@@ -409,6 +409,30 @@ export class DictionaryModule implements ParserModule {
     return null;
   }
 
+  /**
+   * Scan free text (e.g. a video description) for a known group/artist/song mention.
+   * Unlike searchInTags (per-tag fuzzy match), this reuses the title-scanning helpers,
+   * which look for whole dictionary names/aliases inside longer text.
+   */
+  public async searchInText(text: string, field: 'group' | 'song'): Promise<string | null>;
+  public async searchInText(
+    text: string,
+    field: 'artist',
+  ): Promise<{ name: string; group?: string } | null>;
+  public async searchInText(
+    text: string,
+    field: 'group' | 'artist' | 'song',
+  ): Promise<string | { name: string; group?: string } | null> {
+    const dictionary = await this.loadDictionary();
+    if (field === 'group') {
+      return this.findGroupInTitle(text, dictionary);
+    }
+    if (field === 'artist') {
+      return this.findArtistInTitle(text, dictionary);
+    }
+    return this.findSongInTitle(text, dictionary);
+  }
+
   public async isOwnGroupSong(
     groupName?: string,
     songTitle?: string,

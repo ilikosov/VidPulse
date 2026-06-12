@@ -3,6 +3,7 @@ import { logger } from '../lib/logger';
 import { parseTitle } from './parser/parser.service';
 import { parseTitleWithLLM } from './ai.service';
 import { youtubeService } from './youtube.service';
+import type { VideoDetails } from '../models/youtube.types';
 import { hasUnresolvedEntity, resolveParsedMetadata } from './parser/metadataResolver.service';
 import { syncVideoSongs } from './parser/videoSongs.service';
 import { AppError } from '../middleware/AppError';
@@ -84,6 +85,7 @@ class ParserService {
           details.title || video.original_title,
           details.publishedAt || video.published_at,
           details.tags,
+          details.description,
         );
 
         const resolved = await resolveParsedMetadata(metadata);
@@ -108,24 +110,39 @@ class ParserService {
 
   async reparseVideo(videoId: number): Promise<{ video: any; reparseLog: any }> {
     const video = await knex('videos')
-      .select('id', 'youtube_id', 'original_title', 'published_at', 'status')
+      .select('id', 'youtube_id', 'original_title', 'published_at', 'status', 'description')
       .where('id', videoId)
       .first();
 
     if (!video) throw AppError.notFound('Video not found');
+
+    // Fresh YouTube details give us tags (not stored in the DB) and the latest
+    // title/description; the lookup is best-effort — a reparse must still work
+    // from the stored row when the video is gone or the API is unavailable.
+    let details: Partial<VideoDetails> = {};
+    try {
+      details = await youtubeService.getVideoDetails(video.youtube_id);
+    } catch (error) {
+      logger.warn(`Reparse: YouTube details unavailable for video ${video.id}:`, error);
+    }
+
+    const title = details.title || video.original_title;
+    const publishedAt = details.publishedAt || video.published_at;
+    const tags = details.tags;
+    const description = details.description || video.description || undefined;
 
     const reparseLog: {
       input: { title: string; publishedAt: string | null; tags?: string[]; description?: string };
       output?: unknown;
       error?: string;
     } = {
-      input: { title: video.original_title, publishedAt: video.published_at },
+      input: { title, publishedAt, tags, description },
     };
 
     let metadata: any;
     let needsReview: boolean | undefined;
     try {
-      const parseResult = await parseTitle(video.original_title, video.published_at);
+      const parseResult = await parseTitle(title, publishedAt, tags, description);
       metadata = parseResult.metadata;
       needsReview = parseResult.needsReview;
       reparseLog.output = parseResult;
@@ -173,6 +190,7 @@ class ParserService {
           details.title || video.original_title,
           details.publishedAt || video.published_at,
           details.tags,
+          details.description,
         );
         const resolved = await resolveParsedMetadata(metadata);
         const forceReview = hasUnresolvedEntity(metadata, resolved);
