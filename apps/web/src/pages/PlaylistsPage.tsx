@@ -13,6 +13,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import { addPlaylist, deletePlaylist, getPlaylists, type Playlist } from '../api';
 
@@ -72,7 +73,14 @@ function PlaylistsPage() {
   };
 
   const columns: ColumnsType<Playlist> = [
-    { title: 'Title', dataIndex: 'title', key: 'title' },
+    {
+      title: 'Title',
+      dataIndex: 'title',
+      key: 'title',
+      render: (value: string, record: Playlist) => (
+        <Link to={`/playlists/${record.id}`}>{value}</Link>
+      ),
+    },
     { title: 'Playlist ID', dataIndex: 'youtube_id', key: 'youtube_id' },
     {
       title: 'Date Added',

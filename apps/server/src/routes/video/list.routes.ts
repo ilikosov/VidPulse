@@ -13,9 +13,10 @@ router.get(
     const status = req.query.status as string | undefined;
     const includeIgnored = req.query.includeIgnored === 'true';
     const channelId = req.query.channel_id as string | undefined;
+    const playlistId = req.query.playlist_id as string | undefined;
 
     const result = await videoService.getVideos(
-      { status, includeIgnored, channelId },
+      { status, includeIgnored, channelId, playlistId },
       { page, limit, offset },
     );
 

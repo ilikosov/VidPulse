@@ -31,6 +31,26 @@ router.post(
   }),
 );
 
+router.get(
+  '/:id',
+  asyncHandler(async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) throw AppError.badRequest('Invalid playlist id');
+    const playlist = await playlistService.getPlaylist(id);
+    res.json(playlist);
+  }),
+);
+
+router.post(
+  '/:id/sync',
+  asyncHandler(async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) throw AppError.badRequest('Invalid playlist id');
+    const result = await playlistService.syncPlaylist(id);
+    res.json(result);
+  }),
+);
+
 router.delete(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
