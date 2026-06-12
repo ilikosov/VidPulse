@@ -55,6 +55,12 @@ class PlaylistService {
     // Parse/resolve read the dictionary via the global knex pool. They must run BEFORE the
     // transaction opens — running them while a trx holds SQLite's single write connection
     // deadlocks the pool until acquireConnectionTimeout (~60s) → KnexTimeoutError.
+    const existingByYoutubeId = new Map<string, { id: number }>();
+    for (const video of videos) {
+      const row = await knex('videos').where('youtube_id', video.videoId).first();
+      if (row) existingByYoutubeId.set(video.videoId, row);
+    }
+
     const prepared: Array<{
       video: (typeof videos)[number];
       status: string;
@@ -64,8 +70,7 @@ class PlaylistService {
     }> = [];
 
     for (const video of videos) {
-      const existingVideo = await knex('videos').where('youtube_id', video.videoId).first();
-      if (existingVideo) continue;
+      if (existingByYoutubeId.has(video.videoId)) continue;
 
       const { metadata, needsReview } = await parseTitle(video.title);
       const resolved = await resolveParsedMetadata(metadata);
@@ -97,6 +102,14 @@ class PlaylistService {
       });
     }
 
+    // Link already-existing videos to this playlist via the junction table.
+    for (const existing of existingByYoutubeId.values()) {
+      await knex('video_playlists')
+        .insert({ video_id: existing.id, playlist_id: newPlaylistId })
+        .onConflict(['video_id', 'playlist_id'])
+        .ignore();
+    }
+
     await knex.transaction(async (trx: any) => {
       for (const item of prepared) {
         const [createdVideo] = await trx('videos')
@@ -112,6 +125,10 @@ class PlaylistService {
             updated_at: new Date().toISOString(),
           })
           .returning('*');
+        await trx('video_playlists').insert({
+          video_id: createdVideo.id,
+          playlist_id: newPlaylistId,
+        });
         await syncVideoSongs(createdVideo.id, item.songTitle, item.songTitles, trx);
       }
     });
@@ -122,7 +139,10 @@ class PlaylistService {
   async getPlaylist(id: number) {
     const playlist = await playlistRepository.findById(id);
     if (!playlist) throw AppError.notFound('Playlist not found');
-    const total = await knex('videos').where('playlist_id', id).count('* as count').first();
+    const total = await knex('video_playlists')
+      .where('playlist_id', id)
+      .count('* as count')
+      .first();
     return { ...playlist, videoCount: Number((total as any)?.count ?? 0) };
   }
 
@@ -131,10 +151,33 @@ class PlaylistService {
     if (!playlist) throw AppError.notFound('Playlist not found');
 
     const videos = await youtubeService.fetchPlaylistItems(playlist.youtube_id);
-    const existingIds = (await knex('videos').pluck('youtube_id')) as string[];
-    const existingSet = new Set(existingIds);
 
-    const newVideos = videos.filter((v) => !existingSet.has(v.videoId));
+    // Fetch all existing youtube_ids linked to this playlist (via junction table).
+    const linkedIds = (await knex('videos')
+      .join('video_playlists', 'videos.id', 'video_playlists.video_id')
+      .where('video_playlists.playlist_id', id)
+      .pluck('videos.youtube_id')) as string[];
+    const linkedSet = new Set(linkedIds);
+
+    // Videos in playlist but not yet linked — may already exist in DB from other context.
+    const unlinked = videos.filter((v) => !linkedSet.has(v.videoId));
+
+    const existingByYoutubeId = new Map<string, { id: number }>();
+    for (const video of unlinked) {
+      const row = await knex('videos').where('youtube_id', video.videoId).first();
+      if (row) existingByYoutubeId.set(video.videoId, row);
+    }
+
+    // Link already-existing videos to this playlist.
+    for (const existing of existingByYoutubeId.values()) {
+      await knex('video_playlists')
+        .insert({ video_id: existing.id, playlist_id: id })
+        .onConflict(['video_id', 'playlist_id'])
+        .ignore();
+    }
+
+    // Parse new videos (not in DB at all).
+    const newVideos = unlinked.filter((v) => !existingByYoutubeId.has(v.videoId));
 
     const prepared: Array<{
       video: (typeof videos)[number];
@@ -190,13 +233,18 @@ class PlaylistService {
             updated_at: new Date().toISOString(),
           })
           .returning('*');
+        await trx('video_playlists').insert({ video_id: createdVideo.id, playlist_id: id });
         await syncVideoSongs(createdVideo.id, item.songTitle, item.songTitles, trx);
       }
     });
 
     await playlistRepository.updateLastCheckedAt(id, new Date().toISOString());
 
-    return { loaded: prepared.length, total: videos.length };
+    return {
+      loaded: prepared.length + existingByYoutubeId.size,
+      linked: existingByYoutubeId.size,
+      total: videos.length,
+    };
   }
 
   async deletePlaylist(id: number, removeVideos: boolean) {
@@ -204,11 +252,19 @@ class PlaylistService {
     if (!playlist) throw AppError.notFound('Playlist not found');
 
     if (removeVideos) {
-      await knex('videos').where('playlist_id', id).delete();
-    } else {
-      await knex('videos').where('playlist_id', id).update({ playlist_id: null });
+      // Delete only videos whose sole playlist association is this one.
+      await knex('videos')
+        .whereIn('id', function () {
+          this.select('video_id').from('video_playlists').where('playlist_id', id);
+        })
+        .whereNotIn('id', function () {
+          this.select('video_id').from('video_playlists').whereNot('playlist_id', id);
+        })
+        .where('channel_id', null)
+        .delete();
     }
 
+    // Junction rows cascade-delete when playlist is deleted.
     await playlistRepository.delete(id);
   }
 }

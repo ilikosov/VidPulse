@@ -2,6 +2,7 @@ import type { IParser, ITagService, IYouTubeService } from '../../interfaces/ser
 import type { IVideoRepository } from '../../interfaces/repositories';
 import { parseVideoMetadata } from './metadata.utils';
 import { syncVideoSongs } from '../parser/videoSongs.service';
+import knex from '../../db';
 
 export interface IngestDeps {
   videos: IVideoRepository;
@@ -30,7 +31,21 @@ export async function ingestVideo(
   item: IngestItem,
   link: { channelId?: number | null; playlistId?: number | null },
 ): Promise<number | null> {
-  if (await deps.videos.findByYoutubeId(item.videoId)) return null;
+  const existing = await deps.videos.findByYoutubeId(item.videoId);
+  if (existing) {
+    // Video already exists — still link it to the new channel/playlist via junction tables.
+    if (link.channelId)
+      await knex('video_channels')
+        .insert({ video_id: existing.id, channel_id: link.channelId })
+        .onConflict(['video_id', 'channel_id'])
+        .ignore();
+    if (link.playlistId)
+      await knex('video_playlists')
+        .insert({ video_id: existing.id, playlist_id: link.playlistId })
+        .onConflict(['video_id', 'playlist_id'])
+        .ignore();
+    return null;
+  }
 
   const details = await deps.youtube.getVideoDetails(item.videoId);
   const { metadata, songTitle, songTitles } = await parseVideoMetadata(
@@ -55,6 +70,11 @@ export async function ingestVideo(
     created_at: now,
     updated_at: now,
   });
+
+  if (link.channelId)
+    await knex('video_channels').insert({ video_id: id, channel_id: link.channelId });
+  if (link.playlistId)
+    await knex('video_playlists').insert({ video_id: id, playlist_id: link.playlistId });
 
   await syncVideoSongs(id, songTitle, songTitles);
   await deps.tags.assignAutoTags(id, details.durationSeconds, details.privacyStatus);

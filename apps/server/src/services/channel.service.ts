@@ -121,7 +121,7 @@ class ChannelService {
     const channel = await channelRepository.findById(id);
     if (!channel) throw AppError.notFound('Channel not found');
 
-    const total = await knex('videos').where('channel_id', id).count('* as count').first();
+    const total = await knex('video_channels').where('channel_id', id).count('* as count').first();
     const videoCount = Number(total?.count || 0);
 
     return { ...channel, videoCount };
@@ -132,8 +132,9 @@ class ChannelService {
     if (!channel) throw AppError.notFound('Channel not found');
 
     const oldest = await knex('videos')
-      .where('channel_id', id)
-      .min('published_at as oldest')
+      .join('video_channels', 'videos.id', 'video_channels.video_id')
+      .where('video_channels.channel_id', id)
+      .min('videos.published_at as oldest')
       .first();
     const fallbackDate = new Date();
     fallbackDate.setDate(fallbackDate.getDate() - 30);
@@ -167,11 +168,21 @@ class ChannelService {
     if (!channel) throw AppError.notFound('Channel not found');
 
     if (removeVideos) {
-      await knex('videos').where('channel_id', id).delete();
-    } else {
-      await knex('videos').where('channel_id', id).update({ channel_id: null });
+      // Delete only videos that are exclusively linked to this channel (no other channel/playlist).
+      await knex('videos')
+        .whereIn('id', function () {
+          this.select('video_id').from('video_channels').where('channel_id', id);
+        })
+        .whereNotIn('id', function () {
+          this.select('video_id').from('video_channels').whereNot('channel_id', id);
+        })
+        .whereNotIn('id', function () {
+          this.select('video_id').from('video_playlists');
+        })
+        .delete();
     }
 
+    // Junction rows cascade-delete when channel is deleted.
     await channelRepository.delete(id);
   }
 }

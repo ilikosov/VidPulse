@@ -145,7 +145,10 @@ export class KnexVideoRepository implements IVideoRepository {
   }
 
   async findYoutubeIdsByPlaylistId(playlistId: number): Promise<Set<string>> {
-    const rows = await knex('videos').where('playlist_id', playlistId).select('youtube_id');
+    const rows = await knex('videos')
+      .join('video_playlists', 'videos.id', 'video_playlists.video_id')
+      .where('video_playlists.playlist_id', playlistId)
+      .select('videos.youtube_id');
     return new Set(rows.map((r: { youtube_id: string }) => r.youtube_id));
   }
 
@@ -214,8 +217,18 @@ export class KnexVideoRepository implements IVideoRepository {
 
   private applyFilters(query: ReturnType<typeof knex>, filters: IVideoFilters): void {
     const { status, includeIgnored, channelId, playlistId } = filters;
-    if (channelId) query.where('videos.channel_id', channelId);
-    if (playlistId) query.where('videos.playlist_id', playlistId);
+    if (channelId)
+      query.whereExists(
+        knex('video_channels')
+          .whereRaw('video_channels.video_id = videos.id')
+          .where('video_channels.channel_id', channelId),
+      );
+    if (playlistId)
+      query.whereExists(
+        knex('video_playlists')
+          .whereRaw('video_playlists.video_id = videos.id')
+          .where('video_playlists.playlist_id', playlistId),
+      );
     if (status) query.where('videos.status', status);
     else if (!includeIgnored) query.whereNot('videos.status', 'ignored');
     if (config.hideFlaggedVideos) {
