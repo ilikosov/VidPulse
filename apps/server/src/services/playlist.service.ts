@@ -131,9 +131,7 @@ class PlaylistService {
     if (!playlist) throw AppError.notFound('Playlist not found');
 
     const videos = await youtubeService.fetchPlaylistItems(playlist.youtube_id);
-    const existingIds = (await knex('videos')
-      .where('playlist_id', id)
-      .pluck('youtube_id')) as string[];
+    const existingIds = (await knex('videos').pluck('youtube_id')) as string[];
     const existingSet = new Set(existingIds);
 
     const newVideos = videos.filter((v) => !existingSet.has(v.videoId));
