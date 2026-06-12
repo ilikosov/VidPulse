@@ -5,6 +5,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { getChannel, getVideos, loadMoreChannelVideos, type Channel, type Video } from '../api';
 import { SongLinks } from '../components/SongLinks';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
+import AddToListModal from '../components/AddToListModal';
 
 type ChannelDetails = Channel & { videoCount: number };
 
@@ -18,6 +19,8 @@ function ChannelPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [addToListOpen, setAddToListOpen] = useState(false);
   const from = `${location.pathname}${location.search}`;
 
   const fetchData = async (nextPage = page) => {
@@ -147,11 +150,22 @@ function ChannelPage() {
 
       <Card>
         <Typography.Title level={4}>Channel videos</Typography.Title>
+        {selectedIds.length > 0 && (
+          <Space style={{ marginBottom: 12 }}>
+            <Typography.Text>{selectedIds.length} выбрано</Typography.Text>
+            <Button onClick={() => setAddToListOpen(true)}>Добавить в список</Button>
+            <Button onClick={() => setSelectedIds([])}>Снять выбор</Button>
+          </Space>
+        )}
         <Table
           rowKey="id"
           loading={loading}
           columns={columns}
           dataSource={videos}
+          rowSelection={{
+            selectedRowKeys: selectedIds,
+            onChange: (keys) => setSelectedIds(keys as number[]),
+          }}
           onRow={(record) => ({
             onClick: () => openVideo(record.id, () => fetchData(page)),
             style: { cursor: 'pointer' },
@@ -164,6 +178,12 @@ function ChannelPage() {
           }}
         />
       </Card>
+      <AddToListModal
+        open={addToListOpen}
+        onClose={() => setAddToListOpen(false)}
+        videoIds={selectedIds}
+        onSuccess={() => setSelectedIds([])}
+      />
     </Space>
   );
 }
