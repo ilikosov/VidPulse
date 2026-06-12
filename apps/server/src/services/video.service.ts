@@ -157,7 +157,12 @@ class VideoService {
       throw error;
     }
 
-    const { metadata } = await parseTitle(details.title, details.publishedAt, details.tags);
+    const { metadata } = await parseTitle(
+      details.title,
+      details.publishedAt,
+      details.tags,
+      details.description,
+    );
     const resolved = await resolveParsedMetadata(metadata);
 
     const insertData: Record<string, string | number | boolean | null> = {
@@ -603,7 +608,12 @@ class VideoService {
 
     let metadata: any, needsReview: boolean | undefined;
     try {
-      const parseResult = await parseTitle(details.title, details.publishedAt, details.tags);
+      const parseResult = await parseTitle(
+        details.title,
+        details.publishedAt,
+        details.tags,
+        details.description,
+      );
       metadata = parseResult.metadata;
       needsReview = parseResult.needsReview;
       resyncLog.parseLog = {

@@ -47,6 +47,18 @@ const parserWithDictionary = new ParserService(
   dictionaryModule,
 );
 
+// A module that extracts nothing — the description fallback is the only source.
+const parserForDescription = new ParserService(
+  [
+    {
+      async parse() {
+        return { metadata: {}, confidence: 0 };
+      },
+    },
+  ],
+  dictionaryModule,
+);
+
 beforeAll(async () => {
   await testKnex.schema.createTable('dictionary_groups', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();
@@ -148,5 +160,31 @@ describe('ParserService.parseTitle with in-memory sqlite', () => {
     expect(result.metadata.song_title).toBe('ASAP');
     expect(result.metadata.is_own_group_song).toBe(true);
     expect(result.metadata.is_own_artist_song).toBe(true);
+  });
+
+  it('falls back to the description for identity fields the title left empty', async () => {
+    const result = await parserForDescription.parseTitle(
+      '260514 some untitled stage',
+      undefined,
+      undefined,
+      '아이사 직캠입니다. 구독 부탁드려요!',
+    );
+
+    expect(result.metadata.artist_name).toBe('ISA');
+    expect(result.metadata.group_name).toBe('STAYC');
+  });
+
+  it('does not let the description override fields parsed from the title', async () => {
+    const result = await parserWithDictionary.parseTitle(
+      "260514 스테이씨 아이사 'ASAP' 직캠",
+      undefined,
+      undefined,
+      'Bubble teaser coming soon',
+    );
+
+    // Title already names the song — the description mention of another song is ignored.
+    expect(result.metadata.song_title).toBe('ASAP');
+    expect(result.metadata.group_name).toBe('STAYC');
+    expect(result.metadata.artist_name).toBe('ISA');
   });
 });

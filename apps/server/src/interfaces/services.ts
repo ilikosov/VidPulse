@@ -24,6 +24,7 @@ export interface IParser {
     title: string,
     publishedAt?: string,
     tags?: string[],
+    description?: string,
   ): Promise<{ metadata: Partial<ParsedMetadata>; needsReview: boolean }>;
 }
 

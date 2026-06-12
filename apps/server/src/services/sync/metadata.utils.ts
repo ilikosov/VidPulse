@@ -6,8 +6,14 @@ export async function parseVideoMetadata(
   originalTitle: string,
   publishedAt?: string,
   tags?: string[],
+  description?: string,
 ) {
-  const { metadata, needsReview } = await parser.parseTitle(originalTitle, publishedAt, tags);
+  const { metadata, needsReview } = await parser.parseTitle(
+    originalTitle,
+    publishedAt,
+    tags,
+    description,
+  );
   const resolved = await resolveParsedMetadata(metadata);
   const forceReview = hasUnresolvedEntity(metadata, resolved);
   const updateData: Record<string, string | number | boolean | null> = {};
