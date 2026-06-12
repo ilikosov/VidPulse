@@ -1,4 +1,4 @@
-import knex from '../db';
+import { knex } from '@vidpulse/db';
 import type { Knex } from 'knex';
 
 export const SHORTS_MAX_DURATION_SECONDS = 90;

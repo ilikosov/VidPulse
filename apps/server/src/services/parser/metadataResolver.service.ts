@@ -1,4 +1,4 @@
-import knex from '../../db';
+import { knex } from '@vidpulse/db';
 import { ParsedMetadata } from './parser.types';
 
 type DictionaryEntityType = 'group' | 'artist' | 'song' | 'event';

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { eventLogRepository } from '../repositories/knex.repositories';
+import { eventLogRepository } from '@vidpulse/db';
 import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();

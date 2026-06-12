@@ -144,7 +144,10 @@ function makeDb() {
 }
 
 const mockedKnex = vi.hoisted(() => makeDb());
-vi.mock('../db', () => ({ default: mockedKnex }));
+vi.mock('@vidpulse/db', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@vidpulse/db')>()),
+  knex: mockedKnex,
+}));
 
 import { assignAutoTags, tagLongVideosByDuration } from './tag.service';
 

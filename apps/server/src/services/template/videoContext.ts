@@ -1,4 +1,4 @@
-import type { VideoEntity } from '../../interfaces/repositories';
+import type { VideoEntity } from '@vidpulse/db';
 import type { EntityContext } from './template.engine';
 
 /** Shape returned by videoService.getVideoById (display row + joined relations). */

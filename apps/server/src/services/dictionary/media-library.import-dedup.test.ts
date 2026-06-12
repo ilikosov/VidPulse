@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import knex from '../../db';
+import { knex } from '@vidpulse/db';
 import { mediaLibraryService } from './media-library.service';
 
 // Reproduction: re-importing the same media library must not duplicate artists.

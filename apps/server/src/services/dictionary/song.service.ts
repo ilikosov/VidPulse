@@ -1,4 +1,4 @@
-import knex from '../../db';
+import { knex } from '@vidpulse/db';
 import type Knex from 'knex';
 import { type DbClient, normalizeName, attachSongs } from './utils';
 import { config } from '../../config';

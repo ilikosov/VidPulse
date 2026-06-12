@@ -66,8 +66,9 @@ function createQuery(tableName: keyof typeof tables) {
   return builder;
 }
 
-vi.mock('../../db', () => ({
-  default: ((tableName: keyof typeof tables) => createQuery(tableName)) as any,
+vi.mock('@vidpulse/db', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@vidpulse/db')>()),
+  knex: ((tableName: keyof typeof tables) => createQuery(tableName)) as any,
 }));
 
 import { resolveParsedMetadata } from './metadataResolver.service';

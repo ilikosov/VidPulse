@@ -1,6 +1,5 @@
 import type { Knex } from 'knex';
-import knex from '../db';
-import { config } from '../config';
+import knex from './connection';
 import type {
   IChannelRepository,
   IPlaylistRepository,
@@ -35,7 +34,12 @@ import type {
   FileEntity,
   FileWithVideo,
   IVideoFilters,
-} from '../interfaces/repositories';
+} from './types';
+
+/** Whether videos tagged shorts/private should be hidden from listings (env-driven). */
+function hideFlaggedVideos(): boolean {
+  return process.env.HIDE_FLAGGED_VIDEOS?.toLowerCase() === 'true';
+}
 
 const PROTECTED_TAGS = new Set(['shorts', 'long_video', 'private']);
 
@@ -231,7 +235,7 @@ export class KnexVideoRepository implements IVideoRepository {
       );
     if (status) query.where('videos.status', status);
     else if (!includeIgnored) query.whereNot('videos.status', 'ignored');
-    if (config.hideFlaggedVideos) {
+    if (hideFlaggedVideos()) {
       query.whereNotIn('videos.id', function () {
         this.select('v2.id')
           .from('videos as v2')
@@ -710,7 +714,7 @@ export class KnexVideoListRepository implements IVideoListRepository {
         't.name as tag',
         knex.raw('EXISTS(SELECT 1 FROM files f WHERE f.video_id = v.id) as has_file'),
       );
-    if (config.hideFlaggedVideos) {
+    if (hideFlaggedVideos()) {
       baseQuery.whereNotIn('v.id', function () {
         this.select('v2.id')
           .from('videos as v2')

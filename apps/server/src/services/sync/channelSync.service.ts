@@ -1,9 +1,9 @@
-import { KnexChannelRepository, KnexVideoRepository } from '../../repositories/knex.repositories';
+import { KnexChannelRepository, KnexVideoRepository } from '@vidpulse/db';
 import { youtubeService } from '../youtube.service';
 import { parseTitle } from '../parser/parser.service';
 import { assignAutoTags } from '../tag.service';
 import { logEvent } from '../eventLog.service';
-import { IChannelRepository, IVideoRepository } from '../../interfaces/repositories';
+import { IChannelRepository, IVideoRepository } from '@vidpulse/db';
 import {
   IChannelSyncService,
   IEventLogger,

@@ -9,13 +9,8 @@ import { splitSongTitles } from './parser/songTitles.util';
 import { assignAutoTags } from './tag.service';
 import { logEvent } from './eventLog.service';
 import { AppError } from '../middleware/AppError';
-import {
-  videoRepository,
-  tagRepository,
-  channelRepository,
-  fileRepository,
-} from '../repositories/knex.repositories';
-import type { IVideoFilters, VideoEntity } from '../interfaces/repositories';
+import { videoRepository, tagRepository, channelRepository, fileRepository } from '@vidpulse/db';
+import type { IVideoFilters, VideoEntity } from '@vidpulse/db';
 import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
 import { config } from '../config';
 import { renderTemplate } from './template/template.engine';
@@ -270,7 +265,7 @@ class VideoService {
     }
     updateData.updated_at = new Date().toISOString();
 
-    const knex = (await import('../db')).default;
+    const { knex } = await import('@vidpulse/db');
     await knex.transaction(async (trx) => {
       await trx('videos').where('id', id).update(updateData);
       if (songSet !== undefined) {
@@ -322,7 +317,7 @@ class VideoService {
       throw AppError.badRequest("Cannot ignore videos with status 'completed'");
     }
     if (video.status !== 'ignored') {
-      const knex = (await import('../db')).default;
+      const { knex } = await import('@vidpulse/db');
       await knex.transaction(async (trx) => {
         await trx('videos').where('id', id).update({
           status: 'ignored',
@@ -342,7 +337,7 @@ class VideoService {
   async batchConfirmDownload(videoIds: number[]): Promise<BatchResult> {
     const errors: Array<{ videoId: number; error: string }> = [];
     let succeeded = 0;
-    const knex = (await import('../db')).default;
+    const { knex } = await import('@vidpulse/db');
 
     for (const videoId of videoIds) {
       try {
@@ -389,7 +384,7 @@ class VideoService {
     const errors: Array<{ videoId: number; error: string }> = [];
     let succeeded = 0;
     const allowedStatuses = ['thumbnails_generated', 'ready_for_upload'];
-    const knex = (await import('../db')).default;
+    const { knex } = await import('@vidpulse/db');
 
     for (const videoId of videoIds) {
       try {
@@ -435,7 +430,7 @@ class VideoService {
   async batchIgnore(videoIds: number[]): Promise<BatchResult> {
     const errors: Array<{ videoId: number; error: string }> = [];
     let succeeded = 0;
-    const knex = (await import('../db')).default;
+    const { knex } = await import('@vidpulse/db');
 
     for (const videoId of videoIds) {
       try {
@@ -631,7 +626,7 @@ class VideoService {
     const resolved = await resolveParsedMetadata(metadata);
     const forceReview = hasUnresolvedEntity(metadata, resolved);
 
-    const knex = (await import('../db')).default;
+    const { knex } = await import('@vidpulse/db');
     const updatedVideo = await knex.transaction(async (trx: any) => {
       const updateData: Record<string, unknown> = {
         original_title: details.title,
@@ -719,7 +714,7 @@ class VideoService {
     const newStatus = needsReview || forceReview ? 'needs_review' : 'new';
     updateData.status = newStatus;
 
-    const knex = (await import('../db')).default;
+    const { knex } = await import('@vidpulse/db');
     await knex.transaction(async (trx: any) => {
       await trx('videos').where('id', videoId).update(updateData);
       await syncVideoSongs(videoId, resolved.song_title ?? undefined, metadata.song_titles, trx);

@@ -1,5 +1,5 @@
-import knex from '../db';
-import { videoListRepository } from '../repositories/knex.repositories';
+import { knex } from '@vidpulse/db';
+import { videoListRepository } from '@vidpulse/db';
 import { videoService } from './video.service';
 import { AppError } from '../middleware/AppError';
 import { config } from '../config';

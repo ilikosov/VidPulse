@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import knex from '../db';
-import { fileRepository } from '../repositories/knex.repositories';
+import { knex } from '@vidpulse/db';
+import { fileRepository } from '@vidpulse/db';
 import { fileService } from './file.service';
 
 // Integration test against the migrated test DB (see tests/vitest.global-setup.ts).

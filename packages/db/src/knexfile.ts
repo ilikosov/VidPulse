@@ -1,8 +1,8 @@
 import type { Knex } from 'knex';
 import path from 'path';
 
-const SEEDS_DIR = path.resolve(__dirname, '../../seeds');
-const MIGRATIONS_DIR = path.resolve(__dirname, '../../migrations');
+const SEEDS_DIR = path.resolve(__dirname, '../seeds');
+const MIGRATIONS_DIR = path.resolve(__dirname, '../migrations');
 
 if (!process.env.DATABASE_PATH) {
   throw new Error('Missing required env var: DATABASE_PATH');

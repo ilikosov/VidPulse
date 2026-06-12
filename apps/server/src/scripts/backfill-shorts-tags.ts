@@ -1,4 +1,4 @@
-import knex from '../db';
+import { knex } from '@vidpulse/db';
 import { addTagToVideo, SHORTS_MAX_DURATION_SECONDS } from '../services/tag.service';
 
 type VideoRow = { id: number };

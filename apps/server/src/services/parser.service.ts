@@ -1,4 +1,4 @@
-import knex from '../db';
+import { knex } from '@vidpulse/db';
 import { logger } from '../lib/logger';
 import { parseTitle } from './parser/parser.service';
 import { parseTitleWithLLM } from './ai.service';

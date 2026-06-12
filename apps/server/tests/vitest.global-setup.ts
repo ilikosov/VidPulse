@@ -1,7 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import config from '../src/db/knexfile';
+
+// The DB layer now lives in the @vidpulse/db workspace package. Migrations and
+// seeds run through its knexfile via the knex CLI (paths relative to apps/server cwd).
+const KNEXFILE = '../../packages/db/src/knexfile.ts';
 
 /**
  * Vitest global setup: provision a dedicated, migrated test database once before
@@ -11,7 +14,8 @@ import config from '../src/db/knexfile';
 export default async function setup() {
   process.env.NODE_ENV = 'test';
 
-  const filename = (config.test.connection as { filename: string }).filename;
+  // knexfile resolves the test connection to TEST_DATABASE_PATH, so read it directly.
+  const filename = process.env.TEST_DATABASE_PATH!;
 
   // Start from a clean DB so migrations (and their seed data) are deterministic.
   for (const f of [filename, `${filename}-shm`, `${filename}-wal`]) {
@@ -33,12 +37,12 @@ export default async function setup() {
     TEST_DATABASE_PATH: path.resolve(process.env.TEST_DATABASE_PATH!),
   };
 
-  execFileSync('npx', ['knex', 'migrate:latest', '--knexfile', 'src/db/knexfile.ts'], {
+  execFileSync('npx', ['knex', 'migrate:latest', '--knexfile', KNEXFILE], {
     stdio: 'inherit',
     env: absEnv,
   });
 
-  execFileSync('npx', ['knex', 'seed:run', '--knexfile', 'src/db/knexfile.ts'], {
+  execFileSync('npx', ['knex', 'seed:run', '--knexfile', KNEXFILE], {
     stdio: 'inherit',
     env: absEnv,
   });

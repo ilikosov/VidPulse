@@ -21,7 +21,8 @@ lets you review/correct it, and organizes everything against a curated dictionar
 - **Tests:** Vitest (unit/integration), Playwright (e2e).
 - **Tooling:** Prettier, Husky + lint-staged, ts-node / tsx, nodemon.
 - **Monorepo:** npm workspaces — `apps/server` (backend), `apps/web` (frontend), `packages/shared`
-  (shared types, populated in TASK-19). See [ADR 0003](docs/adr/0003-monorepo.md).
+  (shared types), `packages/db` (`@vidpulse/db`: knex connection, knexfile, migrations, seeds,
+  repositories, entity types). See [ADR 0003](docs/adr/0003-monorepo.md).
 
 ## Repository layout
 
@@ -32,44 +33,49 @@ lets you review/correct it, and organizes everything against a curated dictionar
 │   │   ├── src/              # TypeScript source
 │   │   │   ├── routes/       # Express controllers (thin)
 │   │   │   ├── services/     # Business logic (parser/, sync/, dictionary, youtube, ai, tag)
-│   │   │   ├── repositories/ # Data-access helpers
 │   │   │   ├── models/ interfaces/ types/   # TypeScript definitions
 │   │   │   ├── middleware/   # Express middleware
 │   │   │   ├── scripts/      # Backfill / maintenance scripts
-│   │   │   ├── db/           # Knex config (knexfile.ts) + connection
 │   │   │   └── index.ts      # App entry
-│   │   ├── migrations/       # Knex migrations (schema source of truth)
 │   │   ├── tests/            # Vitest unit/integration + Playwright e2e
 │   │   └── schemas/ examples/  # JSON schemas & sample data
 │   └── web/                  # React frontend (Vite, Ant Design)
 ├── packages/
-│   └── shared/               # Shared API contracts (populated in TASK-19)
+│   ├── shared/               # Shared API contracts (@vidpulse/shared)
+│   └── db/                   # @vidpulse/db: connection, knexfile, migrations/, seeds/,
+│       │                     #   repositories, entity types (compiled to dist/)
+│       ├── src/              # connection.ts, knexfile.ts, repositories.ts, types.ts, index.ts
+│       ├── migrations/       # Knex migrations (schema source of truth)
+│       └── seeds/            # Knex seeds (+ examples/media-library.seed.json)
 ├── docs/                     # ADRs, reviews, reference docs, task files
 └── tsconfig.base.json        # Shared TS base config
 ```
 
 ## Common commands
 
-| Command                                                                  | What it does                                          |
-| ------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `npm run dev:all`                                                        | Install deps, run migrations, launch backend+frontend |
-| `npm run dev`                                                            | Backend only (nodemon + ts-node)                      |
-| `npm run launch`                                                         | Backend + frontend together                           |
-| `npm run build`                                                          | Compile backend + frontend                            |
-| `npm test`                                                               | Vitest (unit/integration)                             |
-| `npm run test:e2e`                                                       | Playwright (e2e)                                      |
-| `npm run format`                                                         | Prettier write                                        |
-| `npx knex migrate:make <name> --knexfile apps/server/src/db/knexfile.ts` | Create a migration                                    |
-| `npx knex migrate:latest --knexfile apps/server/src/db/knexfile.ts`      | Apply migrations                                      |
+| Command                                                               | What it does                                          |
+| --------------------------------------------------------------------- | ----------------------------------------------------- |
+| `npm run dev:all`                                                     | Install deps, run migrations, launch backend+frontend |
+| `npm run dev`                                                         | Backend only (nodemon + ts-node)                      |
+| `npm run launch`                                                      | Backend + frontend together                           |
+| `npm run build`                                                       | Compile `@vidpulse/db` → backend → frontend           |
+| `npm test`                                                            | Vitest (unit/integration)                             |
+| `npm run test:e2e`                                                    | Playwright (e2e)                                      |
+| `npm run format`                                                      | Prettier write                                        |
+| `npx knex migrate:make <name> --knexfile packages/db/src/knexfile.ts` | Create a migration                                    |
+| `npx knex migrate:latest --knexfile packages/db/src/knexfile.ts`      | Apply migrations                                      |
 
 Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
 
 ## Conventions
 
-- **Layers:** keep **routes thin**; put logic in **services**; data access in **services/repositories**.
-  Don't mix HTTP handling with business logic.
+- **Layers:** keep **routes thin**; put logic in **services**; data access via the `@vidpulse/db`
+  repositories. Don't mix HTTP handling with business logic. Import the knex singleton, repositories,
+  and entity types from `@vidpulse/db` (e.g. `import { knex, videoRepository } from '@vidpulse/db'`).
 - **Migrations:** create with `knex migrate:make`, implement `up` **and** `down`. Don't run migrations
-  unless asked; apply with the `--knexfile apps/server/src/db/knexfile.ts` flag.
+  unless asked; apply with the `--knexfile packages/db/src/knexfile.ts` flag (or `npm run migrate`).
+  `@vidpulse/db` is a **compiled** package — `npm run build` builds it before the server; rebuild it
+  (`npm run build -w @vidpulse/db`) after changing repositories/connection so the server picks it up.
 - **Commits:** [Conventional Commits](https://www.conventionalcommits.org/) —
   `<type>(<scope>): <subject>` (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`;
   scopes like `parser`, `api`, `ui`, `db`, `sync`, `tags`).
