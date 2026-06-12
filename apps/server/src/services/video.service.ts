@@ -20,7 +20,6 @@ import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
 import { config } from '../config';
 import { renderTemplate } from './template/template.engine';
 import { buildVideoContext } from './template/videoContext';
-import { buildRenameCommands, type RenameItem } from './template/renameCommand';
 
 export interface VideoListItem {
   id: number;
@@ -746,30 +745,55 @@ class VideoService {
   }
 
   /**
-   * Build `mv` commands that rename each video's linked file(s) on disk using the
-   * RENAME_TEMPLATE_VIDEO new-name template. Videos without a linked file are skipped.
+   * Move each video's linked file(s) from their current location into FILES_OUTPUT_DIR,
+   * renaming them with the RENAME_TEMPLATE_VIDEO new-name template (the source extension is
+   * preserved; `/` in the rendered name is replaced with `-`). Videos without a linked file
+   * are skipped; per-file failures are collected and reported without aborting the batch.
    */
-  async buildRenameCommand(videoIds: number[]): Promise<{ command: string }> {
+  async renameFiles(
+    videoIds: number[],
+  ): Promise<{ moved: number; skipped: number; errors: string[] }> {
     const template = config.files.renameTemplate;
     if (!template) {
       throw AppError.badRequest('RENAME_TEMPLATE_VIDEO is not configured');
     }
+    const outputDir = config.files.outputDir;
+    if (!outputDir) {
+      throw AppError.badRequest('FILES_OUTPUT_DIR is not configured');
+    }
 
-    const items: RenameItem[] = [];
+    let moved = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
     for (const videoId of videoIds) {
       const video = await this.getVideoById(videoId);
       const { files } = await fileRepository.getAll({ videoId, limit: 1000 });
-      items.push({
-        context: buildVideoContext(video),
-        files: files.map((file) => ({
-          directory: file.directory,
-          filename: file.filename,
-          extension: file.extension,
-        })),
-      });
+      if (files.length === 0) {
+        skipped++;
+        continue;
+      }
+
+      const baseName = renderTemplate(template, { video: [buildVideoContext(video)] })
+        .replace(/\//g, '-')
+        .trim();
+
+      for (const file of files) {
+        const newFilename = baseName + (file.extension ?? '');
+        const sourcePath = path.join(file.directory, file.filename);
+        const destPath = path.join(outputDir, newFilename);
+        try {
+          await fs.promises.mkdir(outputDir, { recursive: true });
+          await fs.promises.rename(sourcePath, destPath);
+          await fileRepository.updatePath(file.id, outputDir, newFilename);
+          moved++;
+        } catch (err) {
+          errors.push(`${file.filename}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
     }
 
-    return { command: buildRenameCommands(template, items) };
+    return { moved, skipped, errors };
   }
 }
 

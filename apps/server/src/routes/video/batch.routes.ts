@@ -54,11 +54,11 @@ router.post(
 );
 
 router.post(
-  '/batch/rename-command',
+  '/batch/rename',
   validateBody(batchVideoIdsSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const videoIds: number[] = req.body.videoIds;
-    const result = await videoService.buildRenameCommand(videoIds);
+    const result = await videoService.renameFiles(videoIds);
     res.json(result);
   }),
 );

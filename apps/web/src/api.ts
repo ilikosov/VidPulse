@@ -129,8 +129,10 @@ export async function buildFileCommand(videoIds: number[]): Promise<{ command: s
   });
 }
 
-export async function buildRenameCommand(videoIds: number[]): Promise<{ command: string }> {
-  return fetchApi<{ command: string }>('/videos/batch/rename-command', {
+export async function renameFiles(
+  videoIds: number[],
+): Promise<{ moved: number; skipped: number; errors: string[] }> {
+  return fetchApi<{ moved: number; skipped: number; errors: string[] }>('/videos/batch/rename', {
     method: 'POST',
     body: JSON.stringify({ videoIds }),
   });

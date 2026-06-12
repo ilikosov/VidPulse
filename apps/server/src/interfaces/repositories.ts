@@ -336,6 +336,7 @@ export interface IFileRepository {
   getById(id: number): Promise<FileWithVideo | null>;
   upsert(data: Omit<FileEntity, 'id' | 'scanned_at'>): Promise<void>;
   linkVideo(id: number, videoId: number | null): Promise<void>;
+  updatePath(id: number, directory: string, filename: string): Promise<void>;
   linkAllByYoutubeId(): Promise<number>;
   deleteById(id: number): Promise<void>;
 }

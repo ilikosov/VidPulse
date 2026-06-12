@@ -887,6 +887,11 @@ export class KnexFileRepository implements IFileRepository {
     await knex('files').where('id', id).update({ video_id: videoId });
   }
 
+  /** Update a file's location after it is moved on disk. */
+  async updatePath(id: number, directory: string, filename: string): Promise<void> {
+    await knex('files').where('id', id).update({ directory, filename, scanned_at: knex.fn.now() });
+  }
+
   /** Link every unlinked file whose youtube_id matches a video. Returns rows linked. */
   async linkAllByYoutubeId(): Promise<number> {
     const matchesUnlinked = (qb: Knex.QueryBuilder) =>

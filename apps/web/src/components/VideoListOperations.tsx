@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button, Input, Modal, Space, notification, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { batchVideoOperation } from '../api/videoListsApi';
-import { buildFileCommand, buildRenameCommand } from '../api';
+import { buildFileCommand, renameFiles } from '../api';
 
 interface VideoListOperationsProps {
   listId: number;
@@ -56,17 +56,21 @@ export default function VideoListOperations({
     }
   };
 
-  const handleRenameCommand = async () => {
+  const handleRename = async () => {
     if (selectedVideoIds.length === 0) {
       notification.error({ message: 'Выберите видео' });
       return;
     }
     try {
-      const { command } = await buildRenameCommand(selectedVideoIds);
-      await navigator.clipboard.writeText(command);
-      message.success('Скопировано в буфер');
+      const { moved, skipped, errors } = await renameFiles(selectedVideoIds);
+      if (errors.length > 0) {
+        message.error(`Перемещено: ${moved}, ошибки: ${errors.join('; ')}`);
+      } else {
+        message.success(`Перемещено файлов: ${moved}, пропущено: ${skipped}`);
+      }
+      refreshVideos();
     } catch (err: any) {
-      message.error(err?.message || 'Ошибка при формировании команды');
+      message.error(err?.message || 'Ошибка при перемещении файлов');
     }
   };
 
@@ -95,11 +99,7 @@ export default function VideoListOperations({
         >
           Команда для видео
         </Button>
-        <Button
-          icon={<CopyOutlined />}
-          onClick={() => void handleRenameCommand()}
-          disabled={selectedVideoIds.length === 0}
-        >
+        <Button onClick={() => void handleRename()} disabled={selectedVideoIds.length === 0}>
           Переименовать
         </Button>
       </Space>

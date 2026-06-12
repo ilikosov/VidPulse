@@ -27,7 +27,7 @@ import {
   batchConfirmDownload,
   batchRemoveTags,
   buildFileCommand,
-  buildRenameCommand,
+  renameFiles,
   getVideos,
   reparseBatch,
   llmParseBatch,
@@ -270,18 +270,22 @@ function VideoTable() {
     }
   };
 
-  const handleRenameCommand = async () => {
+  const handleRename = async () => {
     if (selectedRowKeys.length === 0) {
       return;
     }
 
     setBatchLoading(true);
     try {
-      const { command } = await buildRenameCommand(selectedRowKeys);
-      await navigator.clipboard.writeText(command);
-      message.success('Команда переименования скопирована в буфер');
+      const { moved, skipped, errors } = await renameFiles(selectedRowKeys);
+      if (errors.length > 0) {
+        message.error(`Перемещено: ${moved}, ошибки: ${errors.join('; ')}`);
+      } else {
+        message.success(`Перемещено файлов: ${moved}, пропущено: ${skipped}`);
+      }
+      await fetchVideos(page, limit, statusFilter, showIgnored);
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Не удалось сформировать команду');
+      message.error(err instanceof Error ? err.message : 'Не удалось переместить файлы');
     } finally {
       setBatchLoading(false);
     }
@@ -484,10 +488,9 @@ function VideoTable() {
               Команда для видео
             </Button>
           </Tooltip>
-          <Tooltip title="Сформировать команду переименования файлов и скопировать в буфер">
+          <Tooltip title="Переместить файлы выбранных видео в выходную директорию по шаблону имени">
             <Button
-              icon={<CopyOutlined />}
-              onClick={() => void handleRenameCommand()}
+              onClick={() => void handleRename()}
               loading={batchLoading}
               disabled={batchLoading}
             >

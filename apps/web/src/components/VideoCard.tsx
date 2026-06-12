@@ -24,7 +24,7 @@ import { useEffect, useState } from 'react';
 import {
   addTagToVideo,
   buildFileCommand,
-  buildRenameCommand,
+  renameFiles,
   getVideo,
   ignoreVideo,
   llmParseVideo,
@@ -292,15 +292,19 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
     }
   };
 
-  const handleRenameCommand = async () => {
+  const handleRename = async () => {
     if (!video) return;
     setRenameCommandLoading(true);
     try {
-      const { command } = await buildRenameCommand([video.id]);
-      await navigator.clipboard.writeText(command);
-      message.success('Команда переименования скопирована в буфер');
+      const { moved, skipped, errors } = await renameFiles([video.id]);
+      if (errors.length > 0) {
+        message.error(`Перемещено: ${moved}, ошибки: ${errors.join('; ')}`);
+      } else {
+        message.success(`Перемещено файлов: ${moved}, пропущено: ${skipped}`);
+      }
+      await refresh();
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Не удалось сформировать команду');
+      message.error(err instanceof Error ? err.message : 'Не удалось переместить файлы');
     } finally {
       setRenameCommandLoading(false);
     }
@@ -733,12 +737,8 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
                     Команда для видео
                   </Button>
                 </Tooltip>
-                <Tooltip title="Сформировать команду переименования файла и скопировать в буфер">
-                  <Button
-                    icon={<CopyOutlined />}
-                    onClick={() => void handleRenameCommand()}
-                    loading={renameCommandLoading}
-                  >
+                <Tooltip title="Переместить файлы видео в выходную директорию по шаблону имени">
+                  <Button onClick={() => void handleRename()} loading={renameCommandLoading}>
                     Переименовать
                   </Button>
                 </Tooltip>
