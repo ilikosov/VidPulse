@@ -121,7 +121,10 @@ export class DictionaryModule implements ParserModule {
       return regex.test(normalizedHaystack);
     }
 
-    return normalizedHaystack.includes(normalizedNeedle);
+    // A Hangul needle must not match inside a longer Hangul run: '이브' (Yves) is a
+    // substring of '아이브' (IVE) but not a mention of that artist.
+    const escaped = normalizedNeedle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(^|[^가-힣])${escaped}([^가-힣]|$)`).test(normalizedHaystack);
   }
 
   private async loadDictionary(): Promise<KpopDictionary> {

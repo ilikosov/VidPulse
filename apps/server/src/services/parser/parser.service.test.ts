@@ -67,4 +67,15 @@ describe('parseTitle - SBS Inkigayo cases', () => {
       'group_name=SOLO | artist_name=MOONBYUL | song_title=Hertz | event=@SBS INKIGAYO | camera_type=FANCAM | perf_date=260329 | needs_review=false',
     );
   });
+
+  it('case 6: IVE group fancam — Korean group alias is not a member', async () => {
+    const title = "260425 IVE 아이브 직캠 'BANG BANG' | SHOW WHAT I AM - MANILA";
+    const result = await parseTitle(title);
+
+    // 아이브 is IVE's own Korean alias (a group-only credit), so artist_name stays empty.
+    // It must not substring-match the artist alias 이브 (Yves, a LOONA member).
+    expect(toResultString(result)).toBe(
+      'group_name=IVE | artist_name= | song_title=BANG BANG | event=@SHOW WHAT I AM - MANILA | camera_type=FANCAM | perf_date=260425 | needs_review=false',
+    );
+  });
 });
