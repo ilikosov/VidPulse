@@ -96,17 +96,19 @@ export class ParserService {
       }
     }
 
-    // "(I.O.I FanCam)" credits the whole group: the regex heuristic can only guess SOLO for
-    // a single-name credit, so flip it back to a group stage when the "artist" is a known group.
-    if (
-      currentMetadata.group_name === SOLO_GROUP &&
-      currentMetadata.artist_name &&
-      this.dictionaryModule
-    ) {
+    // The "artist" token can actually name the group itself: "(I.O.I FanCam)" (regex guesses
+    // SOLO for a single-name credit) or "IVE 아이브 직캠" (the group's own Korean alias trails its
+    // Latin name). When it resolves to a group, it's a group-only credit — promote it to the
+    // group when none is set / SOLO, otherwise just drop the bogus artist.
+    if (currentMetadata.artist_name && this.dictionaryModule) {
       const group = await this.dictionaryModule.resolveGroupOnlyCredit(currentMetadata.artist_name);
       if (group) {
-        currentMetadata.group_name = group;
-        delete currentMetadata.artist_name;
+        if (!currentMetadata.group_name || currentMetadata.group_name === SOLO_GROUP) {
+          currentMetadata.group_name = group;
+          delete currentMetadata.artist_name;
+        } else if (currentMetadata.group_name === group) {
+          delete currentMetadata.artist_name;
+        }
       }
     }
 
