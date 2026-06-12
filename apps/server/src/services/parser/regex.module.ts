@@ -265,10 +265,16 @@ export class RegexModule implements ParserModule {
   }
 
   private extractFancamCredit(title: string): Partial<ParsedMetadata> {
-    const match = title.match(/\(([A-Za-z0-9&'._\s-]+?)\s+Fan\s?Cam\)/i);
+    // Match "(... FanCam)" plus "(... FaceCam)" / "(... FullCam)". A two-word
+    // "<group> <member>" credit must be honoured for every cam type — otherwise an
+    // unextracted FaceCam credit lets the dictionary fuzzy-match the bare Korean
+    // member name to the wrong artist/group.
+    const match = title.match(/\(([A-Za-z0-9&'._\s-]+?)\s+(Fan|Face|Full)\s?Cam\)/i);
     if (!match) {
       return {};
     }
+
+    const isFanCam = /^fan$/i.test(match[2]);
 
     // Drop resolution / camera-rig words so "(4K FANCAM)" or "(YUNA 4K FanCam)"
     // is not mistaken for a performer credit.
@@ -279,7 +285,7 @@ export class RegexModule implements ParserModule {
       return {};
     }
 
-    // Two Korean name tokens in the prefix ("킥플립 동현", "키스오브라이프 하늘") mean the
+    // Two Korean name tokens in the prefix ("킥플립 동현", "베이비몬스터 아현") mean the
     // credit is "<group> <member>". A single token ("다영", "문별") is a solo stage,
     // so the whole — possibly multi-word — romanized name stays as one artist and
     // the group is flagged SOLO instead of being split apart.
@@ -288,6 +294,13 @@ export class RegexModule implements ParserModule {
         group_name: nameWords.slice(0, -1).join(' '),
         artist_name: nameWords[nameWords.length - 1],
       };
+    }
+
+    // A single-name FaceCam/FullCam credit keeps the legacy behaviour: leave the
+    // fields empty so the dictionary can infer the member's home group from
+    // membership ("(YUNA FaceCam)" → ITZY). Only FanCam solo credits map to SOLO.
+    if (!isFanCam) {
+      return {};
     }
 
     return {

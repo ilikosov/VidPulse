@@ -4100,6 +4100,99 @@
         { "title": "Sequence", "aliases": [] },
         { "title": "D-D-DANCE", "aliases": [] }
       ]
+    },
+    {
+      "name": "BABYMONSTER",
+      "type": "female",
+      "active": true,
+      "aliases": ["베이비몬스터"],
+      "artists": [
+        {
+          "name": "Ruka",
+          "aliases": ["루카"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2023-11-27",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Pharita",
+          "aliases": ["파리타"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2023-11-27",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Asa",
+          "aliases": ["아사"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2023-11-27",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Ahyeon",
+          "aliases": ["아현"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2023-11-27",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Rami",
+          "aliases": ["라미"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2023-11-27",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Rora",
+          "aliases": ["로라"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2023-11-27",
+            "isPrimary": true
+          },
+          "songs": []
+        },
+        {
+          "name": "Chiquita",
+          "aliases": ["치키타"],
+          "membership": {
+            "activityType": "group",
+            "status": "active",
+            "from": "2023-11-27",
+            "isPrimary": true
+          },
+          "songs": []
+        }
+      ],
+      "songs": [
+        { "title": "SHEESH", "aliases": [] },
+        { "title": "BATTER UP", "aliases": [] },
+        { "title": "Stuck In The Middle", "aliases": [] },
+        { "title": "DRIP", "aliases": [] },
+        { "title": "FOREVER", "aliases": [] },
+        { "title": "CLIK CLAK", "aliases": [] }
+      ]
     }
   ],
   "soloArtists": [

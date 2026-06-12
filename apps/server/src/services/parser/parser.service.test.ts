@@ -78,4 +78,17 @@ describe('parseTitle - SBS Inkigayo cases', () => {
       'group_name=IVE | artist_name= | song_title=BANG BANG | event=@SHOW WHAT I AM - MANILA | camera_type=FANCAM | perf_date=260425 | needs_review=false',
     );
   });
+
+  it('case 7: BABYMONSTER AHYEON FaceCam — explicit group credit wins over membership', async () => {
+    const title =
+      "[페이스캠4K] 베이비몬스터 아현 'SHEESH' (BABYMONSTER AHYEON FaceCam) @SBS Inkigayo 240407";
+    const result = await parseTitle(title);
+
+    // The "(BABYMONSTER AHYEON FaceCam)" credit must be honoured: 아현/Ahyeon also exists
+    // as an IZNA member, so without extracting the explicit group the dictionary would
+    // either infer IZNA from membership or fuzzy-match the bare name to another artist.
+    expect(toResultString(result)).toBe(
+      'group_name=BABYMONSTER | artist_name=Ahyeon | song_title=SHEESH | event=@SBS INKIGAYO | camera_type=FACECAM | perf_date=240407 | needs_review=false',
+    );
+  });
 });
