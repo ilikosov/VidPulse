@@ -43,8 +43,13 @@ type MediaLibraryData = {
 };
 
 export async function seed(knex: Knex): Promise<void> {
-  // Load media-library.seed.json
-  const seedPath = path.join(__dirname, '../examples/media-library.seed.json');
+  // The production seed carries only events; the full demo catalogue (groups, artists,
+  // songs) lives in a separate test-only seed so the test suite keeps a populated
+  // dictionary while production starts empty (groups/artists are filled by the parser
+  // library instead).
+  const seedFile =
+    process.env.NODE_ENV === 'test' ? 'media-library.test-seed.json' : 'media-library.seed.json';
+  const seedPath = path.join(__dirname, '../examples', seedFile);
   const data: MediaLibraryData = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
 
   // ── Events ────────────────────────────────────────────────────────────────
