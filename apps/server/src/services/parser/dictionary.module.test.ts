@@ -99,6 +99,36 @@ describe('DictionaryModule aliases normalization', () => {
     expect(result.metadata.song_title).toBe('YUNA SONG');
   });
 
+  it('does not fuzzy-snap a new member onto a similar existing artist (GAWON ≠ Dawon)', async () => {
+    // MEOVV's GAWON is not in the dictionary; the closest artist is "Dawon" (1 substitution,
+    // similarity 0.8). A differing first letter must block the fuzzy match so the raw name stays.
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Dawon', group_name: 'SECRET NUMBER' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse("미야오 가원 'MEOW' (MEOVV GAWON FanCam)", {
+      group_name: 'MEOVV',
+      artist_name: 'GAWON',
+    });
+
+    expect(result.metadata.artist_name).toBe('GAWON');
+  });
+
+  it('still fuzzy-resolves a typo that keeps the first letter', async () => {
+    // Guard only blocks differing first letters; a same-initial typo must still resolve.
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'YUNA', group_name: 'ITZY' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse('stage', {
+      artist_name: 'YUNAA', // trailing-letter typo, same first letter
+    });
+
+    expect(result.metadata.artist_name).toBe('YUNA');
+  });
+
   it('resolves event alias via dictionary aliases', async () => {
     const module = new DictionaryModule();
     const result = await module.parse('무대 @인기가요', {
