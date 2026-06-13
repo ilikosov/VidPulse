@@ -37,3 +37,6 @@ dev.test.sqlite3
 apps/server/src/db/dev.sqlite3
 apps/server/src/db/dev.sqlite3-shm
 apps/server/src/db/dev.sqlite3-wal
+dev.sqlite3
+dev.sqlite3-wal
+dev.sqlite3-shm
