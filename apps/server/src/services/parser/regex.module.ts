@@ -137,6 +137,8 @@ export class RegexModule implements ParserModule {
         .replace(/[_\s-]+\d{6}(?!\d)/g, '')
         .replace(/#.*$/g, '')
         .replace(/\b방송\b/gi, '')
+        // Drop the decorative "쇼!" (Show!) prefix so "쇼! 음악중심" → "음악중심".
+        .replace(/^쇼!\s*/, '')
         .replace(/[_\s.-]+$/g, '')
         .trim()
     );
@@ -157,12 +159,33 @@ export class RegexModule implements ParserModule {
       return null;
     }
 
-    const segments = withoutTag.split('|').map((segment) => this.compact(segment));
-    if (segments.length < 3) {
+    let segments = withoutTag.split('|').map((segment) => this.compact(segment));
+
+    // A trailing "broadcaster + YYMMDD" segment ("MBC250503") is the air date, not the show.
+    // Pull the date out and let the preceding segment be the show.
+    let broadcasterDate: string | undefined;
+    const lastSeg = segments[segments.length - 1] ?? '';
+    const bcastMatch = lastSeg.match(
+      /^[A-Za-z]{2,4}\s?(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))$/,
+    );
+    if (segments.length >= 2 && bcastMatch) {
+      broadcasterDate = bcastMatch[1];
+      segments = segments.slice(0, -1);
+    }
+
+    // The default shape needs three segments (credit | songs | show); the broadcaster variant
+    // may legitimately have two (credit | show) once the date segment is removed.
+    if (segments.length < 3 && !broadcasterDate) {
+      return null;
+    }
+    if (segments.length < 2) {
       return null;
     }
 
     const metadata: Partial<ParsedMetadata> = {};
+    if (broadcasterDate) {
+      metadata.perf_date = broadcasterDate;
+    }
 
     // Last segment is the event/show; drop trailing parentheticals like "(ENG/JPN)".
     const eventRaw = this.cleanEvent(segments[segments.length - 1].replace(/\([^)]*\)/g, ''));
@@ -182,9 +205,26 @@ export class RegexModule implements ParserModule {
       metadata.song_title = songs[songs.length - 1];
     }
 
-    // First segment is the credit "group artist [with guest]"; the guest is dropped because
-    // the data model only carries a single artist (tracked in the backlog).
-    const credit = segments[0].match(
+    // First segment is the credit. It is either a plain "group artist [with guest]" or carries
+    // the song + camera after a dash: "GROUP ARTIST (한글 alias) – SONG FanCam".
+    let creditPart = segments[0];
+    const dashSong = creditPart.match(/\s[–—-]\s+(.+)$/);
+    if (dashSong) {
+      const songRaw = this.compact(dashSong[1].replace(/\([^)]*\)/g, ' '))
+        .replace(
+          /(?:\s+(?:fan\s?cam|face\s?cam|full\s?cam|multi\s?cam|[48]k|직캠|페이스캠|얼빡직캠|풀캠))+\s*$/i,
+          '',
+        )
+        .trim();
+      if (songRaw && !metadata.song_title) {
+        metadata.song_title = songRaw;
+        metadata.song_titles = [songRaw];
+      }
+      creditPart = this.compact(creditPart.slice(0, dashSong.index ?? 0));
+    }
+    // Drop a "(한글 alias)" parenthetical so the leading English credit is left to match.
+    creditPart = this.compact(creditPart.replace(/\([^)]*\)/g, ' '));
+    const credit = creditPart.match(
       /^([가-힣A-Za-z0-9_&.-]+)\s+([가-힣A-Za-z0-9'.-]+)(?:\s+with\s+.+)?$/i,
     );
     if (credit && !this.looksLikeDateToken(credit[1])) {
