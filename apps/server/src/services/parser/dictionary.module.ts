@@ -42,6 +42,8 @@ interface KpopDictionary {
   groups: string[];
   artists: Record<string, string[]>;
   songs: string[];
+  /** group name → its song titles (from dictionary_song_groups, via getAllSongs.group_name). */
+  songsByGroup: Record<string, string[]>;
   events: string[];
   aliases: {
     group: Record<string, string>;
@@ -145,6 +147,16 @@ export class DictionaryModule implements ParserModule {
       artistMap[groupName].push(String(a.name));
     }
 
+    // group name → its song titles. getAllSongs() already carries the linked group
+    // (MIN over dictionary_song_groups), so no extra query is needed.
+    const songsByGroup: Record<string, string[]> = {};
+    for (const s of songs as any[]) {
+      if (!s.group_name) continue;
+      const groupName = String(s.group_name);
+      if (!songsByGroup[groupName]) songsByGroup[groupName] = [];
+      songsByGroup[groupName].push(String(s.title));
+    }
+
     const aliasMap: KpopDictionary['aliases'] = { group: {}, artist: {}, song: {}, event: {} };
     for (const alias of aliases) {
       const normalized = this.normalizeLookup(String(alias.alias));
@@ -171,6 +183,7 @@ export class DictionaryModule implements ParserModule {
       groups: groups.map((g: any) => String(g.name)),
       artists: artistMap,
       songs: songs.map((s: any) => String(s.title)),
+      songsByGroup,
       events: events.map((e: any) => String(e.name)),
       aliases: aliasMap,
       cameraTypes: this.cameraTypeMap,
@@ -231,11 +244,23 @@ export class DictionaryModule implements ParserModule {
     fieldsChecked++;
     if (metadata.artist_name) {
       const allArtists = Object.values(dictionary.artists).flat();
-      const corrected = this.findBestMatch(
-        metadata.artist_name,
-        allArtists,
-        dictionary.aliases.artist,
-      );
+      // When a group is known, resolve the artist among that group's members first — this
+      // keeps a member from snapping onto a similarly-spelled artist in another group.
+      const scopedArtists =
+        metadata.group_name && metadata.group_name !== 'SOLO'
+          ? (dictionary.artists[metadata.group_name] ?? [])
+          : [];
+      let corrected: string | null = null;
+      if (scopedArtists.length) {
+        corrected = this.findBestMatch(
+          metadata.artist_name,
+          scopedArtists,
+          this.filterAliases(dictionary.aliases.artist, scopedArtists),
+        );
+      }
+      if (!corrected) {
+        corrected = this.findBestMatch(metadata.artist_name, allArtists, dictionary.aliases.artist);
+      }
       if (corrected) {
         if (corrected !== metadata.artist_name) {
           metadata.artist_name = corrected;
@@ -270,11 +295,26 @@ export class DictionaryModule implements ParserModule {
 
     fieldsChecked++;
     if (metadata.song_title) {
-      const corrected = this.findBestMatch(
-        metadata.song_title,
-        dictionary.songs,
-        dictionary.aliases.song,
-      );
+      // Prefer a song of the identified group before falling back to the full catalogue.
+      const scopedSongs =
+        metadata.group_name && metadata.group_name !== 'SOLO'
+          ? (dictionary.songsByGroup[metadata.group_name] ?? [])
+          : [];
+      let corrected: string | null = null;
+      if (scopedSongs.length) {
+        corrected = this.findBestMatch(
+          metadata.song_title,
+          scopedSongs,
+          this.filterAliases(dictionary.aliases.song, scopedSongs),
+        );
+      }
+      if (!corrected) {
+        corrected = this.findBestMatch(
+          metadata.song_title,
+          dictionary.songs,
+          dictionary.aliases.song,
+        );
+      }
       if (corrected) {
         if (corrected !== metadata.song_title) {
           metadata.song_title = corrected;
@@ -565,6 +605,17 @@ export class DictionaryModule implements ParserModule {
       .first('id', 'title');
 
     return (songByAlias as { id: number; title: string }) ?? null;
+  }
+
+  /** Restrict an alias→canonical map to aliases whose canonical is in `allowed`. */
+  private filterAliases(
+    aliasMap: Record<string, string>,
+    allowed: string[],
+  ): Record<string, string> {
+    const set = new Set(allowed.map((a) => this.normalizeLookup(a)));
+    return Object.fromEntries(
+      Object.entries(aliasMap).filter(([, canonical]) => set.has(this.normalizeLookup(canonical))),
+    );
   }
 
   private findBestMatch(
