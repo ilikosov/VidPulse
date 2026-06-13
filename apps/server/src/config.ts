@@ -32,6 +32,21 @@ export const config = {
     cronTime: process.env.SYNC_CRON_TIME ?? '0 3 * * *',
   },
 
+  kpopDictionary: {
+    /** Opt-in: the scheduled refresh only runs when explicitly enabled. */
+    enabled: bool(process.env.KPOP_DICT_REFRESH_ENABLED, false),
+    /** Cron schedule for the refresh (default: weekly, Monday 04:00). */
+    cronTime: process.env.KPOP_DICT_CRON_TIME ?? '0 4 * * 1',
+    /** Descriptive User-Agent required by Wikidata's access policy. */
+    userAgent:
+      process.env.KPOP_SOURCES_USER_AGENT ??
+      'VidPulse-KpopDB/1.0 (+https://github.com/ilikosov/vidpulse)',
+    /** Optional cap on groups fetched per refresh. */
+    limit: process.env.KPOP_DICT_LIMIT
+      ? num(process.env.KPOP_DICT_LIMIT, 0) || undefined
+      : undefined,
+  },
+
   ai: {
     endpoint: process.env.LM_STUDIO_API_URL ?? process.env.LM_STUDIO_URL ?? null,
     model: process.env.LM_STUDIO_MODEL ?? null,

@@ -1,0 +1,89 @@
+import type { GroupPayload, GroupArtistPayload, GroupType } from '../types';
+import { GROUP_TYPE_BY_QID, type SparqlBinding } from './queries';
+
+function val(binding: SparqlBinding, key: string): string | undefined {
+  const v = binding[key]?.value;
+  return v && v.trim() ? v.trim() : undefined;
+}
+
+/** Wikidata entity URI → QID (last path segment). */
+function qid(uri: string | undefined): string | undefined {
+  if (!uri) return undefined;
+  const m = uri.match(/Q\d+$/);
+  return m ? m[0] : undefined;
+}
+
+/** A Korean label becomes an alias only when it differs from the chosen name. */
+function aliasesFrom(name: string, ko: string | undefined): string[] {
+  return ko && ko !== name ? [ko] : [];
+}
+
+interface GroupAccumulator {
+  payload: GroupPayload;
+  memberUris: Set<string>;
+}
+
+/**
+ * Fold (group, member) SPARQL rows into deduplicated GroupPayload[]:
+ * - name = English label (fallback Korean, then QID),
+ * - Korean label → alias,
+ * - type from girl-group/boy-band classification (else 'mixed'),
+ * - active = false when a dissolution date (P576) is present,
+ * - members = distinct humans with a usable label, each a 'group' membership.
+ */
+export function normalizeGroups(bindings: SparqlBinding[]): GroupPayload[] {
+  const byGroup = new Map<string, GroupAccumulator>();
+
+  for (const b of bindings) {
+    const groupUri = val(b, 'group');
+    if (!groupUri) continue;
+
+    let acc = byGroup.get(groupUri);
+    if (!acc) {
+      const groupEn = val(b, 'groupEn');
+      const groupKo = val(b, 'groupKo');
+      const name = groupEn ?? groupKo ?? qid(groupUri);
+      if (!name) continue; // unusable group
+      const typeQid = qid(val(b, 'typeClass'));
+      const type: GroupType = (typeQid && GROUP_TYPE_BY_QID[typeQid]) || 'mixed';
+      acc = {
+        payload: {
+          name,
+          type,
+          active: !val(b, 'dissolved'),
+          aliases: aliasesFrom(name, groupKo),
+          artists: [],
+        },
+        memberUris: new Set(),
+      };
+      byGroup.set(groupUri, acc);
+    } else if (val(b, 'dissolved')) {
+      // A later row may carry the dissolution date the first row lacked.
+      acc.payload.active = false;
+    }
+
+    const memberUri = val(b, 'member');
+    if (!memberUri || acc.memberUris.has(memberUri)) continue;
+    const memberEn = val(b, 'memberEn');
+    const memberKo = val(b, 'memberKo');
+    const memberName = memberEn ?? memberKo;
+    if (!memberName) continue; // skip members without a label
+    acc.memberUris.add(memberUri);
+    const artist: GroupArtistPayload = {
+      name: memberName,
+      aliases: aliasesFrom(memberName, memberKo),
+      membership: { activityType: 'group', status: 'active', isPrimary: true },
+    };
+    acc.payload.artists!.push(artist);
+  }
+
+  // Drop empty alias arrays for a tidy payload.
+  return [...byGroup.values()].map(({ payload }) => {
+    if (payload.aliases && payload.aliases.length === 0) delete payload.aliases;
+    payload.artists = payload.artists?.map((a) => {
+      if (a.aliases && a.aliases.length === 0) delete a.aliases;
+      return a;
+    });
+    return payload;
+  });
+}
