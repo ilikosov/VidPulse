@@ -17,7 +17,7 @@ describe('normalizeGroups', () => {
         group: { value: 'http://www.wikidata.org/entity/Q24489' },
         groupEn: { value: 'IVE', lang: 'en' },
         groupKo: { value: '아이브', lang: 'ko' },
-        typeClass: { value: 'http://www.wikidata.org/entity/Q188960' }, // girl group
+        typeClass: { value: 'http://www.wikidata.org/entity/Q641066' }, // girl group
         member: { value: 'http://www.wikidata.org/entity/Q111' },
         memberEn: { value: 'Wonyoung', lang: 'en' },
         memberKo: { value: '장원영', lang: 'ko' },
@@ -60,7 +60,7 @@ describe('normalizeGroups', () => {
       row({
         group: { value: 'http://www.wikidata.org/entity/Q500' },
         groupEn: { value: '2NE1', lang: 'en' },
-        typeClass: { value: 'http://www.wikidata.org/entity/Q188960' },
+        typeClass: { value: 'http://www.wikidata.org/entity/Q641066' },
         dissolved: { value: '2016-11-25T00:00:00Z' },
         member: { value: 'http://www.wikidata.org/entity/Q9' },
         memberEn: { value: 'CL', lang: 'en' },
@@ -68,6 +68,20 @@ describe('normalizeGroups', () => {
     ];
     const [group] = normalizeGroups(bindings);
     expect(group.active).toBe(false);
+  });
+
+  it('maps the boy-band classification to type male', () => {
+    const bindings: SparqlBinding[] = [
+      row({
+        group: { value: 'http://www.wikidata.org/entity/Q300' },
+        groupEn: { value: 'BTS', lang: 'en' },
+        typeClass: { value: 'http://www.wikidata.org/entity/Q216337' }, // boy band
+        member: { value: 'http://www.wikidata.org/entity/Q7' },
+        memberEn: { value: 'RM', lang: 'en' },
+      }),
+    ];
+    const [group] = normalizeGroups(bindings);
+    expect(group.type).toBe('male');
   });
 
   it('defaults type to mixed and falls back to Korean/QID names', () => {

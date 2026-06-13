@@ -2,17 +2,17 @@ export const WIKIDATA_SPARQL_ENDPOINT = 'https://query.wikidata.org/sparql';
 
 // Wikidata entity ids referenced by the query.
 export const QID = {
-  KPOP_GENRE: 'wd:Q213714', // K-pop (genre)
+  KPOP_GENRE: 'wd:Q213665', // K-pop (genre)
   MUSICAL_ENSEMBLE: 'wd:Q2088357', // musical ensemble (group/band superclass)
   HUMAN: 'wd:Q5',
-  GIRL_GROUP: 'wd:Q188960',
-  BOY_BAND: 'wd:Q864897',
+  GIRL_GROUP: 'wd:Q641066',
+  BOY_BAND: 'wd:Q216337',
 } as const;
 
 /** Group classifications → our group type. */
 export const GROUP_TYPE_BY_QID: Record<string, 'female' | 'male'> = {
-  Q188960: 'female', // girl group
-  Q864897: 'male', // boy band
+  Q641066: 'female', // girl group
+  Q216337: 'male', // boy band
 };
 
 /**
