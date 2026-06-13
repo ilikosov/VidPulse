@@ -1,0 +1,53 @@
+export const WIKIDATA_SPARQL_ENDPOINT = 'https://query.wikidata.org/sparql';
+
+// Wikidata entity ids referenced by the query.
+export const QID = {
+  KPOP_GENRE: 'wd:Q213665', // K-pop (genre)
+  MUSICAL_ENSEMBLE: 'wd:Q2088357', // musical ensemble (group/band superclass)
+  HUMAN: 'wd:Q5',
+  GIRL_GROUP: 'wd:Q641066',
+  BOY_BAND: 'wd:Q216337',
+} as const;
+
+/** Group classifications → our group type. */
+export const GROUP_TYPE_BY_QID: Record<string, 'female' | 'male'> = {
+  Q641066: 'female', // girl group
+  Q216337: 'male', // boy band
+};
+
+/**
+ * Build the SPARQL query that returns one row per (group, member) for K-pop groups:
+ * English + Korean labels, the girl-group/boy-band classification, dissolution date
+ * (→ inactive), and each human member's labels. A bounded sub-select keeps the group
+ * set deterministic (ORDER BY) and cappable.
+ */
+export function buildGroupsQuery(limit?: number): string {
+  const limitClause = limit && limit > 0 ? `LIMIT ${Math.floor(limit)}` : 'LIMIT 2000';
+  return `
+SELECT ?group ?groupEn ?groupKo ?typeClass ?dissolved ?member ?memberEn ?memberKo WHERE {
+  {
+    SELECT DISTINCT ?group WHERE {
+      ?group wdt:P136 ${QID.KPOP_GENRE} .
+      ?group wdt:P31/wdt:P279* ${QID.MUSICAL_ENSEMBLE} .
+    } ORDER BY ?group ${limitClause}
+  }
+  OPTIONAL { ?group rdfs:label ?groupEn FILTER(LANG(?groupEn) = "en") }
+  OPTIONAL { ?group rdfs:label ?groupKo FILTER(LANG(?groupKo) = "ko") }
+  OPTIONAL { ?group wdt:P31 ?typeClass FILTER(?typeClass IN (${QID.GIRL_GROUP}, ${QID.BOY_BAND})) }
+  OPTIONAL { ?group wdt:P576 ?dissolved }
+  OPTIONAL {
+    ?group wdt:P527 ?member .
+    ?member wdt:P31 ${QID.HUMAN} .
+    OPTIONAL { ?member rdfs:label ?memberEn FILTER(LANG(?memberEn) = "en") }
+    OPTIONAL { ?member rdfs:label ?memberKo FILTER(LANG(?memberKo) = "ko") }
+  }
+}`.trim();
+}
+
+/** Shape of a SPARQL JSON results document (the subset we read). */
+export interface SparqlBinding {
+  [key: string]: { type: string; value: string; 'xml:lang'?: string } | undefined;
+}
+export interface SparqlResults {
+  results: { bindings: SparqlBinding[] };
+}

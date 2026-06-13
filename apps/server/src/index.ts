@@ -15,7 +15,9 @@ import eventsRoutes from './routes/events.routes';
 import settingsRoutes from './routes/settings.routes';
 import filesRoutes from './routes/files.routes';
 import videoListsRoutes from './routes/video-lists.routes';
+import kpopDictionaryRoutes from './routes/kpop-dictionary.routes';
 import { syncService } from './services/sync.service';
+import { kpopDictionaryService } from './services/kpopDictionary.service';
 import healthRoutes from './routes/health.routes';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 import { config, validateConfig } from './config';
@@ -44,6 +46,7 @@ export function createApp() {
   app.use('/api/settings', settingsRoutes);
   app.use('/api/files', filesRoutes);
   app.use('/api/video-lists', videoListsRoutes);
+  app.use('/api/kpop-dictionary', kpopDictionaryRoutes);
 
   app.use('/api/*path', notFoundHandler);
   app.use(errorHandler);
@@ -57,5 +60,6 @@ if (require.main === module) {
   app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
     syncService.runScheduler();
+    kpopDictionaryService.runScheduler();
   });
 }

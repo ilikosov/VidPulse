@@ -68,6 +68,27 @@ const normalizePaginatedResponse = <T>(
   };
 };
 
+/** Subset of the server's MediaLibraryImportSummary returned by the K-pop refresh. */
+export interface KpopRefreshSummary {
+  mode: 'merge' | 'replace';
+  groups: { inserted: number; updated: number; aliasesInserted: number };
+  artists: {
+    inserted: number;
+    updated: number;
+    aliasesInserted: number;
+    membershipsInserted: number;
+  };
+  songs: {
+    inserted: number;
+    updated: number;
+    aliasesInserted: number;
+    artistLinksInserted: number;
+    groupLinksInserted: number;
+  };
+  events: { inserted: number; updated: number; aliasesInserted: number };
+  errors: string[];
+}
+
 export const dictionaryApi = {
   getGroupsList: async (params: GroupsListParams): Promise<PaginatedList<DictionaryGroup>> =>
     normalizePaginatedResponse(
@@ -155,6 +176,12 @@ export const dictionaryApi = {
   importFile: (file: File): Promise<ImportStartResponse | unknown> =>
     dictionaryApi.importMediaLibraryFile(file),
   clearMediaLibrary: () => fetchApi('/dictionary/clear', { method: 'DELETE' }),
+
+  refreshKpopDictionary: (mode?: 'merge' | 'replace') =>
+    fetchApi<{ summary: KpopRefreshSummary }>('/kpop-dictionary/refresh', {
+      method: 'POST',
+      body: JSON.stringify(mode ? { mode } : {}),
+    }),
 
   mergeShortTags: () =>
     fetchApi<{
