@@ -333,6 +333,20 @@ export class RegexModule implements ParserModule {
 
   private extractKoreanPrefix(title: string, songTitle?: string): Partial<ParsedMetadata> {
     const source = songTitle ? title.split(songTitle)[0] : title;
+
+    // "MEOVV(미야오) GAWON" — the group carries its own Korean alias in parens, followed by
+    // the member. (The song is already stripped from `source`, so the trailing word is the
+    // artist, not a song word.)
+    const groupKoreanParenArtist = source.match(
+      /(?:^|[\]\s])([A-Za-z0-9_&.-]+)\([가-힣]+\)\s+([A-Za-z][A-Za-z0-9'.-]*)/,
+    );
+    if (groupKoreanParenArtist) {
+      return {
+        group_name: this.compact(groupKoreanParenArtist[1]),
+        artist_name: this.compact(groupKoreanParenArtist[2]),
+      };
+    }
+
     const englishWithKoreanParen = source.match(
       /(?:^|\]\s*)([A-Za-z0-9_&.-]+)\s+([A-Za-z][A-Za-z0-9'.-]*)\s*\([가-힣]+\)/,
     );

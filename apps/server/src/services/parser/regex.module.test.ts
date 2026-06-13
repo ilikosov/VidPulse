@@ -18,6 +18,17 @@ describe('RegexModule', () => {
     expect(result.metadata.is_fancam).toBe(true);
   });
 
+  it('extracts group/artist from "GROUP(한글) ARTIST \'song\'" credit', async () => {
+    const module = new RegexModule();
+    const title = "(4K) [NPOP CAM] MEOVV(미야오) GAWON 'TOXIC' Ι NPOP LIMITED EDITION - SIDE A";
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.group_name).toBe('MEOVV');
+    expect(result.metadata.artist_name).toBe('GAWON');
+    expect(result.metadata.song_title).toBe('TOXIC');
+  });
+
   it.each([
     '250829-31 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM MULTI CAM)',
     '250829 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM)',
