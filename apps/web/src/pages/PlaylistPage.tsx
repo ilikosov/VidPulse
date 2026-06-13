@@ -13,12 +13,14 @@ import {
 import { SongLinks } from '../components/SongLinks';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
 import AddToListModal from '../components/AddToListModal';
+import { useSettings } from '../settingsContext';
 
 type PlaylistDetails = Playlist & { videoCount: number };
 
 function PlaylistPage() {
   const { id } = useParams<{ id: string }>();
   const { openVideo } = useVideoDrawer();
+  const { pageSize } = useSettings();
   const location = useLocation();
   const [playlist, setPlaylist] = useState<PlaylistDetails | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
@@ -37,7 +39,7 @@ function PlaylistPage() {
     try {
       const [playlistData, videosData] = await Promise.all([
         getPlaylist(id),
-        getVideos({ page: nextPage, limit: 20, playlist_id: Number(id) }),
+        getVideos({ page: nextPage, limit: pageSize, playlist_id: Number(id) }),
       ]);
       setPlaylist(playlistData);
       setVideos(videosData.videos);
@@ -193,7 +195,7 @@ function PlaylistPage() {
           })}
           pagination={{
             current: page,
-            pageSize: 20,
+            pageSize,
             total,
             onChange: (nextPage) => void fetchData(nextPage),
           }}

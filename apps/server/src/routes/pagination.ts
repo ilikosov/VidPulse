@@ -1,6 +1,7 @@
 import { Request } from 'express';
+import { config } from '../config';
 
-export function getPaginationParams(req: Request, defaultLimit = 20, maxLimit = 100) {
+export function getPaginationParams(req: Request, defaultLimit = config.pageSize, maxLimit = 100) {
   const rawPage = Number(req.query.page);
   const rawLimit = Number(req.query.limit);
 

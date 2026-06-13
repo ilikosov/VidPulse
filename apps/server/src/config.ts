@@ -18,6 +18,9 @@ function num(val: string | undefined, fallback: number): number {
 export const config = {
   port: num(process.env.PORT, 3000),
 
+  /** Default pagination page size used across list endpoints/pages. */
+  pageSize: num(process.env.PAGE_SIZE, 20),
+
   youtube: {
     apiKey: process.env.YOUTUBE_API_KEY ?? null,
     logApiCalls: bool(process.env.LOG_YOUTUBE_API_CALLS, false),

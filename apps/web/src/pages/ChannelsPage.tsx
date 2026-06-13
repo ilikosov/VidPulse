@@ -41,7 +41,7 @@ function ChannelsPage() {
   const [importSummary, setImportSummary] = useState<ImportChannelsResponse | null>(null);
   const [total, setTotal] = useState(0);
   const [form] = Form.useForm<{ url: string }>();
-  const { page, limit, setPagination } = usePaginationSearchParams(50);
+  const { page, limit, setPagination } = usePaginationSearchParams();
   const navigate = useNavigate();
 
   const fetchChannels = async (nextPage = page, nextLimit = limit) => {

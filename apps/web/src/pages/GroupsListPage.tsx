@@ -30,8 +30,7 @@ interface GroupFormValues {
 }
 
 export default function GroupsListPage() {
-  const { page, limit, setPagination, searchParams, setSearchParams } =
-    usePaginationSearchParams(20);
+  const { page, limit, setPagination, searchParams, setSearchParams } = usePaginationSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
   const from = `${location.pathname}${location.search}`;

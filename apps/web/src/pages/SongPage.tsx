@@ -8,11 +8,11 @@ import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
 import { SongLinks } from '../components/SongLinks';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
-
-const defaultVideosLimit = 20;
+import { useSettings } from '../settingsContext';
 
 export default function SongPage() {
   const { id = '' } = useParams();
+  const { pageSize } = useSettings();
   const location = useLocation();
   const navigate = useNavigate();
   const { openVideo } = useVideoDrawer();
@@ -29,7 +29,7 @@ export default function SongPage() {
   const [loading, setLoading] = useState(true);
   const [videosPagination, setVideosPagination] = useState({
     page: 1,
-    limit: defaultVideosLimit,
+    limit: pageSize,
     total: 0,
   });
 

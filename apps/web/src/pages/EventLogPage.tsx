@@ -63,8 +63,7 @@ export default function EventLogPage() {
   const [events, setEvents] = useState<EventLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
-  const { page, limit, setPagination, searchParams, setSearchParams } =
-    usePaginationSearchParams(50);
+  const { page, limit, setPagination, searchParams, setSearchParams } = usePaginationSearchParams();
   const eventType = searchParams.get('event_type') ?? undefined;
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
+import { config } from '../config';
 import { channelService } from '../services/channel.service';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { buildPaginationMeta } from './pagination';
@@ -28,7 +29,7 @@ router.get(
   '/',
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
-    const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
+    const limit = Math.min(parseInt(req.query.limit as string) || config.pageSize, 100);
     const result = await channelService.getChannels(page, limit);
     res.json({
       channels: result.channels,

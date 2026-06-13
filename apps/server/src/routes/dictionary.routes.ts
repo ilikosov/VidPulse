@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
+import { config } from '../config';
 import { logger } from '../lib/logger';
 import { asyncHandler } from '../middleware/asyncHandler';
 import {
@@ -54,7 +55,7 @@ const dictionaryTemplates: Record<TemplateEntity, Record<string, string>> = {
 router.get(
   '/groups/list',
   asyncHandler(async (req, res) => {
-    const { page, limit, offset } = getPaginationParams(req, 20, 100);
+    const { page, limit, offset } = getPaginationParams(req);
     const [groups, total] = await Promise.all([
       groupService.getGroups(
         req.query.type as string | undefined,
@@ -104,7 +105,7 @@ router.delete(
 router.get(
   '/artists/list',
   asyncHandler(async (req, res) => {
-    const { page, limit, offset } = getPaginationParams(req, 20, 100);
+    const { page, limit, offset } = getPaginationParams(req);
     const groupId = req.query.group_id ? Number(req.query.group_id) : undefined;
     const [artists, total] = await Promise.all([
       artistService.getArtists(groupId, req.query.q as string | undefined, limit, offset),
@@ -146,7 +147,7 @@ router.delete(
 router.get(
   '/songs/list',
   asyncHandler(async (req, res) => {
-    const { page, limit, offset } = getPaginationParams(req, 20, 100);
+    const { page, limit, offset } = getPaginationParams(req);
     const [songs, total] = await Promise.all([
       songService.getSongs(req.query.q as string | undefined, limit, offset),
       songService.countSongs(req.query.q as string | undefined),
@@ -198,7 +199,7 @@ router.get(
     const groupId = Number(req.params.id);
     const group = await groupService.getGroupById(groupId);
     if (!group) return res.status(404).json({ error: { message: 'Group not found' } });
-    const { page, limit, offset } = getPaginationParams(req, 20, 100);
+    const { page, limit, offset } = getPaginationParams(req);
     const [artists, total] = await Promise.all([
       groupService.getGroupArtists(groupId, limit, offset),
       groupService.countGroupArtists(groupId),
@@ -213,7 +214,7 @@ router.get(
     const groupId = Number(req.params.id);
     const group = await groupService.getGroupById(groupId);
     if (!group) return res.status(404).json({ error: { message: 'Group not found' } });
-    const { page, limit, offset } = getPaginationParams(req, 20, 100);
+    const { page, limit, offset } = getPaginationParams(req);
     const [songs, total] = await Promise.all([
       groupService.getGroupSongs(groupId, limit, offset),
       groupService.countGroupSongs(groupId),
@@ -237,7 +238,7 @@ router.get(
     const group = await groupService.getGroupById(Number(req.params.id));
     if (!group) return res.status(404).json({ error: { message: 'Group not found' } });
     const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 20;
+    const limit = Number(req.query.limit) || config.pageSize;
     return res.json(await groupService.getVideosByGroupId(Number(req.params.id), page, limit));
   }),
 );
@@ -257,7 +258,7 @@ router.get(
     const artistId = Number(req.params.id);
     const artist = await artistService.getArtistById(artistId);
     if (!artist) return res.status(404).json({ error: { message: 'Artist not found' } });
-    const { page, limit, offset } = getPaginationParams(req, 20, 100);
+    const { page, limit, offset } = getPaginationParams(req);
     const [songs, total] = await Promise.all([
       artistService.getArtistSongs(artistId, limit, offset),
       artistService.countArtistSongs(artistId),
@@ -272,7 +273,7 @@ router.get(
     const artist = await artistService.getArtistById(Number(req.params.id));
     if (!artist) return res.status(404).json({ error: { message: 'Artist not found' } });
     const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 20;
+    const limit = Number(req.query.limit) || config.pageSize;
     return res.json(await artistService.getVideosByArtistId(Number(req.params.id), page, limit));
   }),
 );
@@ -292,7 +293,7 @@ router.get(
     const song = await songService.getSongById(Number(req.params.id));
     if (!song) return res.status(404).json({ error: { message: 'Song not found' } });
     const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 20;
+    const limit = Number(req.query.limit) || config.pageSize;
     return res.json(await songService.getVideosBySongId(Number(req.params.id), page, limit));
   }),
 );
@@ -352,7 +353,7 @@ router.get(
 router.get(
   '/events/list',
   asyncHandler(async (req, res) => {
-    const { page, limit, offset } = getPaginationParams(req, 20, 100);
+    const { page, limit, offset } = getPaginationParams(req);
     const [events, total] = await Promise.all([
       eventService.getEvents(req.query.q as string | undefined, limit, offset),
       eventService.countEvents(req.query.q as string | undefined),
@@ -404,7 +405,7 @@ router.get(
     const event = events.find((item: any) => item.id === Number(req.params.id));
     if (!event) return res.status(404).json({ error: { message: 'Event not found' } });
     const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 20;
+    const limit = Number(req.query.limit) || config.pageSize;
     return res.json(await eventService.getVideosByEventId(Number(req.params.id), page, limit));
   }),
 );
