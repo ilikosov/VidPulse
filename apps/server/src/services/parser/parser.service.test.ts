@@ -79,6 +79,16 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     );
   });
 
+  it('resolves the Korean show name 음악중심 to the MUSICCORE event via the seeded alias', async () => {
+    const title =
+      '[#음중직캠] MEOVV GAWON (미야오 가원) – HANDS UP FanCam | 쇼! 음악중심 | MBC250503';
+    const result = await parseTitle(title);
+
+    expect(result.metadata.event).toBe('@MUSICCORE');
+    expect(result.metadata.song_title).toBe('HANDS UP');
+    expect(result.metadata.perf_date).toBe('250503');
+  });
+
   it('case 7: BABYMONSTER AHYEON FaceCam — explicit group credit wins over membership', async () => {
     const title =
       "[페이스캠4K] 베이비몬스터 아현 'SHEESH' (BABYMONSTER AHYEON FaceCam) @SBS Inkigayo 240407";
