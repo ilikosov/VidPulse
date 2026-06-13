@@ -128,11 +128,18 @@ export class RegexModule implements ParserModule {
   }
 
   private cleanEvent(rawEvent: string): string {
-    return this.compact(rawEvent)
-      .replace(/\b\d{6}\b/g, '')
-      .replace(/#.*$/g, '')
-      .replace(/\b방송\b/gi, '')
-      .trim();
+    return (
+      this.compact(rawEvent)
+        .replace(/\b\d{6}\b/g, '')
+        // Dotted dates with an optional leading separator, e.g. "MCOUNTDOWN_2024.9.26".
+        .replace(/[_\s-]*(?<!\d)(?:20\d{2}|\d{2})\.\d{1,2}\.\d{1,2}(?!\d)/g, '')
+        // Underscore-joined 6-digit dates (the \b above misses these — "_" is a word char).
+        .replace(/[_\s-]+\d{6}(?!\d)/g, '')
+        .replace(/#.*$/g, '')
+        .replace(/\b방송\b/gi, '')
+        .replace(/[_\s.-]+$/g, '')
+        .trim()
+    );
   }
 
   /**

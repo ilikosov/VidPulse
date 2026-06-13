@@ -334,7 +334,9 @@ export class DictionaryModule implements ParserModule {
       const eventName = metadata.event.replace('@', '');
       const aliasEvent = this.eventAliasMap[this.normalizeLookup(eventName)];
       const corrected = this.findBestMatch(eventName, dictionary.events, dictionary.aliases.event);
-      const canonicalEvent = aliasEvent || corrected;
+      // The dictionary is the source of truth; the hardcoded alias map is only a fallback for
+      // events absent from the dictionary (otherwise it overrides canonicals like MCOUNTDOWN).
+      const canonicalEvent = corrected || aliasEvent;
       if (canonicalEvent) {
         metadata.event = '@' + canonicalEvent;
         correctionsMade++;
