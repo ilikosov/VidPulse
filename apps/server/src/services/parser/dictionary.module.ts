@@ -597,8 +597,16 @@ export class DictionaryModule implements ParserModule {
     let bestMatch: string | null = null;
     let bestScore = normalizedInput.length <= 4 ? 0.9 : 0.7;
 
+    // A differing leading character signals a genuinely different name, not a typo or
+    // romanization variant (which keep their first letter). Without this guard a new
+    // member absent from the dictionary snaps onto a similar existing artist — e.g.
+    // "GAWON" (MEOVV) → "Dawon" (similarity 0.8 > 0.7).
+    const inputFirst = normalizedInput[0];
+
     for (const candidate of candidates) {
-      const score = similarity(normalizedInput, this.normalizeLookup(candidate));
+      const normalizedCandidate = this.normalizeLookup(candidate);
+      if (normalizedCandidate[0] !== inputFirst) continue;
+      const score = similarity(normalizedInput, normalizedCandidate);
       if (score > bestScore) {
         bestScore = score;
         bestMatch = candidate;
