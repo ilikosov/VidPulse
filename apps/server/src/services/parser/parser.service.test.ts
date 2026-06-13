@@ -79,12 +79,12 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     );
   });
 
-  it('resolves the Korean show name 음악중심 to the MUSICCORE event via the seeded alias', async () => {
+  it('resolves the Korean show name 음악중심 to the "Show! Music Core" event via the seeded alias', async () => {
     const title =
       '[#음중직캠] MEOVV GAWON (미야오 가원) – HANDS UP FanCam | 쇼! 음악중심 | MBC250503';
     const result = await parseTitle(title);
 
-    expect(result.metadata.event).toBe('@MUSICCORE');
+    expect(result.metadata.event).toBe('@Show! Music Core');
     expect(result.metadata.song_title).toBe('HANDS UP');
     expect(result.metadata.perf_date).toBe('250503');
   });
