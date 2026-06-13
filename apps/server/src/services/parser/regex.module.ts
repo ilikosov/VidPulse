@@ -381,6 +381,23 @@ export class RegexModule implements ParserModule {
   private extractKoreanPrefix(title: string, songTitle?: string): Partial<ParsedMetadata> {
     const source = songTitle ? title.split(songTitle)[0] : title;
 
+    // "MEOVV GAWON - HANDS UP (미야오 가원 - 핸즈 업)" — an English "group artist - song" credit
+    // mirrored by a Korean parenthetical. Take the English side: left of the dash is
+    // "<group> <member>", right of the dash (before the Korean paren) is the song.
+    const engThenKoreanMirror = source.match(
+      /(?:^|\]\s*)([A-Za-z][A-Za-z0-9_&.' ]*?)\s+[-–—]\s+([A-Za-z0-9_&.' ]+?)\s*\([가-힣]/,
+    );
+    if (engThenKoreanMirror) {
+      const tokens = this.compact(engThenKoreanMirror[1]).split(/\s+/);
+      if (tokens.length >= 2) {
+        return {
+          group_name: tokens.slice(0, -1).join(' '),
+          artist_name: tokens[tokens.length - 1],
+          song_title: this.compact(engThenKoreanMirror[2]),
+        };
+      }
+    }
+
     // "MEOVV(미야오) GAWON" — the group carries its own Korean alias in parens, followed by
     // the member. (The song is already stripped from `source`, so the trailing word is the
     // artist, not a song word.)

@@ -29,6 +29,18 @@ describe('RegexModule', () => {
     expect(result.metadata.song_title).toBe('TOXIC');
   });
 
+  it('extracts group/artist/song from "GROUP ARTIST - SONG (한글 mirror)" credit', async () => {
+    const module = new RegexModule();
+    const title =
+      '[주간아 직캠] MEOVV GAWON - HANDS UP (미야오 가원 - 핸즈 업) l #주간아이돌 l EP.696';
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.group_name).toBe('MEOVV');
+    expect(result.metadata.artist_name).toBe('GAWON');
+    expect(result.metadata.song_title).toBe('HANDS UP');
+  });
+
   it('parses "credit (한글) – song cam | show | broadcasterYYMMDD" segmented titles', async () => {
     const module = new RegexModule();
     const title =
