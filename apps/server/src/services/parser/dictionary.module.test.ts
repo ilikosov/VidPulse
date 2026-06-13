@@ -107,4 +107,60 @@ describe('DictionaryModule aliases normalization', () => {
 
     expect(result.metadata.event).toBe('@INKIGAYO');
   });
+
+  it('resolves the artist within the identified group, not a look-alike elsewhere', async () => {
+    // GAWON belongs to MEOVV; Dawon (SECRET NUMBER) is one substitution away. With the group
+    // known, resolution is scoped to MEOVV's members so the look-alike is never considered.
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Gawon', group_name: 'MEOVV' },
+      { name: 'Dawon', group_name: 'SECRET NUMBER' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse("미야오 가원 'MEOW' (MEOVV GAWON FanCam)", {
+      group_name: 'MEOVV',
+      artist_name: 'GAWON',
+    });
+
+    expect(result.metadata.artist_name).toBe('Gawon');
+  });
+
+  it('resolves a song within the identified group before the global catalogue', async () => {
+    // Two same-spelled songs in different groups; the group context picks the right one.
+    vi.mocked(songService.getAllSongs).mockResolvedValue([
+      { title: 'TOUCH', group_name: 'MEOVV' },
+      { title: 'TOUCH', group_name: 'STAYC' },
+    ] as any);
+    vi.mocked(groupService.getAllGroups).mockResolvedValue([
+      { id: 1, name: 'MEOVV' },
+      { id: 2, name: 'STAYC' },
+    ] as any);
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Gawon', group_name: 'MEOVV' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse("미야오 'touch'", {
+      group_name: 'MEOVV',
+      song_title: 'touch',
+    });
+
+    expect(result.metadata.song_title).toBe('TOUCH');
+  });
+
+  it('falls back to the global artist list when the group lacks a match', async () => {
+    // A guest/cover whose name is not a member of the identified group still resolves globally.
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'YUNA', group_name: 'ITZY' },
+      { name: 'Gawon', group_name: 'MEOVV' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse('stage', {
+      group_name: 'MEOVV', // YUNA is not a MEOVV member → scoped miss → global match
+      artist_name: '유나',
+    });
+
+    expect(result.metadata.artist_name).toBe('YUNA');
+  });
 });
