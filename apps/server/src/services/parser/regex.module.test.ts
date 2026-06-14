@@ -41,6 +41,18 @@ describe('RegexModule', () => {
     expect(result.metadata.song_title).toBe('HANDS UP');
   });
 
+  it('extracts a song wrapped in mismatched straight/curly quotes', async () => {
+    const module = new RegexModule();
+    const title =
+      "[K-Fancam] 빌리 문수아 직캠 'GingaMingaYo’ (Billlie Moon Sua Fancam) l @MusicBank 220311";
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('GingaMingaYo');
+    expect(result.metadata.event).toBe('@MUSICBANK');
+    expect(result.metadata.perf_date).toBe('220311');
+  });
+
   it('parses "credit (한글) – song cam | show | broadcasterYYMMDD" segmented titles', async () => {
     const module = new RegexModule();
     const title =

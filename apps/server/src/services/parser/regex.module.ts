@@ -241,6 +241,8 @@ export class RegexModule implements ParserModule {
       // delimiter, so apostrophes *inside* the title (e.g. `What's`, `Eye-Poppin')`)
       // no longer truncate it. Falls back to the simple pattern below when needed.
       /(?<=^|[\s\[\]("])'(.+?)'(?=$|[\s|\]@])/,
+      // Mismatched straight/curly quotes around the title, e.g. `'GingaMingaYo’`.
+      /(?<=^|[\s\[\]("])['‘](.+?)['’](?=$|[\s|\]@()])/,
       /'([^']+)'/,
       /"([^"]+)"/,
       /‘([^’]+)’/,
