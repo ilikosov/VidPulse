@@ -38,6 +38,7 @@ export type {
   PaginatedSongsResponse,
   Pagination,
   ParserLog,
+  ParserTraceStep,
   Playlist,
   PlaylistsResponse,
   ReparseResponse,

@@ -165,6 +165,18 @@ describe('ParserService.parseTitle with in-memory sqlite', () => {
     expect(result.metadata.is_own_artist_song).toBe(true);
   });
 
+  it('emits a parser trace describing the pipeline stages', async () => {
+    const result = await parserWithDictionary.parseTitle("260514 스테이씨 아이사 'ASAP' 직캠");
+
+    expect(Array.isArray(result.trace)).toBe(true);
+    const stages = result.trace.map((step) => step.stage);
+    // The module that produced metadata and the final review decision are always traced.
+    expect(stages).toContain('Review decision');
+    expect(stages.some((s) => s === 'Song ownership')).toBe(true);
+    const review = result.trace.find((step) => step.stage === 'Review decision');
+    expect(review?.confidence).toBe(result.metadata.confidence);
+  });
+
   it('falls back to the description for identity fields the title left empty', async () => {
     const result = await parserForDescription.parseTitle(
       '260514 some untitled stage',

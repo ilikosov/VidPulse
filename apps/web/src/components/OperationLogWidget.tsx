@@ -1,8 +1,53 @@
 import { CopyOutlined } from '@ant-design/icons';
-import { Button, Card, Collapse, Space, Typography, message } from 'antd';
-import type { ParserLog } from '../api';
+import { Button, Card, Collapse, Space, Tag, Timeline, Typography, message } from 'antd';
+import type { ParserLog, ParserTraceStep } from '../api';
 
 const { Text } = Typography;
+
+/** Pull the parser trace out of a parse result (reparseLog.output / parseLog.output). */
+function extractTrace(output: unknown): ParserTraceStep[] {
+  const trace = (output as { trace?: unknown })?.trace;
+  return Array.isArray(trace) ? (trace as ParserTraceStep[]) : [];
+}
+
+function ParserTraceBlock({ steps }: { steps: ParserTraceStep[] }) {
+  if (steps.length === 0) {
+    return <Text type="secondary">No trace available.</Text>;
+  }
+  return (
+    <Timeline
+      style={{ marginTop: 4 }}
+      items={steps.map((step) => {
+        const changes = step.changes ?? {};
+        const changeKeys = Object.keys(changes);
+        return {
+          children: (
+            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+              <Space size={6} wrap>
+                <Text strong>{step.stage}</Text>
+                {step.confidence != null && (
+                  <Tag color="blue" style={{ margin: 0 }}>
+                    conf {step.confidence}
+                  </Tag>
+                )}
+              </Space>
+              {step.detail && <Text type="secondary">{step.detail}</Text>}
+              {changeKeys.length > 0 && (
+                <Space size={[4, 4]} wrap>
+                  {changeKeys.map((key) => (
+                    <Tag key={key} style={{ margin: 0 }}>
+                      {key}={String(changes[key] ?? '∅')}
+                    </Tag>
+                  ))}
+                </Space>
+              )}
+            </Space>
+          ),
+        };
+      })}
+    />
+  );
+}
 
 function formatReparseCopy(log: { input?: unknown; output?: unknown }): string {
   const title = (log.input as any)?.title ?? '';
@@ -97,6 +142,8 @@ function OperationLogWidget({ type, log, onClear }: OperationLogWidgetProps) {
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Text strong>Input</Text>
                   <JsonBlock data={log.input ?? {}} />
+                  <Text strong>Parser trace</Text>
+                  <ParserTraceBlock steps={extractTrace(log.output)} />
                   <Text strong>Output</Text>
                   <JsonBlock data={log.output ?? {}} />
                   {log.error ? (
@@ -114,6 +161,8 @@ function OperationLogWidget({ type, log, onClear }: OperationLogWidgetProps) {
                   <JsonBlock data={log.youtubeResponse ?? { error: log.youtubeError || null }} />
                   <Text strong>Parser Log Input</Text>
                   <JsonBlock data={log.parseLog?.input ?? {}} />
+                  <Text strong>Parser trace</Text>
+                  <ParserTraceBlock steps={extractTrace(log.parseLog?.output)} />
                   <Text strong>Parser Log Output</Text>
                   <JsonBlock data={log.parseLog?.output ?? {}} />
                   {log.parseLog?.error ? (

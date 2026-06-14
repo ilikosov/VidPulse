@@ -1,10 +1,26 @@
 import { ParsedMetadata, ParserModule } from './parser.types';
+import type { ParserTraceStep } from '@vidpulse/shared';
 import { RegexModule, SOLO_GROUP } from './regex.module';
 import { DictionaryModule } from './dictionary.module';
 import { logger } from '../../lib/logger';
 import { splitSongTitles } from './songTitles.util';
 
 const MIN_CONFIDENCE_THRESHOLD = 0.5;
+
+/** Fields a trace step changed (key → new value), comparing metadata before/after a stage. */
+function diffMetadata(
+  before: Partial<ParsedMetadata>,
+  after: Partial<ParsedMetadata>,
+): Record<string, unknown> {
+  const changes: Record<string, unknown> = {};
+  for (const key of Object.keys(after) as Array<keyof ParsedMetadata>) {
+    if (key === 'confidence') continue;
+    if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+      changes[key] = after[key];
+    }
+  }
+  return changes;
+}
 
 function hasUnresolvedCoreAliases(metadata: Partial<ParsedMetadata>): boolean {
   const identityValues = [metadata.group_name, metadata.artist_name].filter((v): v is string =>
@@ -67,6 +83,8 @@ export class ParserService {
   ) {}
 
   async parseTitle(title: string, publishedAt?: string, tags?: string[], description?: string) {
+    const trace: ParserTraceStep[] = [];
+
     const normalizedTitle = title.trim().toLowerCase();
     if (normalizedTitle === 'private video') {
       return {
@@ -76,12 +94,16 @@ export class ParserService {
           confidence: 0,
         },
         needsReview: true,
+        trace: [
+          { stage: 'Short-circuit', detail: '"private video" → unparseable, flagged for review' },
+        ],
       };
     }
 
     let currentMetadata: Partial<ParsedMetadata> = {};
 
     for (const module of this.modules) {
+      const before = { ...currentMetadata };
       try {
         const result = await module.parse(title, currentMetadata);
         for (const key of Object.keys(result.metadata) as Array<keyof ParsedMetadata>) {
@@ -91,8 +113,17 @@ export class ParserService {
             (currentMetadata as any)[key] = value;
           }
         }
+        trace.push({
+          stage: module.constructor.name,
+          changes: diffMetadata(before, currentMetadata),
+          confidence: result.confidence,
+        });
       } catch (error) {
         logger.warn('Parser module failed:', error);
+        trace.push({
+          stage: module.constructor.name,
+          detail: `failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+        });
       }
     }
 
@@ -101,18 +132,30 @@ export class ParserService {
     // Latin name). When it resolves to a group, it's a group-only credit — promote it to the
     // group when none is set / SOLO, otherwise just drop the bogus artist.
     if (currentMetadata.artist_name && this.dictionaryModule) {
-      const group = await this.dictionaryModule.resolveGroupOnlyCredit(currentMetadata.artist_name);
+      const credited = currentMetadata.artist_name;
+      const group = await this.dictionaryModule.resolveGroupOnlyCredit(credited);
       if (group) {
         if (!currentMetadata.group_name || currentMetadata.group_name === SOLO_GROUP) {
           currentMetadata.group_name = group;
           delete currentMetadata.artist_name;
+          trace.push({
+            stage: 'Group-only credit',
+            detail: `"${credited}" is a group → promoted to group_name, artist dropped`,
+            changes: { group_name: group, artist_name: undefined },
+          });
         } else if (currentMetadata.group_name === group) {
           delete currentMetadata.artist_name;
+          trace.push({
+            stage: 'Group-only credit',
+            detail: `"${credited}" duplicates the group → artist dropped`,
+            changes: { artist_name: undefined },
+          });
         }
       }
     }
 
     if (tags?.length && this.dictionaryModule) {
+      const before = { ...currentMetadata };
       if (!currentMetadata.group_name && !currentMetadata.artist_name) {
         currentMetadata.group_name =
           (await this.dictionaryModule.searchInTags(tags, 'group')) || currentMetadata.group_name;
@@ -127,11 +170,16 @@ export class ParserService {
         currentMetadata.event ||
         (await this.dictionaryModule.searchInTags(tags, 'event')) ||
         currentMetadata.event;
+      const changes = diffMetadata(before, currentMetadata);
+      if (Object.keys(changes).length) {
+        trace.push({ stage: 'YouTube tags', detail: 'filled empty fields from tags', changes });
+      }
     }
 
     // The description often credits the performer/song when the title doesn't — use it as a
     // last-resort source for identity fields the title (and tags) left empty.
     if (description?.trim() && this.dictionaryModule) {
+      const before = { ...currentMetadata };
       if (!currentMetadata.group_name && !currentMetadata.artist_name) {
         const artist = await this.dictionaryModule.searchInText(description, 'artist');
         if (artist) {
@@ -152,8 +200,17 @@ export class ParserService {
           currentMetadata.song_title = song;
         }
       }
+      const changes = diffMetadata(before, currentMetadata);
+      if (Object.keys(changes).length) {
+        trace.push({
+          stage: 'Description',
+          detail: 'filled empty identity/song fields from the description',
+          changes,
+        });
+      }
     }
 
+    const beforeSplit = { ...currentMetadata };
     const parsedSongTitles = splitSongTitles(
       currentMetadata.song_title,
       currentMetadata.song_titles,
@@ -161,6 +218,14 @@ export class ParserService {
     if (parsedSongTitles.length > 0) {
       currentMetadata.song_titles = parsedSongTitles;
       currentMetadata.song_title = parsedSongTitles[parsedSongTitles.length - 1];
+      const changes = diffMetadata(beforeSplit, currentMetadata);
+      if (Object.keys(changes).length) {
+        trace.push({
+          stage: 'Song split',
+          detail: `split into ${parsedSongTitles.length} song(s)`,
+          changes,
+        });
+      }
     }
 
     if (this.dictionaryModule) {
@@ -199,17 +264,44 @@ export class ParserService {
       if (isOwnArtistSong !== undefined) {
         currentMetadata.is_own_artist_song = isOwnArtistSong;
       }
+
+      if (isOwnGroupSong !== undefined || isOwnArtistSong !== undefined) {
+        trace.push({
+          stage: 'Song ownership',
+          detail: 'checked whether the song belongs to the credited group/artist',
+          changes: {
+            ...(isOwnGroupSong !== undefined ? { is_own_group_song: isOwnGroupSong } : {}),
+            ...(isOwnArtistSong !== undefined ? { is_own_artist_song: isOwnArtistSong } : {}),
+          },
+        });
+      }
     }
 
     const confidence = calculateMetadataConfidence(currentMetadata);
     currentMetadata.confidence = confidence;
 
+    const lowConfidence = confidence < MIN_CONFIDENCE_THRESHOLD;
+    const missingRequired = !hasRequiredFields(currentMetadata, title, publishedAt);
+    const unresolvedAliases = hasUnresolvedCoreAliases(currentMetadata);
+    const needsReview = missingRequired || lowConfidence || unresolvedAliases;
+
+    const reviewReasons = [
+      missingRequired && 'missing required fields',
+      lowConfidence && `confidence ${confidence} < ${MIN_CONFIDENCE_THRESHOLD}`,
+      unresolvedAliases && 'unresolved Korean alias in group/artist',
+    ].filter(Boolean) as string[];
+    trace.push({
+      stage: 'Review decision',
+      detail: needsReview
+        ? `needs review — ${reviewReasons.join('; ')}`
+        : `auto-accepted (confidence ${confidence})`,
+      confidence,
+    });
+
     return {
       metadata: currentMetadata,
-      needsReview:
-        !hasRequiredFields(currentMetadata, title, publishedAt) ||
-        confidence < MIN_CONFIDENCE_THRESHOLD ||
-        hasUnresolvedCoreAliases(currentMetadata),
+      needsReview,
+      trace,
     };
   }
 }
