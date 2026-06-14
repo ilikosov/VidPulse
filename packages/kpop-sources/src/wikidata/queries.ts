@@ -18,13 +18,15 @@ export const GROUP_TYPE_BY_QID: Record<string, 'female' | 'male'> = {
 /**
  * Build the SPARQL query that returns one row per (group, member) for K-pop groups:
  * English + Korean labels, the girl-group/boy-band classification, dissolution date
- * (→ inactive), and each human member's labels. A bounded sub-select keeps the group
- * set deterministic (ORDER BY) and cappable.
+ * (→ inactive), and each human member's labels plus their stage name (P742 pseudonym,
+ * en/ko). Stage names are what video titles actually use (e.g. "Yeji", not the legal
+ * "Hwang Ye-ji"), so normalize prefers them. A bounded sub-select keeps the group set
+ * deterministic (ORDER BY) and cappable.
  */
 export function buildGroupsQuery(limit?: number): string {
   const limitClause = limit && limit > 0 ? `LIMIT ${Math.floor(limit)}` : 'LIMIT 2000';
   return `
-SELECT ?group ?groupEn ?groupKo ?typeClass ?dissolved ?member ?memberEn ?memberKo WHERE {
+SELECT ?group ?groupEn ?groupKo ?typeClass ?dissolved ?member ?memberEn ?memberKo ?memberStageEn ?memberStageKo WHERE {
   {
     SELECT DISTINCT ?group WHERE {
       ?group wdt:P136 ${QID.KPOP_GENRE} .
@@ -40,6 +42,8 @@ SELECT ?group ?groupEn ?groupKo ?typeClass ?dissolved ?member ?memberEn ?memberK
     ?member wdt:P31 ${QID.HUMAN} .
     OPTIONAL { ?member rdfs:label ?memberEn FILTER(LANG(?memberEn) = "en") }
     OPTIONAL { ?member rdfs:label ?memberKo FILTER(LANG(?memberKo) = "ko") }
+    OPTIONAL { ?member wdt:P742 ?memberStageEn FILTER(LANG(?memberStageEn) = "en") }
+    OPTIONAL { ?member wdt:P742 ?memberStageKo FILTER(LANG(?memberStageKo) = "ko") }
   }
 }`.trim();
 }

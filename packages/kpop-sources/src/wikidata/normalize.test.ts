@@ -55,6 +55,28 @@ describe('normalizeGroups', () => {
     expect(ive.artists?.[1].aliases).toBeUndefined();
   });
 
+  it('prefers the stage name (P742) over the legal label and keeps labels as aliases', () => {
+    const bindings: SparqlBinding[] = [
+      row({
+        group: { value: 'http://www.wikidata.org/entity/Q56806097' },
+        groupEn: { value: 'Itzy', lang: 'en' },
+        groupKo: { value: '있지', lang: 'ko' },
+        typeClass: { value: 'http://www.wikidata.org/entity/Q641066' },
+        member: { value: 'http://www.wikidata.org/entity/Q60221103' },
+        memberEn: { value: 'Hwang Ye-ji', lang: 'en' }, // legal name as the English label
+        memberKo: { value: '황예지', lang: 'ko' },
+        memberStageEn: { value: 'Yeji', lang: 'en' }, // P742 stage name
+        memberStageKo: { value: '예지', lang: 'ko' },
+      }),
+    ];
+
+    const [itzy] = normalizeGroups(bindings);
+    const yeji = itzy.artists?.[0];
+    expect(yeji?.name).toBe('Yeji'); // stage name wins
+    // Legal name + both Korean labels survive as aliases (order: stage-ko, legal-en, label-ko).
+    expect(yeji?.aliases).toEqual(['예지', 'Hwang Ye-ji', '황예지']);
+  });
+
   it('marks a group inactive when a dissolution date is present', () => {
     const bindings: SparqlBinding[] = [
       row({

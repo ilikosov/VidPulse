@@ -18,6 +18,15 @@ function aliasesFrom(name: string, ko: string | undefined): string[] {
   return ko && ko !== name ? [ko] : [];
 }
 
+/** Distinct candidate labels that differ from the chosen name, in order, deduped. */
+function aliasesFromAll(name: string, candidates: (string | undefined)[]): string[] {
+  const out: string[] = [];
+  for (const c of candidates) {
+    if (c && c !== name && !out.includes(c)) out.push(c);
+  }
+  return out;
+}
+
 interface GroupAccumulator {
   payload: GroupPayload;
   memberUris: Set<string>;
@@ -66,12 +75,17 @@ export function normalizeGroups(bindings: SparqlBinding[]): GroupPayload[] {
     if (!memberUri || acc.memberUris.has(memberUri)) continue;
     const memberEn = val(b, 'memberEn');
     const memberKo = val(b, 'memberKo');
-    const memberName = memberEn ?? memberKo;
-    if (!memberName) continue; // skip members without a label
+    // Prefer the stage name (P742) — that's what video titles use (e.g. "Yeji"), not the
+    // legal label ("Hwang Ye-ji"). The legal/Korean labels become aliases so full-name
+    // mentions still resolve. Fall back to labels when no stage name exists.
+    const memberStageEn = val(b, 'memberStageEn');
+    const memberStageKo = val(b, 'memberStageKo');
+    const memberName = memberStageEn ?? memberStageKo ?? memberEn ?? memberKo;
+    if (!memberName) continue; // skip members without any label
     acc.memberUris.add(memberUri);
     const artist: GroupArtistPayload = {
       name: memberName,
-      aliases: aliasesFrom(memberName, memberKo),
+      aliases: aliasesFromAll(memberName, [memberStageKo, memberEn, memberKo]),
       membership: { activityType: 'group', status: 'active', isPrimary: true },
     };
     acc.payload.artists!.push(artist);
