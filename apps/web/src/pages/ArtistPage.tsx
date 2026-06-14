@@ -24,6 +24,8 @@ export default function ArtistPage() {
   const tab = searchParams.get('tab') || 'overview';
   const videosPage = Number(searchParams.get('videosPage') || '1');
   const songsPage = Number(searchParams.get('songsPage') || '1');
+  const videosLimit = Number(searchParams.get('videosLimit')) || defaultVideosLimit;
+  const songsLimit = Number(searchParams.get('songsLimit')) || defaultSongsLimit;
 
   const [artist, setArtist] = useState<DictionaryArtist | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
@@ -103,8 +105,8 @@ export default function ArtistPage() {
       try {
         const a = await dictionaryApi.getArtist(id);
         const [videosResponse, songsResponse] = await Promise.all([
-          dictionaryApi.getArtistVideos(id, videosPage, videosPagination.limit),
-          dictionaryApi.getArtistSongs(id, songsPage, songsPagination.limit),
+          dictionaryApi.getArtistVideos(id, videosPage, videosLimit),
+          dictionaryApi.getArtistSongs(id, songsPage, songsLimit),
         ]);
         setArtist(a);
         setVideos(videosResponse.videos);
@@ -116,7 +118,7 @@ export default function ArtistPage() {
       }
     };
     void load();
-  }, [id, videosPage, songsPage]);
+  }, [id, videosPage, songsPage, videosLimit, songsLimit]);
 
   if (loading) return <Spin />;
   if (!artist) return <Empty />;
@@ -189,9 +191,11 @@ export default function ArtistPage() {
                 )}
                 pagination={{
                   current: songsPagination.page,
-                  pageSize: songsPagination.limit,
+                  pageSize: songsLimit,
                   total: songsPagination.total,
-                  onChange: (nextPage) => updateParams({ songsPage: nextPage }),
+                  showSizeChanger: true,
+                  onChange: (nextPage, nextPageSize) =>
+                    updateParams({ songsPage: nextPage, songsLimit: nextPageSize }),
                 }}
               />
             ),
@@ -207,9 +211,11 @@ export default function ArtistPage() {
                 locale={{ emptyText: <Empty description="No videos found" /> }}
                 pagination={{
                   current: videosPagination.page,
-                  pageSize: videosPagination.limit,
+                  pageSize: videosLimit,
                   total: videosPagination.total,
-                  onChange: (nextPage) => updateParams({ videosPage: nextPage }),
+                  showSizeChanger: true,
+                  onChange: (nextPage, nextPageSize) =>
+                    updateParams({ videosPage: nextPage, videosLimit: nextPageSize }),
                 }}
               />
             ),

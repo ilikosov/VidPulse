@@ -23,6 +23,7 @@ function PlaylistPage() {
   const [playlist, setPlaylist] = useState<PlaylistDetails | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -31,18 +32,19 @@ function PlaylistPage() {
   const [reparseLoading, setReparseLoading] = useState(false);
   const from = `${location.pathname}${location.search}`;
 
-  const fetchData = async (nextPage = page) => {
+  const fetchData = async (nextPage = page, nextLimit = limit) => {
     if (!id) return;
     setLoading(true);
     try {
       const [playlistData, videosData] = await Promise.all([
         getPlaylist(id),
-        getVideos({ page: nextPage, limit: 20, playlist_id: Number(id) }),
+        getVideos({ page: nextPage, limit: nextLimit, playlist_id: Number(id) }),
       ]);
       setPlaylist(playlistData);
       setVideos(videosData.videos);
       setTotal(videosData.pagination.total);
       setPage(nextPage);
+      setLimit(nextLimit);
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Failed to load playlist');
     } finally {
@@ -193,9 +195,10 @@ function PlaylistPage() {
           })}
           pagination={{
             current: page,
-            pageSize: 20,
+            pageSize: limit,
             total,
-            onChange: (nextPage) => void fetchData(nextPage),
+            showSizeChanger: true,
+            onChange: (nextPage, nextPageSize) => void fetchData(nextPage, nextPageSize),
           }}
         />
       </Card>
