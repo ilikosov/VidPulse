@@ -290,13 +290,23 @@ export class DictionaryModule implements ParserModule {
         }
       }
     } else {
-      const foundArtist = this.findArtistInTitle(title, dictionary, metadata.group_name);
+      const knownGroup =
+        metadata.group_name && metadata.group_name !== 'SOLO' ? metadata.group_name : undefined;
+      const foundArtist = this.findArtistInTitle(title, dictionary, knownGroup);
       if (foundArtist) {
         metadata.artist_name = foundArtist.name;
         if (!metadata.group_name && foundArtist.group) {
           metadata.group_name = foundArtist.group;
         }
         correctionsMade++;
+      } else if (knownGroup) {
+        // The group is identified but none of its members appear in the title. If the title
+        // still names a known artist (a shared-alias look-alike from another group), don't
+        // guess — leave the artist empty and flag the video for review.
+        const crossGroup = this.findArtistInTitle(title, dictionary);
+        if (crossGroup) {
+          metadata.unresolved_artist = true;
+        }
       }
     }
 
@@ -770,19 +780,23 @@ export class DictionaryModule implements ParserModule {
       return null;
     }
 
-    // When the group is already identified, prefer a candidate that belongs to it — two
-    // artists can share a Korean alias (e.g. 예지 → ITZY's "Yeji" and the soloist "Yezi"),
-    // and without this the earliest-position tie would pick the look-alike from another group.
-    // Otherwise: earliest occurrence wins; ties broken by the longer (more specific) match.
+    // When the group is already identified, restrict to its members. Two artists can share a
+    // Korean alias (e.g. 예지 → ITZY's "Yeji" and the soloist "Yezi"); without scoping, the
+    // earliest-position tie would pick the look-alike from another group. If the group has no
+    // member named in the title, return null so the caller doesn't snap onto a cross-group
+    // look-alike — it leaves the artist empty and flags the video for review instead.
     const preferred = preferredGroup ? this.normalizeLookup(preferredGroup) : null;
-    matches.sort((a, b) => {
-      if (preferred) {
-        const ap = a.group && this.normalizeLookup(a.group) === preferred ? 0 : 1;
-        const bp = b.group && this.normalizeLookup(b.group) === preferred ? 0 : 1;
-        if (ap !== bp) return ap - bp;
+    if (preferred) {
+      const inGroup = matches.filter((m) => m.group && this.normalizeLookup(m.group) === preferred);
+      if (inGroup.length === 0) {
+        return null;
       }
-      return a.pos - b.pos || b.len - a.len;
-    });
+      inGroup.sort((a, b) => a.pos - b.pos || b.len - a.len);
+      return { name: inGroup[0].name, group: inGroup[0].group };
+    }
+
+    // Earliest occurrence wins; ties broken by the longer (more specific) match.
+    matches.sort((a, b) => a.pos - b.pos || b.len - a.len);
     return { name: matches[0].name, group: matches[0].group };
   }
 

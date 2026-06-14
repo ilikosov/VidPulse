@@ -283,12 +283,14 @@ export class ParserService {
     const lowConfidence = confidence < MIN_CONFIDENCE_THRESHOLD;
     const missingRequired = !hasRequiredFields(currentMetadata, title, publishedAt);
     const unresolvedAliases = hasUnresolvedCoreAliases(currentMetadata);
-    const needsReview = missingRequired || lowConfidence || unresolvedAliases;
+    const unresolvedArtist = Boolean(currentMetadata.unresolved_artist);
+    const needsReview = missingRequired || lowConfidence || unresolvedAliases || unresolvedArtist;
 
     const reviewReasons = [
       missingRequired && 'missing required fields',
       lowConfidence && `confidence ${confidence} < ${MIN_CONFIDENCE_THRESHOLD}`,
       unresolvedAliases && 'unresolved Korean alias in group/artist',
+      unresolvedArtist && 'artist named in title is not a member of the identified group',
     ].filter(Boolean) as string[];
     trace.push({
       stage: 'Review decision',

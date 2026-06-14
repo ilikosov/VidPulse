@@ -16,6 +16,10 @@ export interface ParsedMetadata {
   is_own_group_song?: boolean;
   // Whether the parsed song is linked to the parsed artist in the media library.
   is_own_artist_song?: boolean;
+  // Internal: an artist was named in the title but isn't a member of the identified group, so
+  // we left artist_name empty instead of guessing a look-alike → force review. Not persisted
+  // (no DB column maps to it); surfaces only in the parser trace.
+  unresolved_artist?: boolean;
 }
 
 /**

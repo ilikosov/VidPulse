@@ -202,4 +202,35 @@ describe('ParserService.parseTitle with in-memory sqlite', () => {
     expect(result.metadata.group_name).toBe('STAYC');
     expect(result.metadata.artist_name).toBe('ISA');
   });
+
+  it('flags review when a module reports an unresolved artist', async () => {
+    // The dictionary module sets unresolved_artist when the title names a performer who isn't a
+    // member of the identified group (a cross-group look-alike it refused to guess). Otherwise
+    // this metadata would auto-accept (confidence 0.54 ≥ 0.5, no missing required fields).
+    const parserWithUnresolvedArtist = new ParserService([
+      {
+        async parse() {
+          return {
+            metadata: {
+              group_name: 'ITZY',
+              song_title: 'In My Pocket',
+              is_fancam: false,
+              unresolved_artist: true,
+            },
+            confidence: 1,
+          };
+        },
+      },
+    ]);
+
+    const result = await parserWithUnresolvedArtist.parseTitle(
+      "[4K] 260215 있지 예지 ITZY YEJI 'In My Pocket'",
+      '2026-02-17T15:02:18Z',
+    );
+
+    expect(result.metadata.artist_name).toBeUndefined();
+    expect(result.needsReview).toBe(true);
+    const review = result.trace.find((step) => step.stage === 'Review decision');
+    expect(review?.detail).toContain('not a member of the identified group');
+  });
 });

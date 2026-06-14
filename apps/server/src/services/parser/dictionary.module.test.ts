@@ -244,6 +244,37 @@ describe('DictionaryModule aliases normalization', () => {
     expect(result.metadata.artist_name).toBe('Yeji');
   });
 
+  it('leaves the artist empty and flags review when the named member is absent from the group', async () => {
+    // ITZY's "Yeji" is NOT in the dictionary; only the soloist "Yezi" (another group) carries the
+    // shared Korean alias 예지. With ITZY identified, we must not snap onto the cross-group
+    // look-alike — leave artist_name empty and flag the video for review instead.
+    vi.mocked(groupService.getAllGroups).mockResolvedValue([
+      { id: 1, name: 'ITZY' },
+      { id: 2, name: 'FIESTAR' },
+    ] as any);
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Yezi', group_name: 'FIESTAR' }, // no ITZY "Yeji" in the dictionary
+    ] as any);
+    vi.mocked(aliasService.getAllAliases).mockResolvedValue([
+      { entity_type: 'group', alias: '있지' },
+      { entity_type: 'artist', alias: '예지' },
+    ] as any);
+    vi.mocked(aliasService.resolveAlias).mockImplementation(async (entityType: any, alias: any) => {
+      const map: Record<string, { id: number; name: string }> = {
+        'group:있지': { id: 1, name: 'ITZY' },
+        'artist:예지': { id: 99, name: 'Yezi' },
+      };
+      return map[`${entityType}:${alias}`] ?? null;
+    });
+
+    const module = new DictionaryModule();
+    const result = await module.parse("260215 있지 예지 ITZY YEJI 'In My Pocket'", {});
+
+    expect(result.metadata.group_name).toBe('ITZY');
+    expect(result.metadata.artist_name).toBeUndefined();
+    expect(result.metadata.unresolved_artist).toBe(true);
+  });
+
   it('falls back to the global artist list when the group lacks a match', async () => {
     // A guest/cover whose name is not a member of the identified group still resolves globally.
     vi.mocked(artistService.getAllArtists).mockResolvedValue([
