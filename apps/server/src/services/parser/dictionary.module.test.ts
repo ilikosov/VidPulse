@@ -144,6 +144,26 @@ describe('DictionaryModule aliases normalization', () => {
     expect(result.metadata.artist_name).toBe('Moon Sua');
   });
 
+  it('picks the group credited at the start over one matched inside the trailing show name', async () => {
+    // "Billlie" is the real group (early); "K-Pop" only matches inside the show "Simply K-Pop".
+    // Ordered so the spurious group iterates first — only position awareness picks Billlie.
+    vi.mocked(groupService.getAllGroups).mockResolvedValue([
+      { id: 1, name: 'K-Pop' },
+      { id: 2, name: 'Billlie' },
+    ] as any);
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Moon', group_name: 'Billlie' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse(
+      "[플리캠 4K] Billlie MOON SUA 'song'(빌리 문수아 직캠) lSimply K-Pop CON-TOUR Ep.510",
+      {},
+    );
+
+    expect(result.metadata.group_name).toBe('Billlie');
+  });
+
   it('resolves event alias via dictionary aliases', async () => {
     const module = new DictionaryModule();
     const result = await module.parse('무대 @인기가요', {

@@ -677,19 +677,43 @@ export class DictionaryModule implements ParserModule {
   }
 
   private findGroupInTitle(title: string, dictionary: KpopDictionary): string | null {
+    // Pick the group whose name/alias appears earliest in the title (ties broken by the longer
+    // match) rather than the first one in dictionary iteration order. Otherwise a group that
+    // only matches inside a trailing show name (e.g. "K-Pop" in "Simply K-Pop") could outrank
+    // the real group credited at the start of the title.
+    const haystack = this.normalizeLookup(title);
+    const matches: Array<{ name: string; pos: number; len: number }> = [];
+
+    const consider = (needle: string, name: string) => {
+      if (!this.containsTerm(title, needle)) {
+        return;
+      }
+      const normalizedNeedle = this.normalizeLookup(needle);
+      let pos = haystack.indexOf(normalizedNeedle);
+      let len = normalizedNeedle.length;
+      if (pos < 0 && /\s/.test(normalizedNeedle)) {
+        const glued = normalizedNeedle.replace(/\s+/g, '');
+        pos = haystack.indexOf(glued);
+        len = glued.length;
+      }
+      if (pos < 0) {
+        return;
+      }
+      matches.push({ name, pos, len });
+    };
+
     for (const [alias, canonical] of Object.entries(dictionary.aliases.group)) {
-      if (this.containsTerm(title, alias)) {
-        return canonical;
-      }
+      consider(alias, canonical);
     }
-
     for (const group of dictionary.groups) {
-      if (this.containsTerm(title, group)) {
-        return group;
-      }
+      consider(group, group);
     }
 
-    return null;
+    if (matches.length === 0) {
+      return null;
+    }
+    matches.sort((a, b) => a.pos - b.pos || b.len - a.len);
+    return matches[0].name;
   }
 
   private findArtistInTitle(
