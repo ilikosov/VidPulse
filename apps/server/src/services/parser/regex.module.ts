@@ -297,10 +297,18 @@ export class RegexModule implements ParserModule {
 
     const dashed = title.match(/^\s*([^|\-]+?)\s*-\s*([^|]+?)\s*\|/);
     if (dashed) {
-      const left = this.compact(dashed[1]);
+      // Strip a leading "[..]" tag (often Korean, e.g. "[주간아 직캠 4K]") before deciding which
+      // side is the credit — otherwise Korean inside the tag fails the ASCII credit test and the
+      // credit ("group artist") is mistaken for the song.
+      const left = this.compact(dashed[1].replace(/^\s*\[[^\]]*\]\s*/, ''));
       const right = this.compact(dashed[2]);
       const leftUpper = left.toUpperCase();
-      return /^[A-Z0-9\s&'.-]+$/.test(leftUpper) ? right : left;
+      const song = /^[A-Z0-9\s&'.-]+$/.test(leftUpper) ? right : left;
+      // Drop a trailing "(한글 alias)" parenthetical and camera markers
+      // ("EUNOIA (빌리 문수아 - 유노이아)" → "EUNOIA"), matching parseSegmentedTitle's cleanup.
+      return (
+        this.stripTrailingCameraMarkers(this.compact(song.replace(/\([^)]*\)/g, ' '))) || undefined
+      );
     }
 
     const bareSong = this.extractBareSongBeforeEvent(title);

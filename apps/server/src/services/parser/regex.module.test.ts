@@ -41,6 +41,17 @@ describe('RegexModule', () => {
     expect(result.metadata.song_title).toBe('HANDS UP');
   });
 
+  it('extracts the song from the right of the dash when only an "EP.<n>" segment trails (no show)', async () => {
+    const module = new RegexModule();
+    // No separate show segment — just "l EP.606" — so parseSegmentedTitle bails and the dashed
+    // extractor must not let the leading "[주간아 직캠 4K]" tag push it to the left (credit) side.
+    const title = '[주간아 직캠 4K] Billlie MOON SUA - EUNOIA (빌리 문수아 - 유노이아) l EP.606';
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('EUNOIA');
+  });
+
   it('extracts a song wrapped in mismatched straight/curly quotes', async () => {
     const module = new RegexModule();
     const title =
