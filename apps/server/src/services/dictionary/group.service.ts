@@ -31,7 +31,8 @@ export class GroupService {
       .countDistinct('v.id as video_count')
       .countDistinct('ga.id as aliases_count')
       .leftJoin('dictionary_artists as a', 'a.group_id', 'g.id')
-      .leftJoin('dictionary_songs as s', 's.artist', 'a.name')
+      .leftJoin('dictionary_song_groups as sg', 'sg.group_id', 'g.id')
+      .leftJoin('dictionary_songs as s', 's.id', 'sg.song_id')
       .leftJoin('videos as v', 'v.group_id', 'g.id')
       .leftJoin('dictionary_aliases as ga', function joinAliasCount() {
         this.on('ga.entity_id', '=', 'g.id').andOnVal('ga.entity_type', 'group');
@@ -119,19 +120,22 @@ export class GroupService {
   }
 
   async getGroupSongs(groupId: number, limit = 20, offset = 0) {
-    const artistsSubQuery = knex('dictionary_artists').select('name').where({ group_id: groupId });
+    // Songs belong to a group via the dictionary_song_groups link table (the canonical
+    // link the importer/seed write). Matching on the denormalized dictionary_songs.artist
+    // text missed group-level songs whose artist is the group name, not a member name.
     return knex('dictionary_songs as s')
       .distinct('s.id', 's.title', 's.artist')
-      .whereIn('s.artist', artistsSubQuery)
+      .join('dictionary_song_groups as sg', 'sg.song_id', 's.id')
+      .where('sg.group_id', groupId)
       .orderBy('s.title')
       .limit(limit)
       .offset(offset);
   }
 
   async countGroupSongs(groupId: number) {
-    const artistsSubQuery = knex('dictionary_artists').select('name').where({ group_id: groupId });
     const row = await knex('dictionary_songs as s')
-      .whereIn('s.artist', artistsSubQuery)
+      .join('dictionary_song_groups as sg', 'sg.song_id', 's.id')
+      .where('sg.group_id', groupId)
       .countDistinct('s.id as count')
       .first();
     return Number(row?.count || 0);
