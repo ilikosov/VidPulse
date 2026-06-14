@@ -173,15 +173,19 @@ export class RegexModule implements ParserModule {
 
     let segments = withoutTag.split('|').map((segment) => this.compact(segment));
 
-    // Drop trailing "service" segments that are not the show: a "broadcaster + YYMMDD" date
-    // ("MBC250503") or an episode marker ("EP.420"). The show is then the new last segment.
+    // Drop trailing "service" segments that are not the show: a "broadcaster + date" segment
+    // ("MBC250503", "MBC20220903", "MBC220903방송") or an episode marker ("EP.420"). The show is
+    // then the new last segment.
     let broadcasterDate: string | undefined;
     let droppedTrailing = false;
     while (segments.length >= 2) {
       const last = segments[segments.length - 1];
-      const bcast = last.match(/^[A-Za-z]{2,4}\s?(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))$/);
+      const bcast = last.match(
+        /^[A-Za-z]{2,4}\s?((?:20)?\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))\s*(?:방송)?$/,
+      );
       if (bcast) {
-        broadcasterDate = bcast[1];
+        const digits = bcast[1];
+        broadcasterDate = digits.length === 8 ? digits.slice(2) : digits; // YYYYMMDD → YYMMDD
         segments = segments.slice(0, -1);
         droppedTrailing = true;
         continue;

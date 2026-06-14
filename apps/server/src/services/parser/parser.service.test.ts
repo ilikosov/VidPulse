@@ -112,6 +112,17 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     expect(result.metadata.group_name).toBe('Billlie');
   });
 
+  it('resolves a "broadcaster+date+방송" segment: show → event, credit song wins', async () => {
+    const title =
+      '[예능연구소] Billlie MOONSUA - RING ma Bell(빌리 문수아 - 링 마 벨) FanCam | Show! MusicCore | MBC220903방송';
+    const result = await parseTitle(title);
+
+    expect(result.metadata.event).toBe('@Show! Music Core');
+    expect(result.metadata.song_title).toBe('RING ma Bell');
+    expect(result.metadata.perf_date).toBe('220903');
+    expect(result.metadata.group_name).toBe('Billlie');
+  });
+
   it('case 7: BABYMONSTER AHYEON FaceCam — explicit group credit wins over membership', async () => {
     const title =
       "[페이스캠4K] 베이비몬스터 아현 'SHEESH' (BABYMONSTER AHYEON FaceCam) @SBS Inkigayo 240407";

@@ -90,6 +90,18 @@ describe('RegexModule', () => {
     expect(result.metadata.event).toBe('@SHOW CHAMPION');
   });
 
+  it('drops a "broadcaster+date+방송" trailing segment (MBC220903방송)', async () => {
+    const module = new RegexModule();
+    const title =
+      '[예능연구소] Billlie MOONSUA - RING ma Bell(빌리 문수아 - 링 마 벨) FanCam | Show! MusicCore | MBC220903방송';
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('RING ma Bell');
+    expect(result.metadata.event).toBe('@SHOW! MUSICCORE');
+    expect(result.metadata.perf_date).toBe('220903');
+  });
+
   it.each([
     '250829-31 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM MULTI CAM)',
     '250829 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM)',
