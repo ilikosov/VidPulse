@@ -90,6 +90,17 @@ describe('RegexModule', () => {
     expect(result.metadata.event).toBe('@SHOW CHAMPION');
   });
 
+  it('reads the show as event when separated by a lowercase "l" with a glued episode', async () => {
+    const module = new RegexModule();
+    const title =
+      "[플리캠 4K 가로] Billlie MOON SUA 'RING X RING' (빌리 문수아 직캠) l Simply K-Pop Ep.495";
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('RING X RING');
+    expect(result.metadata.event).toBe('@SIMPLY K-POP');
+  });
+
   it('drops a "broadcaster+date+방송" trailing segment (MBC220903방송)', async () => {
     const module = new RegexModule();
     const title =

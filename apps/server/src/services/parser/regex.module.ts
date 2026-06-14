@@ -24,7 +24,7 @@ export class RegexModule implements ParserModule {
   }
 
   private parseTitle(title: string): Partial<ParsedMetadata> {
-    const compacted = this.compact(title);
+    const compacted = this.normalizeSeparators(this.compact(title));
     const metadata: Partial<ParsedMetadata> = {
       perf_date: this.extractLastDate(compacted),
       camera_type: this.extractCameraType(compacted),
@@ -53,6 +53,16 @@ export class RegexModule implements ParserModule {
 
   private compact(value: string): string {
     return value.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Titles often use a lowercase "l" as a visual stand-in for the "|" separator
+   * ("… 직캠) l Simply K-Pop Ep.495"). Treat a standalone l — sitting after whitespace and
+   * before an uppercase / Korean / @ / # token — as a pipe, so the segment and event logic
+   * sees it. The lookahead keeps words like "Billlie" or "love" untouched.
+   */
+  private normalizeSeparators(title: string): string {
+    return title.replace(/\s+l\s*(?=[A-Z@#가-힣])/g, ' | ');
   }
 
   private extractLastDate(title: string): string | undefined {
@@ -151,6 +161,8 @@ export class RegexModule implements ParserModule {
         .replace(/\b방송\b/gi, '')
         // Drop the decorative "쇼!" (Show!) prefix so "쇼! 음악중심" → "음악중심".
         .replace(/^쇼!\s*/, '')
+        // Strip a trailing episode marker glued to the show ("Simply K-Pop Ep.495" → "Simply K-Pop").
+        .replace(/\s*\bep(?:isode)?\.?\s*\d+\b\s*$/i, '')
         .replace(/[_\s.-]+$/g, '')
         .trim()
     );
