@@ -121,7 +121,13 @@ describe('buildKpopLibrary', () => {
       expect(q).toContain('LIMIT 5');
     }
     expect(queries.some((q) => q.includes('wdt:P527'))).toBe(true); // groups: has-members
-    expect(queries.some((q) => q.includes('wdt:P175'))).toBe(true); // songs: performer
+    const songsQuery = queries.find((q) => q.includes('wdt:P175')); // songs: performer
+    expect(songsQuery).toBeDefined();
+    // Songs use a direct P31 over {song, single, musical work/composition} — not a
+    // P31/P279* closure (which missed Q105543609 / pulled in release types).
+    expect(songsQuery).toContain('wd:Q105543609'); // musical work/composition
+    expect(songsQuery).toContain('?song wdt:P31 ?songType');
+    expect(songsQuery).not.toContain('wdt:P31/wdt:P279* ?songType');
     for (const [, init] of calls) {
       expect(init.headers['User-Agent']).toBe('VidPulse-KpopDB/1.0');
     }

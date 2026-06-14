@@ -9,6 +9,7 @@ export const QID = {
   BOY_BAND: 'wd:Q216337',
   SONG: 'wd:Q7366', // song (work)
   SINGLE: 'wd:Q134556', // single (release)
+  MUSICAL_WORK: 'wd:Q105543609', // musical work/composition (many K-pop tracks use this, not "song")
 } as const;
 
 /** Group classifications → our group type. */
@@ -54,12 +55,15 @@ SELECT ?group ?groupEn ?groupKo ?typeClass ?dissolved ?member ?memberEn ?memberK
  * Build the SPARQL query that returns one row per (group, song) for the same bounded
  * K-pop group set as `buildGroupsQuery`: each song's English + Korean labels. Songs are
  * fetched in a SEPARATE query (not merged into the groups query) to avoid a cartesian
- * blow-up of members × songs per group. A song is linked to its performer via P175;
- * we keep songs and singles (P31/P279* → song/single) and skip albums/EPs. Normalize
- * folds these into each group's `songs[]` by group URI.
+ * blow-up of members × songs per group. A song is linked to its performer via P175.
  *
- * The song-type set is a tunable default — widen it (e.g. EPs/mini-albums) in a
- * follow-up if the dictionary needs more coverage.
+ * Type filter uses a DIRECT `wdt:P31` against {song, single, musical work/composition}.
+ * Direct (not `P31/P279*`) matters: many K-pop tracks are typed as Q105543609
+ * (musical work/composition), which is NOT a subclass of "song" so a closure from
+ * Q7366 missed them; and a closure from Q105543609 would wrongly pull in releases
+ * (albums/EPs are subclasses of "musical work"). Releases (album/EP/mini-album) and
+ * tours are intentionally excluded — they aren't individual songs. Normalize folds the
+ * results into each group's `songs[]` by group URI.
  */
 export function buildSongsQuery(limit?: number): string {
   const limitClause = limit && limit > 0 ? `LIMIT ${Math.floor(limit)}` : 'LIMIT 2000';
@@ -72,8 +76,8 @@ SELECT ?group ?song ?songEn ?songKo WHERE {
     } ORDER BY ?group ${limitClause}
   }
   ?song wdt:P175 ?group .
-  ?song wdt:P31/wdt:P279* ?songType .
-  VALUES ?songType { ${QID.SONG} ${QID.SINGLE} }
+  ?song wdt:P31 ?songType .
+  VALUES ?songType { ${QID.SONG} ${QID.SINGLE} ${QID.MUSICAL_WORK} }
   OPTIONAL { ?song rdfs:label ?songEn FILTER(LANG(?songEn) = "en") }
   OPTIONAL { ?song rdfs:label ?songKo FILTER(LANG(?songKo) = "ko") }
 }`.trim();
