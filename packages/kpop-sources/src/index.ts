@@ -13,4 +13,5 @@ export type {
   GroupType,
   SourceOptions,
   FetchLike,
+  Logger,
 } from './types';

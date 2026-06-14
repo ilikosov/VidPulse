@@ -76,6 +76,17 @@ export type FetchLike = (
   json: () => Promise<unknown>;
 }>;
 
+/**
+ * Minimal logger sink (compatible with the server's `logger`). `debug` is optional;
+ * when no logger is supplied the source stays silent.
+ */
+export interface Logger {
+  debug?(...args: unknown[]): void;
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+}
+
 export interface SourceOptions {
   /** Descriptive User-Agent — required by Wikidata's access policy. */
   userAgent: string;
@@ -87,4 +98,6 @@ export interface SourceOptions {
   signal?: AbortSignal;
   /** Per-request timeout in ms (default 30s). */
   timeoutMs?: number;
+  /** Optional logger for progress/diagnostics (defaults to silent). */
+  logger?: Logger;
 }

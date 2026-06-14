@@ -15,6 +15,7 @@ import { normalizeGroups, normalizeSongs } from './normalize';
  */
 export class WikidataSource {
   async fetchGroups(options: SourceOptions): Promise<GroupPayload[]> {
+    const log = options.logger;
     const fetchOpts = {
       userAgent: options.userAgent,
       fetchImpl: options.fetchImpl,
@@ -24,14 +25,40 @@ export class WikidataSource {
     const queryUrl = (query: string) =>
       `${WIKIDATA_SPARQL_ENDPOINT}?format=json&query=${encodeURIComponent(query)}`;
 
-    // Groups+members and songs are separate queries to avoid a members × songs blow-up.
-    const [groupsData, songsData] = await Promise.all([
-      fetchJson<SparqlResults>(queryUrl(buildGroupsQuery(options.limit)), fetchOpts),
-      fetchJson<SparqlResults>(queryUrl(buildSongsQuery(options.limit)), fetchOpts),
-    ]);
+    log?.info(
+      `Wikidata: fetching K-pop groups+members and songs (limit=${options.limit ?? 'default'})`,
+    );
+    const startedAt = Date.now();
 
-    const songsByGroup = normalizeSongs(songsData?.results?.bindings ?? []);
-    return normalizeGroups(groupsData?.results?.bindings ?? [], songsByGroup);
+    // Groups+members and songs are separate queries to avoid a members × songs blow-up.
+    let groupsData: SparqlResults;
+    let songsData: SparqlResults;
+    try {
+      [groupsData, songsData] = await Promise.all([
+        fetchJson<SparqlResults>(queryUrl(buildGroupsQuery(options.limit)), fetchOpts),
+        fetchJson<SparqlResults>(queryUrl(buildSongsQuery(options.limit)), fetchOpts),
+      ]);
+    } catch (err) {
+      log?.error('Wikidata: SPARQL request failed:', err);
+      throw err;
+    }
+
+    const groupRows = groupsData?.results?.bindings ?? [];
+    const songRows = songsData?.results?.bindings ?? [];
+    log?.debug?.(
+      `Wikidata: received ${groupRows.length} group row(s), ${songRows.length} song row(s)`,
+    );
+
+    const songsByGroup = normalizeSongs(songRows);
+    const groups = normalizeGroups(groupRows, songsByGroup);
+
+    const memberCount = groups.reduce((n, g) => n + (g.artists?.length ?? 0), 0);
+    const songCount = groups.reduce((n, g) => n + (g.songs?.length ?? 0), 0);
+    log?.info(
+      `Wikidata: normalized ${groups.length} group(s), ${memberCount} member(s), ${songCount} song(s) in ${Date.now() - startedAt}ms`,
+    );
+
+    return groups;
   }
 }
 
