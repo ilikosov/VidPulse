@@ -129,6 +129,21 @@ describe('DictionaryModule aliases normalization', () => {
     expect(result.metadata.artist_name).toBe('YUNA');
   });
 
+  it('matches a spaced dictionary name against a glued title token (MOONSUA → Moon Sua)', async () => {
+    vi.mocked(groupService.getAllGroups).mockResolvedValue([{ id: 1, name: 'Billlie' }] as any);
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Moon Sua', group_name: 'Billlie' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    // No group/artist pre-set: the dictionary must find them in the title. The credit has
+    // "MOONSUA" (no space) but the dictionary stores "Moon Sua".
+    const result = await module.parse("[4K CATCH CAM] Billlie MOONSUA 'RING X RING' 4K Fancam", {});
+
+    expect(result.metadata.group_name).toBe('Billlie');
+    expect(result.metadata.artist_name).toBe('Moon Sua');
+  });
+
   it('resolves event alias via dictionary aliases', async () => {
     const module = new DictionaryModule();
     const result = await module.parse('무대 @인기가요', {

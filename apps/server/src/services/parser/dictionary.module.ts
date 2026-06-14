@@ -116,11 +116,18 @@ export class DictionaryModule implements ParserModule {
     }
 
     if (/^[a-z0-9\s&'.-]+$/i.test(normalizedNeedle)) {
-      const escaped = normalizedNeedle
-        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        .replace(/\s+/g, '\\s+');
-      const regex = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i');
-      return regex.test(normalizedHaystack);
+      const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const spaced = esc(normalizedNeedle).replace(/\s+/g, '\\s+');
+      if (new RegExp(`(^|[^a-z0-9])${spaced}([^a-z0-9]|$)`, 'i').test(normalizedHaystack)) {
+        return true;
+      }
+      // Also match the dictionary value with spaces removed against a glued title token,
+      // e.g. "Moon Sua" → "moonsua" found in "...Billlie MOONSUA 'RING X RING'...".
+      if (/\s/.test(normalizedNeedle)) {
+        const glued = esc(normalizedNeedle.replace(/\s+/g, ''));
+        return new RegExp(`(^|[^a-z0-9])${glued}([^a-z0-9]|$)`, 'i').test(normalizedHaystack);
+      }
+      return false;
     }
 
     // A Hangul needle must not match inside a longer Hangul run: '이브' (Yves) is a
@@ -701,11 +708,18 @@ export class DictionaryModule implements ParserModule {
         return;
       }
       const normalizedNeedle = this.normalizeLookup(needle);
-      const pos = haystack.indexOf(normalizedNeedle);
+      let pos = haystack.indexOf(normalizedNeedle);
+      let len = normalizedNeedle.length;
+      // The match may be against a space-stripped form (e.g. "moon sua" → "moonsua").
+      if (pos < 0 && /\s/.test(normalizedNeedle)) {
+        const glued = normalizedNeedle.replace(/\s+/g, '');
+        pos = haystack.indexOf(glued);
+        len = glued.length;
+      }
       if (pos < 0) {
         return;
       }
-      matches.push({ name, group, pos, len: normalizedNeedle.length });
+      matches.push({ name, group, pos, len });
     };
 
     for (const [alias, canonical] of Object.entries(dictionary.aliases.artist)) {
