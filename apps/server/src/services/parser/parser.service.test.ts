@@ -100,6 +100,18 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     expect(result.metadata.perf_date).toBe('220313');
   });
 
+  it('keeps the show as the event when a trailing "EP.<n>" segment is present', async () => {
+    const title =
+      '[쇼챔직캠 4K] Billlie MOON SUA - snowy night (빌리 문수아 - 스노이 나이트) | Show Champion | EP.420';
+    const result = await parseTitle(title);
+
+    // The episode segment ("EP.420") is dropped, so the show is the event and the song comes
+    // from the credit (not the show name).
+    expect(result.metadata.event).toBe('@SHOW CHAMPION');
+    expect(result.metadata.song_title).toBe('snowy night');
+    expect(result.metadata.group_name).toBe('Billlie');
+  });
+
   it('case 7: BABYMONSTER AHYEON FaceCam — explicit group credit wins over membership', async () => {
     const title =
       "[페이스캠4K] 베이비몬스터 아현 'SHEESH' (BABYMONSTER AHYEON FaceCam) @SBS Inkigayo 240407";

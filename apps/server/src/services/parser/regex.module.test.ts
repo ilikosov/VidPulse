@@ -79,6 +79,17 @@ describe('RegexModule', () => {
     expect(result.metadata.perf_date).toBe('220313');
   });
 
+  it('drops a trailing "EP.<n>" segment so the show is the event, not the song', async () => {
+    const module = new RegexModule();
+    const title =
+      '[쇼챔직캠 4K] Billlie MOON SUA - snowy night (빌리 문수아 - 스노이 나이트) | Show Champion | EP.420';
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('snowy night');
+    expect(result.metadata.event).toBe('@SHOW CHAMPION');
+  });
+
   it.each([
     '250829-31 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM MULTI CAM)',
     '250829 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM)',

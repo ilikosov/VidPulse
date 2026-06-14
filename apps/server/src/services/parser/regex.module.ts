@@ -173,21 +173,30 @@ export class RegexModule implements ParserModule {
 
     let segments = withoutTag.split('|').map((segment) => this.compact(segment));
 
-    // A trailing "broadcaster + YYMMDD" segment ("MBC250503") is the air date, not the show.
-    // Pull the date out and let the preceding segment be the show.
+    // Drop trailing "service" segments that are not the show: a "broadcaster + YYMMDD" date
+    // ("MBC250503") or an episode marker ("EP.420"). The show is then the new last segment.
     let broadcasterDate: string | undefined;
-    const lastSeg = segments[segments.length - 1] ?? '';
-    const bcastMatch = lastSeg.match(
-      /^[A-Za-z]{2,4}\s?(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))$/,
-    );
-    if (segments.length >= 2 && bcastMatch) {
-      broadcasterDate = bcastMatch[1];
-      segments = segments.slice(0, -1);
+    let droppedTrailing = false;
+    while (segments.length >= 2) {
+      const last = segments[segments.length - 1];
+      const bcast = last.match(/^[A-Za-z]{2,4}\s?(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))$/);
+      if (bcast) {
+        broadcasterDate = bcast[1];
+        segments = segments.slice(0, -1);
+        droppedTrailing = true;
+        continue;
+      }
+      if (/^ep\.?\s*\d+$/i.test(last)) {
+        segments = segments.slice(0, -1);
+        droppedTrailing = true;
+        continue;
+      }
+      break;
     }
 
-    // The default shape needs three segments (credit | songs | show); the broadcaster variant
-    // may legitimately have two (credit | show) once the date segment is removed.
-    if (segments.length < 3 && !broadcasterDate) {
+    // The default shape needs three segments (credit | songs | show); once a trailing
+    // date/episode segment is removed, two (credit | show) are legitimate.
+    if (segments.length < 3 && !droppedTrailing) {
       return null;
     }
     if (segments.length < 2) {
