@@ -30,7 +30,8 @@ interface SongFormValues {
 }
 
 export default function SongsListPage() {
-  const { page, limit, setPagination, searchParams, setSearchParams } = usePaginationSearchParams();
+  const { page, limit, setPagination, searchParams, setSearchParams } =
+    usePaginationSearchParams(20);
   const [items, setItems] = useState<DictionarySong[]>([]);
   const [groups, setGroups] = useState<DictionaryGroup[]>([]);
   const [artists, setArtists] = useState<DictionaryArtist[]>([]);

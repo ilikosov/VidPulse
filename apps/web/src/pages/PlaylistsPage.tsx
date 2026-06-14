@@ -25,7 +25,7 @@ function PlaylistsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [total, setTotal] = useState(0);
   const [form] = Form.useForm<{ url: string }>();
-  const { page, limit, setPagination } = usePaginationSearchParams();
+  const { page, limit, setPagination } = usePaginationSearchParams(50);
 
   const fetchPlaylists = async (nextPage = page, nextLimit = limit) => {
     setLoading(true);

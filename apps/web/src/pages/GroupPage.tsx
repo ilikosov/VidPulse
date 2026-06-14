@@ -8,11 +8,12 @@ import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
 import { SongLinks } from '../components/SongLinks';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
-import { useSettings } from '../settingsContext';
+
+const defaultVideosLimit = 20;
+const defaultSongsLimit = 10;
 
 export default function GroupPage() {
   const { id = '' } = useParams();
-  const { pageSize } = useSettings();
   const location = useLocation();
   const navigate = useNavigate();
   const { openVideo } = useVideoDrawer();
@@ -30,12 +31,12 @@ export default function GroupPage() {
   const [songs, setSongs] = useState<DictionarySong[]>([]);
   const [videosPagination, setVideosPagination] = useState({
     page: 1,
-    limit: pageSize,
+    limit: defaultVideosLimit,
     total: 0,
   });
   const [songsPagination, setSongsPagination] = useState({
     page: 1,
-    limit: pageSize,
+    limit: defaultSongsLimit,
     total: 0,
   });
 

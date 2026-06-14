@@ -17,7 +17,8 @@ import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import { dictionaryApi } from '../api/dictionary';
 
 export default function EventDictionaryPage() {
-  const { page, limit, setPagination, searchParams, setSearchParams } = usePaginationSearchParams();
+  const { page, limit, setPagination, searchParams, setSearchParams } =
+    usePaginationSearchParams(20);
   const [items, setItems] = useState<
     Array<{ id: number; name: string; video_count?: number; aliases_count?: number }>
   >([]);

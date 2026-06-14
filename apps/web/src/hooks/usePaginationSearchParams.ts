@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useSettings } from '../settingsContext';
 
 const parsePositiveInt = (value: string | null, fallback: number): number => {
   if (!value) return fallback;
@@ -8,10 +7,7 @@ const parsePositiveInt = (value: string | null, fallback: number): number => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-export function usePaginationSearchParams(defaultLimitOverride?: number) {
-  const { pageSize } = useSettings();
-  // Honour the configured PAGE_SIZE unless a caller pins an explicit default.
-  const defaultLimit = defaultLimitOverride ?? pageSize;
+export function usePaginationSearchParams(defaultLimit = 20) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const page = parsePositiveInt(searchParams.get('page'), 1);

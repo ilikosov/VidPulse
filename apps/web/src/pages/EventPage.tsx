@@ -8,11 +8,9 @@ import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
 import { SongLinks } from '../components/SongLinks';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
-import { useSettings } from '../settingsContext';
 
 export default function EventPage() {
   const { id = '' } = useParams();
-  const { pageSize } = useSettings();
   const location = useLocation();
   const navigate = useNavigate();
   const { openVideo } = useVideoDrawer();
@@ -24,7 +22,7 @@ export default function EventPage() {
 
   const [event, setEvent] = useState<{ id: number; name: string } | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: pageSize, total: 0 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
 
   const columns: ColumnsType<Video> = useMemo(
     () => [

@@ -9,7 +9,7 @@ const router = Router();
 router.get(
   '/',
   asyncHandler(async (req: Request, res: Response) => {
-    const { page, limit, offset } = getPaginationParams(req);
+    const { page, limit, offset } = getPaginationParams(req, 20, 100);
     const status = req.query.status as string | undefined;
     const includeIgnored = req.query.includeIgnored === 'true';
     const channelId = req.query.channel_id as string | undefined;

@@ -23,7 +23,8 @@ interface ArtistFormValues {
 }
 
 export default function ArtistsListPage() {
-  const { page, limit, setPagination, searchParams, setSearchParams } = usePaginationSearchParams();
+  const { page, limit, setPagination, searchParams, setSearchParams } =
+    usePaginationSearchParams(20);
   const [items, setItems] = useState<DictionaryArtist[]>([]);
   const [groups, setGroups] = useState<DictionaryGroup[]>([]);
   const [loading, setLoading] = useState(false);

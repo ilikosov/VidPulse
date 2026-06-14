@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { config } from '../config';
 import { settingsService } from '../services/dictionary';
 import { validateBody } from '../middleware/validate';
 import { asyncHandler } from '../middleware/asyncHandler';
@@ -11,8 +10,7 @@ router.get(
   '/',
   asyncHandler(async (_req, res) => {
     const settings = await settingsService.getAllSettings();
-    // Expose the env-driven pagination size alongside DB settings (read-only).
-    res.json({ ...settings, page_size: String(config.pageSize) });
+    res.json(settings);
   }),
 );
 

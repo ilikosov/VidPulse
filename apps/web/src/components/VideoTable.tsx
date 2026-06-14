@@ -72,7 +72,8 @@ function VideoTable() {
   const [loading, setLoading] = useState(true);
   const [batchLoading, setBatchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { page, limit, setPagination, searchParams, setSearchParams } = usePaginationSearchParams();
+  const { page, limit, setPagination, searchParams, setSearchParams } =
+    usePaginationSearchParams(20);
   const statusFilter = searchParams.get('status') ?? '';
   const showIgnored = searchParams.get('includeIgnored') === 'true';
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);

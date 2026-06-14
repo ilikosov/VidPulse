@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { config } from '../config';
 import { playlistService } from '../services/playlist.service';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { buildPaginationMeta } from './pagination';
@@ -13,7 +12,7 @@ router.get(
   '/',
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
-    const limit = Math.min(parseInt(req.query.limit as string) || config.pageSize, 100);
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
     const result = await playlistService.getPlaylists(page, limit);
     res.json({
       playlists: result.playlists,
