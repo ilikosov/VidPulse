@@ -18,6 +18,7 @@ export interface PlaylistEntity {
   title: string;
   added_at: string;
   last_checked_at?: string | null;
+  next_page_token?: string | null;
 }
 
 export interface VideoInsertData {

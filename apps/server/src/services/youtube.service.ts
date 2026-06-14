@@ -472,6 +472,48 @@ export class YouTubeService {
   }
 
   /**
+   * Fetch a single page of playlist items (up to 50) starting at an optional pageToken.
+   * Returns the items plus the next pageToken — the cursor for incremental ingestion
+   * ("fetch latest on add, load older on demand"). nextPageToken is undefined at the end.
+   */
+  async fetchPlaylistItemsPage(
+    playlistId: string,
+    pageToken?: string,
+  ): Promise<{ videos: VideoInfo[]; nextPageToken?: string }> {
+    try {
+      const params = {
+        key: this.apiKey,
+        playlistId,
+        part: ['snippet'],
+        maxResults: 50,
+        pageToken,
+      };
+      const response = await this.executeYouTubeCall('playlistItems.list', params, () =>
+        youtube.playlistItems.list(params),
+      );
+
+      const videos: VideoInfo[] = [];
+      for (const item of response.data.items || []) {
+        if (item.snippet?.resourceId?.videoId) {
+          videos.push({
+            videoId: item.snippet.resourceId.videoId,
+            title: item.snippet.title || '',
+            publishedAt: item.snippet.publishedAt || '',
+          });
+        }
+      }
+
+      return { videos, nextPageToken: response.data.nextPageToken ?? undefined };
+    } catch (error) {
+      if (!isLoggedError(error)) {
+        await this.logYouTubeError('fetchPlaylistItemsPage', { playlistId, pageToken }, error);
+      }
+      logger.error('Error fetching playlist items page:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Extract playlist ID from YouTube playlist URL
    * Common format: https://www.youtube.com/playlist?list=PL...
    */

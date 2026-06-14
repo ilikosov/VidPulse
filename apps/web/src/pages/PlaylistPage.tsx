@@ -5,6 +5,7 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   getPlaylist,
   getVideos,
+  loadMorePlaylistVideos,
   reparseBatch,
   syncPlaylist,
   type Playlist,
@@ -14,7 +15,7 @@ import { SongLinks } from '../components/SongLinks';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
 import AddToListModal from '../components/AddToListModal';
 
-type PlaylistDetails = Playlist & { videoCount: number };
+type PlaylistDetails = Playlist & { videoCount: number; hasMore: boolean };
 
 function PlaylistPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +28,7 @@ function PlaylistPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [addToListOpen, setAddToListOpen] = useState(false);
   const [reparseLoading, setReparseLoading] = useState(false);
@@ -67,6 +69,22 @@ function PlaylistPage() {
       message.error(error instanceof Error ? error.message : 'Ошибка синхронизации');
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const onLoadMore = async () => {
+    if (!id) return;
+    setLoadingMore(true);
+    try {
+      const result = await loadMorePlaylistVideos(id);
+      message.success(`Загружено ${result.loaded} предыдущих видео`);
+      await fetchData(1);
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : 'Не удалось загрузить предыдущие видео',
+      );
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -135,9 +153,16 @@ function PlaylistPage() {
             title={playlist.title}
             column={1}
             extra={
-              <Button type="primary" loading={syncing} onClick={() => void onSync()}>
-                Синхронизировать
-              </Button>
+              <Space>
+                {playlist.hasMore && (
+                  <Button loading={loadingMore} onClick={() => void onLoadMore()}>
+                    Загрузить предыдущие видео
+                  </Button>
+                )}
+                <Button type="primary" loading={syncing} onClick={() => void onSync()}>
+                  Синхронизировать
+                </Button>
+              </Space>
             }
           >
             <Descriptions.Item label="YouTube ID">{playlist.youtube_id}</Descriptions.Item>
