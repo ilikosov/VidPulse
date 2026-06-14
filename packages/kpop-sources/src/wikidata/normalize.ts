@@ -1,4 +1,4 @@
-import type { GroupPayload, GroupArtistPayload, GroupType } from '../types';
+import type { GroupPayload, GroupArtistPayload, GroupType, SongPayload } from '../types';
 import { GROUP_TYPE_BY_QID, type SparqlBinding } from './queries';
 
 function val(binding: SparqlBinding, key: string): string | undefined {
@@ -33,6 +33,36 @@ interface GroupAccumulator {
 }
 
 /**
+ * Fold (group, song) SPARQL rows (from `buildSongsQuery`) into a map of group URI →
+ * deduplicated SongPayload[]. Title = English label (fallback Korean); the Korean label
+ * becomes an alias when it differs. Songs without any label are skipped.
+ */
+export function normalizeSongs(bindings: SparqlBinding[]): Map<string, SongPayload[]> {
+  const byGroup = new Map<string, { songs: SongPayload[]; titles: Set<string> }>();
+
+  for (const b of bindings) {
+    const groupUri = val(b, 'group');
+    if (!groupUri) continue;
+    const songEn = val(b, 'songEn');
+    const songKo = val(b, 'songKo');
+    const title = songEn ?? songKo;
+    if (!title) continue; // skip songs without a label
+
+    let acc = byGroup.get(groupUri);
+    if (!acc) {
+      acc = { songs: [], titles: new Set() };
+      byGroup.set(groupUri, acc);
+    }
+    const key = title.toLowerCase();
+    if (acc.titles.has(key)) continue; // dedupe within the group
+    acc.titles.add(key);
+    acc.songs.push({ title, aliases: aliasesFromAll(title, [songKo]) });
+  }
+
+  return new Map([...byGroup].map(([uri, acc]) => [uri, acc.songs]));
+}
+
+/**
  * Fold (group, member) SPARQL rows into deduplicated GroupPayload[]:
  * - name = English label (fallback Korean, then QID),
  * - Korean label → alias,
@@ -40,7 +70,10 @@ interface GroupAccumulator {
  * - active = false when a dissolution date (P576) is present,
  * - members = distinct humans with a usable label, each a 'group' membership.
  */
-export function normalizeGroups(bindings: SparqlBinding[]): GroupPayload[] {
+export function normalizeGroups(
+  bindings: SparqlBinding[],
+  songsByGroupUri?: Map<string, SongPayload[]>,
+): GroupPayload[] {
   const byGroup = new Map<string, GroupAccumulator>();
 
   for (const b of bindings) {
@@ -91,13 +124,15 @@ export function normalizeGroups(bindings: SparqlBinding[]): GroupPayload[] {
     acc.payload.artists!.push(artist);
   }
 
-  // Drop empty alias arrays for a tidy payload.
-  return [...byGroup.values()].map(({ payload }) => {
+  // Drop empty alias arrays for a tidy payload; attach Wikidata songs by group URI.
+  return [...byGroup.entries()].map(([uri, { payload }]) => {
     if (payload.aliases && payload.aliases.length === 0) delete payload.aliases;
     payload.artists = payload.artists?.map((a) => {
       if (a.aliases && a.aliases.length === 0) delete a.aliases;
       return a;
     });
+    const songs = songsByGroupUri?.get(uri);
+    if (songs && songs.length) payload.songs = songs;
     return payload;
   });
 }

@@ -7,6 +7,8 @@ export const QID = {
   HUMAN: 'wd:Q5',
   GIRL_GROUP: 'wd:Q641066',
   BOY_BAND: 'wd:Q216337',
+  SONG: 'wd:Q7366', // song (work)
+  SINGLE: 'wd:Q134556', // single (release)
 } as const;
 
 /** Group classifications → our group type. */
@@ -45,6 +47,35 @@ SELECT ?group ?groupEn ?groupKo ?typeClass ?dissolved ?member ?memberEn ?memberK
     OPTIONAL { ?member wdt:P742 ?memberStageEn FILTER(LANG(?memberStageEn) = "en") }
     OPTIONAL { ?member wdt:P742 ?memberStageKo FILTER(LANG(?memberStageKo) = "ko") }
   }
+}`.trim();
+}
+
+/**
+ * Build the SPARQL query that returns one row per (group, song) for the same bounded
+ * K-pop group set as `buildGroupsQuery`: each song's English + Korean labels. Songs are
+ * fetched in a SEPARATE query (not merged into the groups query) to avoid a cartesian
+ * blow-up of members × songs per group. A song is linked to its performer via P175;
+ * we keep songs and singles (P31/P279* → song/single) and skip albums/EPs. Normalize
+ * folds these into each group's `songs[]` by group URI.
+ *
+ * The song-type set is a tunable default — widen it (e.g. EPs/mini-albums) in a
+ * follow-up if the dictionary needs more coverage.
+ */
+export function buildSongsQuery(limit?: number): string {
+  const limitClause = limit && limit > 0 ? `LIMIT ${Math.floor(limit)}` : 'LIMIT 2000';
+  return `
+SELECT ?group ?song ?songEn ?songKo WHERE {
+  {
+    SELECT DISTINCT ?group WHERE {
+      ?group wdt:P136 ${QID.KPOP_GENRE} .
+      ?group wdt:P31/wdt:P279* ${QID.MUSICAL_ENSEMBLE} .
+    } ORDER BY ?group ${limitClause}
+  }
+  ?song wdt:P175 ?group .
+  ?song wdt:P31/wdt:P279* ?songType .
+  VALUES ?songType { ${QID.SONG} ${QID.SINGLE} }
+  OPTIONAL { ?song rdfs:label ?songEn FILTER(LANG(?songEn) = "en") }
+  OPTIONAL { ?song rdfs:label ?songKo FILTER(LANG(?songKo) = "ko") }
 }`.trim();
 }
 

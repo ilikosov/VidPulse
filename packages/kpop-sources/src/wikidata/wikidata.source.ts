@@ -1,7 +1,12 @@
 import { fetchJson } from '../http';
 import type { GroupPayload, SourceOptions } from '../types';
-import { buildGroupsQuery, WIKIDATA_SPARQL_ENDPOINT, type SparqlResults } from './queries';
-import { normalizeGroups } from './normalize';
+import {
+  buildGroupsQuery,
+  buildSongsQuery,
+  WIKIDATA_SPARQL_ENDPOINT,
+  type SparqlResults,
+} from './queries';
+import { normalizeGroups, normalizeSongs } from './normalize';
 
 /**
  * Fetches K-pop groups and their members from the Wikidata SPARQL endpoint and
@@ -10,16 +15,23 @@ import { normalizeGroups } from './normalize';
  */
 export class WikidataSource {
   async fetchGroups(options: SourceOptions): Promise<GroupPayload[]> {
-    const query = buildGroupsQuery(options.limit);
-    const url = `${WIKIDATA_SPARQL_ENDPOINT}?format=json&query=${encodeURIComponent(query)}`;
-    const data = await fetchJson<SparqlResults>(url, {
+    const fetchOpts = {
       userAgent: options.userAgent,
       fetchImpl: options.fetchImpl,
       signal: options.signal,
       timeoutMs: options.timeoutMs,
-    });
-    const bindings = data?.results?.bindings ?? [];
-    return normalizeGroups(bindings);
+    };
+    const queryUrl = (query: string) =>
+      `${WIKIDATA_SPARQL_ENDPOINT}?format=json&query=${encodeURIComponent(query)}`;
+
+    // Groups+members and songs are separate queries to avoid a members × songs blow-up.
+    const [groupsData, songsData] = await Promise.all([
+      fetchJson<SparqlResults>(queryUrl(buildGroupsQuery(options.limit)), fetchOpts),
+      fetchJson<SparqlResults>(queryUrl(buildSongsQuery(options.limit)), fetchOpts),
+    ]);
+
+    const songsByGroup = normalizeSongs(songsData?.results?.bindings ?? []);
+    return normalizeGroups(groupsData?.results?.bindings ?? [], songsByGroup);
   }
 }
 

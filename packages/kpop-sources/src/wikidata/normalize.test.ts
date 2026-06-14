@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeGroups } from './normalize';
+import { normalizeGroups, normalizeSongs } from './normalize';
 import type { SparqlBinding } from './queries';
 
 function row(fields: Record<string, { value: string; lang?: string }>): SparqlBinding {
@@ -119,6 +119,67 @@ describe('normalizeGroups', () => {
     expect(group.active).toBe(true);
     expect(group.aliases).toBeUndefined(); // ko used as name, not duplicated as alias
     expect(group.artists).toEqual([]);
+  });
+
+  it('attaches Wikidata songs to the matching group by URI', () => {
+    const bindings: SparqlBinding[] = [
+      row({
+        group: { value: 'http://www.wikidata.org/entity/Q24489' },
+        groupEn: { value: 'IVE', lang: 'en' },
+        member: { value: 'http://www.wikidata.org/entity/Q111' },
+        memberEn: { value: 'Wonyoung', lang: 'en' },
+      }),
+    ];
+    const songsByGroup = normalizeSongs([
+      row({
+        group: { value: 'http://www.wikidata.org/entity/Q24489' },
+        song: { value: 'http://www.wikidata.org/entity/Q1' },
+        songEn: { value: 'Love Dive', lang: 'en' },
+        songKo: { value: '러브 다이브', lang: 'ko' },
+      }),
+      // Different group → must not leak into IVE.
+      row({
+        group: { value: 'http://www.wikidata.org/entity/Q999' },
+        song: { value: 'http://www.wikidata.org/entity/Q2' },
+        songEn: { value: 'Some Other Song', lang: 'en' },
+      }),
+    ]);
+
+    const [ive] = normalizeGroups(bindings, songsByGroup);
+    expect(ive.songs).toEqual([{ title: 'Love Dive', aliases: ['러브 다이브'] }]);
+  });
+
+  it('normalizeSongs dedupes per group, keeps ko as alias, and skips label-less songs', () => {
+    const map = normalizeSongs([
+      row({
+        group: { value: 'http://www.wikidata.org/entity/Q24489' },
+        song: { value: 'http://www.wikidata.org/entity/Q1' },
+        songEn: { value: 'Eleven', lang: 'en' },
+        songKo: { value: '일레븐', lang: 'ko' },
+      }),
+      // Duplicate title (case-insensitive) for the same group → ignored.
+      row({
+        group: { value: 'http://www.wikidata.org/entity/Q24489' },
+        song: { value: 'http://www.wikidata.org/entity/Q1b' },
+        songEn: { value: 'ELEVEN', lang: 'en' },
+      }),
+      // Korean-only label → title falls back to ko, no alias.
+      row({
+        group: { value: 'http://www.wikidata.org/entity/Q24489' },
+        song: { value: 'http://www.wikidata.org/entity/Q3' },
+        songKo: { value: '키치', lang: 'ko' },
+      }),
+      // No label at all → skipped.
+      row({
+        group: { value: 'http://www.wikidata.org/entity/Q24489' },
+        song: { value: 'http://www.wikidata.org/entity/Q4' },
+      }),
+    ]);
+
+    expect(map.get('http://www.wikidata.org/entity/Q24489')).toEqual([
+      { title: 'Eleven', aliases: ['일레븐'] },
+      { title: '키치', aliases: [] },
+    ]);
   });
 
   it('skips members without any label and groups without a name', () => {
