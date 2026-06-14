@@ -67,6 +67,18 @@ describe('RegexModule', () => {
     expect(result.metadata.perf_date).toBe('250503'); // from the "MBC250503" segment
   });
 
+  it('strips an 8-digit YYYYMMDD date from the event and reads it into perf_date', async () => {
+    const module = new RegexModule();
+    const title =
+      "[안방1열 직캠4K] 빌리 문수아 'GingaMingaYo(the strange world)' (Billlie Moon Sua FanCam)│@SBSInkigayo_20220313";
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('GingaMingaYo(the strange world)');
+    expect(result.metadata.event).toBe('@SBSINKIGAYO'); // date stripped (dictionary normalizes spacing)
+    expect(result.metadata.perf_date).toBe('220313');
+  });
+
   it.each([
     '250829-31 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM MULTI CAM)',
     '250829 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM)',

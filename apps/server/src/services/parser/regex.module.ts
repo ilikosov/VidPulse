@@ -66,6 +66,16 @@ export class RegexModule implements ParserModule {
       return matches[matches.length - 1][1];
     }
 
+    // 8-digit "YYYYMMDD" dates (e.g. "@SBSInkigayo_20220313"), normalized to YYMMDD. A
+    // lookbehind is used instead of \b because the date is often glued to the event by "_".
+    const yyyymmdd = [
+      ...title.matchAll(/(?<!\d)20(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?!\d)/g),
+    ];
+    if (yyyymmdd.length > 0) {
+      const [, yy, mm, dd] = yyyymmdd[yyyymmdd.length - 1];
+      return `${yy}${mm}${dd}`;
+    }
+
     // Fallback: dotted "YYYY.M.D" / "YY.M.D" dates, normalized to YYMMDD. Month/day range
     // checks keep version-like numbers ("1.2.345") from being read as dates.
     const dotted = [...title.matchAll(this.dottedDatePattern)]
@@ -133,6 +143,8 @@ export class RegexModule implements ParserModule {
         .replace(/\b\d{6}\b/g, '')
         // Dotted dates with an optional leading separator, e.g. "MCOUNTDOWN_2024.9.26".
         .replace(/[_\s-]*(?<!\d)(?:20\d{2}|\d{2})\.\d{1,2}\.\d{1,2}(?!\d)/g, '')
+        // 8-digit YYYYMMDD dates with an optional leading separator, e.g. "SBSInkigayo_20220313".
+        .replace(/[_\s-]*\d{8}(?!\d)/g, '')
         // Underscore-joined 6-digit dates (the \b above misses these — "_" is a word char).
         .replace(/[_\s-]+\d{6}(?!\d)/g, '')
         .replace(/#.*$/g, '')

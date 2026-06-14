@@ -89,6 +89,17 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     expect(result.metadata.perf_date).toBe('250503');
   });
 
+  it('resolves a spaceless "@SBSInkigayo_<date>" event to @SBS INKIGAYO with the date stripped', async () => {
+    const title =
+      "[안방1열 직캠4K] 빌리 문수아 'GingaMingaYo(the strange world)' (Billlie Moon Sua FanCam)│@SBSInkigayo_20220313";
+    const result = await parseTitle(title);
+
+    expect(result.metadata.event).toBe('@SBS INKIGAYO');
+    // The dictionary canonicalizes the song (the "(the strange world)" suffix is dropped).
+    expect(result.metadata.song_title).toBe('GingaMingaYo');
+    expect(result.metadata.perf_date).toBe('220313');
+  });
+
   it('case 7: BABYMONSTER AHYEON FaceCam — explicit group credit wins over membership', async () => {
     const title =
       "[페이스캠4K] 베이비몬스터 아현 'SHEESH' (BABYMONSTER AHYEON FaceCam) @SBS Inkigayo 240407";
