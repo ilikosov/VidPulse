@@ -213,6 +213,37 @@ describe('DictionaryModule aliases normalization', () => {
     expect(result.metadata.song_title).toBe('TOUCH');
   });
 
+  it('scopes a title-extracted artist to the identified group when an alias is shared', async () => {
+    // 예지 is the Korean alias of both ITZY's "Yeji" and the soloist "Yezi". The alias resolves
+    // to "Yezi", and it appears before the English "YEJI" — so the earliest-position scan would
+    // pick the look-alike. With ITZY identified, the in-group member must win.
+    vi.mocked(groupService.getAllGroups).mockResolvedValue([
+      { id: 1, name: 'ITZY' },
+      { id: 2, name: 'FIESTAR' },
+    ] as any);
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Yeji', group_name: 'ITZY' },
+      { name: 'Yezi', group_name: 'FIESTAR' },
+    ] as any);
+    vi.mocked(aliasService.getAllAliases).mockResolvedValue([
+      { entity_type: 'group', alias: '있지' },
+      { entity_type: 'artist', alias: '예지' },
+    ] as any);
+    vi.mocked(aliasService.resolveAlias).mockImplementation(async (entityType: any, alias: any) => {
+      const map: Record<string, { id: number; name: string }> = {
+        'group:있지': { id: 2, name: 'ITZY' },
+        'artist:예지': { id: 99, name: 'Yezi' }, // alias points at the look-alike
+      };
+      return map[`${entityType}:${alias}`] ?? null;
+    });
+
+    const module = new DictionaryModule();
+    const result = await module.parse("260213 예지 YEJI 있지 ITZY 'In My Pocket'", {});
+
+    expect(result.metadata.group_name).toBe('ITZY');
+    expect(result.metadata.artist_name).toBe('Yeji');
+  });
+
   it('falls back to the global artist list when the group lacks a match', async () => {
     // A guest/cover whose name is not a member of the identified group still resolves globally.
     vi.mocked(artistService.getAllArtists).mockResolvedValue([

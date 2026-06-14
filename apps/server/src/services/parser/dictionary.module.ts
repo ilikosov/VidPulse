@@ -290,7 +290,7 @@ export class DictionaryModule implements ParserModule {
         }
       }
     } else {
-      const foundArtist = this.findArtistInTitle(title, dictionary);
+      const foundArtist = this.findArtistInTitle(title, dictionary, metadata.group_name);
       if (foundArtist) {
         metadata.artist_name = foundArtist.name;
         if (!metadata.group_name && foundArtist.group) {
@@ -719,6 +719,7 @@ export class DictionaryModule implements ParserModule {
   private findArtistInTitle(
     title: string,
     dictionary: KpopDictionary,
+    preferredGroup?: string,
   ): { name: string; group?: string } | null {
     // Pick the artist whose name/alias appears earliest in the title (ties broken by the
     // longer match) instead of the first one in dictionary iteration order. Otherwise a song
@@ -769,8 +770,19 @@ export class DictionaryModule implements ParserModule {
       return null;
     }
 
-    // Earliest occurrence wins; ties broken by the longer (more specific) match.
-    matches.sort((a, b) => a.pos - b.pos || b.len - a.len);
+    // When the group is already identified, prefer a candidate that belongs to it — two
+    // artists can share a Korean alias (e.g. 예지 → ITZY's "Yeji" and the soloist "Yezi"),
+    // and without this the earliest-position tie would pick the look-alike from another group.
+    // Otherwise: earliest occurrence wins; ties broken by the longer (more specific) match.
+    const preferred = preferredGroup ? this.normalizeLookup(preferredGroup) : null;
+    matches.sort((a, b) => {
+      if (preferred) {
+        const ap = a.group && this.normalizeLookup(a.group) === preferred ? 0 : 1;
+        const bp = b.group && this.normalizeLookup(b.group) === preferred ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+      }
+      return a.pos - b.pos || b.len - a.len;
+    });
     return { name: matches[0].name, group: matches[0].group };
   }
 
