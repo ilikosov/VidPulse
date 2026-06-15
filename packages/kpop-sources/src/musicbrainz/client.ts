@@ -1,5 +1,5 @@
 import { fetchJson, sleep } from '../http';
-import type { FetchLike } from '../types';
+import type { FetchLike, Logger } from '../types';
 
 export const MUSICBRAINZ_ENDPOINT = 'https://musicbrainz.org/ws/2';
 
@@ -24,12 +24,18 @@ export interface FetchRecordingsOptions {
   timeoutMs?: number;
   /** Minimum ms between requests (≥1 req/s per MusicBrainz policy). Default 1000. */
   rateLimitMs?: number;
+  /** Optional logger for partial-result diagnostics. */
+  logger?: Logger;
 }
 
 /**
  * Browse all recordings (tracks) credited to a MusicBrainz artist, paginating the
  * `/recording?artist=<mbid>` endpoint until the reported `recording-count` is exhausted.
  * Throttles to ≤1 req/s (MusicBrainz ToS) by sleeping `rateLimitMs` between pages.
+ *
+ * Prolific artists span many pages; if a LATER page fails (after retries) we keep the
+ * recordings gathered so far rather than discarding the whole artist. A failure on the
+ * very first page still throws (the caller counts the group as failed).
  */
 export async function fetchRecordingsByArtist(
   mbid: string,
@@ -52,7 +58,20 @@ export async function fetchRecordingsByArtist(
     const url =
       `${MUSICBRAINZ_ENDPOINT}/recording?artist=${encodeURIComponent(mbid)}` +
       `&fmt=json&limit=${PAGE_SIZE}&offset=${offset}`;
-    const data = await fetchJson<MbRecordingBrowse>(url, fetchOpts);
+
+    let data: MbRecordingBrowse;
+    try {
+      data = await fetchJson<MbRecordingBrowse>(url, fetchOpts);
+    } catch (err) {
+      // Keep what we already have when a later page fails; only rethrow if nothing landed.
+      if (all.length === 0) throw err;
+      const reason = err instanceof Error ? err.message : String(err);
+      options.logger?.warn(
+        `MusicBrainz: partial recordings for ${mbid} — kept ${all.length} (page at offset ${offset} failed: ${reason})`,
+      );
+      break;
+    }
+
     const page = data.recordings ?? [];
     all.push(...page);
 

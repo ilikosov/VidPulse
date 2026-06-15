@@ -56,6 +56,7 @@ export class MusicBrainzSource {
           signal: options.signal,
           timeoutMs: options.timeoutMs,
           rateLimitMs,
+          logger: log,
         });
         addedTotal += mergeSongs(group, normalizeRecordings(recordings));
       } catch (err) {

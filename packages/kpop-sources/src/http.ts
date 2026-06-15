@@ -65,8 +65,19 @@ export async function fetchJson<T = unknown>(url: string, options: FetchJsonOpti
         );
       }
     } catch (err) {
-      // A timeout surfaces as an opaque AbortError; report it clearly instead.
-      lastError = timedOut ? new Error(`request timed out after ${timeoutMs}ms`) : err;
+      // A timeout surfaces as an opaque AbortError; report it clearly. For undici's generic
+      // "fetch failed" TypeError, the real reason (ECONNRESET/ETIMEDOUT/…) hides in err.cause.
+      if (timedOut) {
+        lastError = new Error(`request timed out after ${timeoutMs}ms`);
+      } else if (err instanceof Error && err.message === 'fetch failed' && 'cause' in err) {
+        const cause = (err as { cause?: unknown }).cause as
+          | { code?: string; message?: string }
+          | undefined;
+        const detail = cause?.code ?? cause?.message ?? String(cause);
+        lastError = new Error(`fetch failed (${detail})`);
+      } else {
+        lastError = err;
+      }
     } finally {
       clearTimeout(timer);
       options.signal?.removeEventListener('abort', onAbort);

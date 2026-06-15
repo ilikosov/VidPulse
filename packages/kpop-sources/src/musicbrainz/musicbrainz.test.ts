@@ -69,6 +69,38 @@ describe('fetchRecordingsByArtist', () => {
     expect(recs).toHaveLength(150);
     expect((fetchImpl as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2);
   });
+
+  it('keeps partial recordings when a later page fails instead of discarding the artist', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl: FetchLike = vi.fn(async (url: string) => {
+        if (url.includes('offset=0')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            text: async () => '',
+            json: async () => ({
+              'recording-count': 250,
+              recordings: Array.from({ length: 100 }, (_, i) => ({ title: `T${i}` })),
+            }),
+          };
+        }
+        throw new Error('fetch failed (ECONNRESET)'); // page 2 dies
+      });
+
+      const promise = fetchRecordingsByArtist('mbid-x', {
+        userAgent: 'ua',
+        fetchImpl,
+        rateLimitMs: 0,
+      });
+      await vi.runAllTimersAsync(); // flush page-2 retry backoff
+      const recs = await promise;
+      expect(recs).toHaveLength(100); // page 1 kept, not discarded
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('MusicBrainzSource.enrich', () => {
@@ -150,6 +182,17 @@ describe('fetchJson error reporting', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('surfaces the underlying cause of a generic "fetch failed" error', async () => {
+    const fetchImpl: FetchLike = vi.fn(async () => {
+      const err = new TypeError('fetch failed');
+      (err as { cause?: unknown }).cause = { code: 'ECONNRESET' };
+      throw err;
+    });
+    await expect(
+      fetchJson('http://example.test', { userAgent: 'ua', fetchImpl, retries: 0 }),
+    ).rejects.toThrow('fetch failed (ECONNRESET)');
   });
 
   it('reports a clear timeout (not an opaque abort) when the request times out', async () => {
