@@ -37,6 +37,13 @@ export interface GroupPayload {
   songs?: SongPayload[];
 }
 
+/**
+ * A GroupPayload carrying its MusicBrainz artist id (Wikidata P434) for the song
+ * enrichment step. `mbid` is a RUNTIME-only field — the media-library schema forbids
+ * extra group properties, so `buildKpopLibrary` strips it before producing the snapshot.
+ */
+export type EnrichableGroup = GroupPayload & { mbid?: string };
+
 export interface SoloArtistPayload {
   name: string;
   aliases?: string[];
@@ -87,6 +94,23 @@ export interface Logger {
   error(...args: unknown[]): void;
 }
 
+/**
+ * Opt-in MusicBrainz enrichment: after Wikidata builds the groups, fetch each group's
+ * full recording list (by its Wikidata P434 MusicBrainz id) and merge those titles into
+ * `groups[].songs`. Wikidata only has title tracks/singles as standalone items, so this
+ * is how album tracks and B-sides reach the dictionary. MusicBrainz requires a
+ * descriptive User-Agent and caps requests at ~1/sec.
+ */
+export interface MusicBrainzOptions {
+  enabled: boolean;
+  /** Descriptive User-Agent — required by MusicBrainz ToS. Falls back to SourceOptions.userAgent. */
+  userAgent?: string;
+  /** Minimum ms between MusicBrainz requests (default 1000 → ≤1 req/s). */
+  rateLimitMs?: number;
+  /** Cap the number of groups enriched (smoke runs/tests). */
+  limit?: number;
+}
+
 export interface SourceOptions {
   /** Descriptive User-Agent — required by Wikidata's access policy. */
   userAgent: string;
@@ -100,4 +124,6 @@ export interface SourceOptions {
   timeoutMs?: number;
   /** Optional logger for progress/diagnostics (defaults to silent). */
   logger?: Logger;
+  /** Opt-in MusicBrainz song enrichment (off unless `enabled`). */
+  musicBrainz?: MusicBrainzOptions;
 }

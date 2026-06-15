@@ -1,4 +1,10 @@
-import type { GroupPayload, GroupArtistPayload, GroupType, SongPayload } from '../types';
+import type {
+  EnrichableGroup,
+  GroupPayload,
+  GroupArtistPayload,
+  GroupType,
+  SongPayload,
+} from '../types';
 import { GROUP_TYPE_BY_QID, type SparqlBinding } from './queries';
 
 function val(binding: SparqlBinding, key: string): string | undefined {
@@ -28,7 +34,7 @@ function aliasesFromAll(name: string, candidates: (string | undefined)[]): strin
 }
 
 interface GroupAccumulator {
-  payload: GroupPayload;
+  payload: EnrichableGroup;
   memberUris: Set<string>;
 }
 
@@ -73,7 +79,7 @@ export function normalizeSongs(bindings: SparqlBinding[]): Map<string, SongPaylo
 export function normalizeGroups(
   bindings: SparqlBinding[],
   songsByGroupUri?: Map<string, SongPayload[]>,
-): GroupPayload[] {
+): EnrichableGroup[] {
   const byGroup = new Map<string, GroupAccumulator>();
 
   for (const b of bindings) {
@@ -95,13 +101,15 @@ export function normalizeGroups(
           active: !val(b, 'dissolved'),
           aliases: aliasesFrom(name, groupKo),
           artists: [],
+          mbid: val(b, 'mbid'),
         },
         memberUris: new Set(),
       };
       byGroup.set(groupUri, acc);
-    } else if (val(b, 'dissolved')) {
-      // A later row may carry the dissolution date the first row lacked.
-      acc.payload.active = false;
+    } else {
+      // A later row may carry the dissolution date or MusicBrainz id the first row lacked.
+      if (val(b, 'dissolved')) acc.payload.active = false;
+      if (!acc.payload.mbid) acc.payload.mbid = val(b, 'mbid');
     }
 
     const memberUri = val(b, 'member');

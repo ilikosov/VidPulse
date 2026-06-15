@@ -46,5 +46,6 @@
 
 ## 4) Follow-up
 
-- Фаза 2: песни/дискография через MusicBrainz (CC0, rate-limit), соло-артисты из Wikidata
-  (humans с жанром K-pop). См. `TODO.md`.
+- Фаза 2 (песни): реализована — MusicBrainz как второй источник полных трек-листов,
+  см. [ADR 0005](0005-musicbrainz-song-source.md).
+- Соло-артисты из Wikidata (humans с жанром K-pop) — остаётся открытым, см. `TODO.md` / TASK-21.

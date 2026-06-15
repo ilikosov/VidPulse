@@ -47,6 +47,25 @@ export const config = {
       : undefined,
   },
 
+  /**
+   * Opt-in MusicBrainz song enrichment for the K-pop refresh. Wikidata only has title
+   * tracks/singles; MusicBrainz adds full track-lists (album tracks, B-sides). It is slow
+   * (≤1 req/s, minutes for the full set), so it is gated separately from the Wikidata refresh
+   * and needs `musicbrainz.org` in the egress allowlist + a descriptive User-Agent.
+   */
+  musicBrainz: {
+    enabled: bool(process.env.MUSICBRAINZ_REFRESH_ENABLED, false),
+    userAgent:
+      process.env.MUSICBRAINZ_USER_AGENT ??
+      'VidPulse-KpopDB/1.0 (+https://github.com/ilikosov/vidpulse)',
+    /** Minimum ms between MusicBrainz requests (≤1 req/s per their ToS). */
+    rateLimitMs: num(process.env.MUSICBRAINZ_RATE_LIMIT_MS, 1000),
+    /** Optional cap on groups enriched per refresh (smoke runs). */
+    limit: process.env.MUSICBRAINZ_LIMIT
+      ? num(process.env.MUSICBRAINZ_LIMIT, 0) || undefined
+      : undefined,
+  },
+
   ai: {
     endpoint: process.env.LM_STUDIO_API_URL ?? process.env.LM_STUDIO_URL ?? null,
     model: process.env.LM_STUDIO_MODEL ?? null,

@@ -1,5 +1,5 @@
 import { fetchJson } from '../http';
-import type { GroupPayload, SourceOptions } from '../types';
+import type { EnrichableGroup, SourceOptions } from '../types';
 import {
   buildGroupsQuery,
   buildSongsQuery,
@@ -14,7 +14,7 @@ import { normalizeGroups, normalizeSongs } from './normalize';
  * descriptive User-Agent (Wikidata blocks generic agents).
  */
 export class WikidataSource {
-  async fetchGroups(options: SourceOptions): Promise<GroupPayload[]> {
+  async fetchGroups(options: SourceOptions): Promise<EnrichableGroup[]> {
     const log = options.logger;
     const fetchOpts = {
       userAgent: options.userAgent,

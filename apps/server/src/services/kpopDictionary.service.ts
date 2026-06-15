@@ -27,6 +27,14 @@ export class KpopDictionaryService {
       userAgent: config.kpopDictionary.userAgent,
       limit: config.kpopDictionary.limit,
       logger,
+      musicBrainz: config.musicBrainz.enabled
+        ? {
+            enabled: true,
+            userAgent: config.musicBrainz.userAgent,
+            rateLimitMs: config.musicBrainz.rateLimitMs,
+            limit: config.musicBrainz.limit,
+          }
+        : undefined,
     });
     snapshot.mode = mode;
 

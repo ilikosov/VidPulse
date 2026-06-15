@@ -12,7 +12,7 @@ export interface FetchJsonOptions {
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = 3;
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * GET a URL and parse JSON, with a descriptive User-Agent, per-request timeout,

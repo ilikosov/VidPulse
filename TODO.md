@@ -39,9 +39,10 @@ acceptance criteria.
       split a list's status (`needs_review` vs `new`), breaking the single-status invariant.
       Decide a UX (e.g. re-bucket diverged videos out of the list, or relax the invariant for
       this op) before exposing them in `videoListService.batchOperation`.
-- [ ] **TASK-21** (medium) — K-pop sources phase 2 — [details](./docs/tasks/task-21-kpop-sources-phase2.md).
-      Extend `@vidpulse/kpop-sources` beyond groups+members: songs/discography via MusicBrainz
-      (CC0, 1 req/s rate limit) and solo K-pop artists from Wikidata (humans with genre K-pop).
+- [~] **TASK-21** (medium) — K-pop sources phase 2 — [details](./docs/tasks/task-21-kpop-sources-phase2.md).
+  Songs/discography via MusicBrainz **done** (full track-lists, bridged by Wikidata P434; opt-in,
+  1 req/s — [ADR 0005](./docs/adr/0005-musicbrainz-song-source.md)). Remaining: solo K-pop artists
+  from Wikidata (humans with genre K-pop).
 
 ## Bugs / tech debt
 
