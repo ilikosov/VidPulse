@@ -45,6 +45,8 @@ export const config = {
     limit: process.env.KPOP_DICT_LIMIT
       ? num(process.env.KPOP_DICT_LIMIT, 0) || undefined
       : undefined,
+    /** Per-request timeout for the Wikidata SPARQL queries (Wikidata's own limit is ~60s). */
+    timeoutMs: num(process.env.KPOP_DICT_TIMEOUT_MS, 60000),
   },
 
   /**

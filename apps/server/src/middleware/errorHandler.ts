@@ -10,9 +10,12 @@ export function notFoundHandler(req: Request, res: Response): void {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
+  // An Error JSON.stringifies to "{}" (no enumerable own props), so log its stack/message.
+  const detail = err instanceof Error ? (err.stack ?? err.message) : err;
+
   if (err instanceof AppError) {
     if (err.statusCode >= 500) {
-      logger.error({ err, path: req.path }, err.message);
+      logger.error({ err: detail, path: req.path }, err.message);
     }
     res.status(err.statusCode).json({
       error: { message: err.message, ...(err.code ? { code: err.code } : {}) },
@@ -21,6 +24,6 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   }
 
   const message = err instanceof Error ? err.message : 'Internal server error';
-  logger.error({ err, path: req.path }, message);
+  logger.error({ err: detail, path: req.path }, message);
   res.status(500).json({ error: { message: 'Internal server error', code: 'INTERNAL_ERROR' } });
 }

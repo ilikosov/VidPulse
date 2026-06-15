@@ -151,4 +151,30 @@ describe('fetchJson error reporting', () => {
       vi.useRealTimers();
     }
   });
+
+  it('reports a clear timeout (not an opaque abort) when the request times out', async () => {
+    vi.useFakeTimers();
+    try {
+      // Never resolves; only rejects when our timeout aborts the request signal.
+      const fetchImpl: FetchLike = vi.fn(
+        (_url, init) =>
+          new Promise<never>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new Error('This operation was aborted')),
+            );
+          }),
+      );
+      const promise = fetchJson('http://example.test', {
+        userAgent: 'ua',
+        fetchImpl,
+        retries: 0,
+        timeoutMs: 5000,
+      });
+      const assertion = expect(promise).rejects.toThrow('request timed out after 5000ms');
+      await vi.advanceTimersByTimeAsync(5000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

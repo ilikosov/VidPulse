@@ -26,6 +26,7 @@ export class KpopDictionaryService {
     const snapshot = await buildKpopLibrary({
       userAgent: config.kpopDictionary.userAgent,
       limit: config.kpopDictionary.limit,
+      timeoutMs: config.kpopDictionary.timeoutMs,
       logger,
       musicBrainz: config.musicBrainz.enabled
         ? {

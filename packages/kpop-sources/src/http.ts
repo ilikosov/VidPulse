@@ -30,7 +30,11 @@ export async function fetchJson<T = unknown>(url: string, options: FetchJsonOpti
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true; // distinguish our own timeout from an external signal abort
+      controller.abort();
+    }, timeoutMs);
     // Forward an external abort signal to our controller.
     const onAbort = () => controller.abort();
     options.signal?.addEventListener('abort', onAbort);
@@ -61,7 +65,8 @@ export async function fetchJson<T = unknown>(url: string, options: FetchJsonOpti
         );
       }
     } catch (err) {
-      lastError = err;
+      // A timeout surfaces as an opaque AbortError; report it clearly instead.
+      lastError = timedOut ? new Error(`request timed out after ${timeoutMs}ms`) : err;
     } finally {
       clearTimeout(timer);
       options.signal?.removeEventListener('abort', onAbort);
