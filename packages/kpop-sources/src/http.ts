@@ -71,9 +71,17 @@ export async function fetchJson<T = unknown>(url: string, options: FetchJsonOpti
         lastError = new Error(`request timed out after ${timeoutMs}ms`);
       } else if (err instanceof Error && err.message === 'fetch failed' && 'cause' in err) {
         const cause = (err as { cause?: unknown }).cause as
-          | { code?: string; message?: string }
+          | { code?: string; message?: string; errors?: unknown[] }
           | undefined;
-        const detail = cause?.code ?? cause?.message ?? String(cause);
+        // undici may set cause to an AggregateError (several connect attempts) with no
+        // code/message; fall back to its sub-errors' codes.
+        const aggregated = Array.isArray(cause?.errors)
+          ? cause.errors
+              .map((e) => (e as { code?: string; message?: string })?.code ?? (e as Error)?.message)
+              .filter(Boolean)
+              .join(', ')
+          : undefined;
+        const detail = cause?.code ?? cause?.message ?? aggregated ?? String(cause);
         lastError = new Error(`fetch failed (${detail})`);
       } else {
         lastError = err;

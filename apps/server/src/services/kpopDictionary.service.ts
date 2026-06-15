@@ -34,6 +34,7 @@ export class KpopDictionaryService {
             userAgent: config.musicBrainz.userAgent,
             rateLimitMs: config.musicBrainz.rateLimitMs,
             limit: config.musicBrainz.limit,
+            maxRecordings: config.musicBrainz.maxRecordings,
           }
         : undefined,
     });

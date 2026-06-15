@@ -66,6 +66,8 @@ export const config = {
     limit: process.env.MUSICBRAINZ_LIMIT
       ? num(process.env.MUSICBRAINZ_LIMIT, 0) || undefined
       : undefined,
+    /** Stop paginating an artist after this many recordings (bounds requests for prolific artists). */
+    maxRecordings: num(process.env.MUSICBRAINZ_MAX_RECORDINGS, 1000),
   },
 
   ai: {

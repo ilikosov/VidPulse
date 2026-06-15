@@ -24,14 +24,17 @@ export interface FetchRecordingsOptions {
   timeoutMs?: number;
   /** Minimum ms between requests (≥1 req/s per MusicBrainz policy). Default 1000. */
   rateLimitMs?: number;
+  /** Stop paginating once this many recordings are collected (bounds requests for prolific artists). */
+  maxRecordings?: number;
   /** Optional logger for partial-result diagnostics. */
   logger?: Logger;
 }
 
 /**
  * Browse all recordings (tracks) credited to a MusicBrainz artist, paginating the
- * `/recording?artist=<mbid>` endpoint until the reported `recording-count` is exhausted.
- * Throttles to ≤1 req/s (MusicBrainz ToS) by sleeping `rateLimitMs` between pages.
+ * `/recording?artist=<mbid>` endpoint until the reported `recording-count` is exhausted
+ * (or `maxRecordings` is reached). Throttles to ≤1 req/s (MusicBrainz ToS) by sleeping
+ * `rateLimitMs` between pages.
  *
  * Prolific artists span many pages; if a LATER page fails (after retries) we keep the
  * recordings gathered so far rather than discarding the whole artist. A failure on the
@@ -51,6 +54,8 @@ export async function fetchRecordingsByArtist(
     retries: 5,
   };
   const rateLimitMs = options.rateLimitMs ?? 1000;
+  const maxRecordings =
+    options.maxRecordings && options.maxRecordings > 0 ? options.maxRecordings : Infinity;
 
   const all: MbRecording[] = [];
   let offset = 0;
@@ -77,8 +82,8 @@ export async function fetchRecordingsByArtist(
 
     const total = data['recording-count'] ?? all.length;
     offset += page.length;
-    if (page.length === 0 || offset >= total) break;
+    if (page.length === 0 || offset >= total || all.length >= maxRecordings) break;
     await sleep(rateLimitMs); // throttle between pages
   }
-  return all;
+  return all.length > maxRecordings ? all.slice(0, maxRecordings) : all;
 }

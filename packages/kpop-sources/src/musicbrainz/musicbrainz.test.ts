@@ -70,6 +70,29 @@ describe('fetchRecordingsByArtist', () => {
     expect((fetchImpl as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2);
   });
 
+  it('stops paginating once maxRecordings is reached', async () => {
+    const fetchImpl: FetchLike = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: async () => '',
+      json: async () => ({
+        'recording-count': 500,
+        recordings: Array.from({ length: 100 }, (_, i) => ({ title: `T${i}` })),
+      }),
+    }));
+
+    const recs = await fetchRecordingsByArtist('mbid-cap', {
+      userAgent: 'ua',
+      fetchImpl,
+      rateLimitMs: 0,
+      maxRecordings: 100,
+    });
+
+    expect(recs).toHaveLength(100);
+    expect((fetchImpl as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1); // no page 2
+  });
+
   it('keeps partial recordings when a later page fails instead of discarding the artist', async () => {
     vi.useFakeTimers();
     try {

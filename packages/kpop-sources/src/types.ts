@@ -109,6 +109,8 @@ export interface MusicBrainzOptions {
   rateLimitMs?: number;
   /** Cap the number of groups enriched (smoke runs/tests). */
   limit?: number;
+  /** Stop paginating an artist after this many recordings (bounds requests for prolific artists). */
+  maxRecordings?: number;
 }
 
 export interface SourceOptions {

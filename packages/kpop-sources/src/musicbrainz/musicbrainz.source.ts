@@ -36,6 +36,9 @@ export class MusicBrainzSource {
 
     const userAgent = mb.userAgent ?? options.userAgent;
     const rateLimitMs = mb.rateLimitMs ?? 1000;
+    // After a network failure, wait longer before the next group so a flaky/slow
+    // connection (e.g. UND_ERR_CONNECT_TIMEOUT through the egress proxy) can recover.
+    const cooldownMs = Math.max(rateLimitMs * 3, 3000);
     const candidates = groups.filter((g) => g.mbid);
     const targets = mb.limit && mb.limit > 0 ? candidates.slice(0, mb.limit) : candidates;
 
@@ -49,6 +52,7 @@ export class MusicBrainzSource {
 
     for (let i = 0; i < targets.length; i += 1) {
       const group = targets[i];
+      let failedThisGroup = false;
       try {
         const recordings = await fetchRecordingsByArtist(group.mbid!, {
           userAgent,
@@ -56,6 +60,7 @@ export class MusicBrainzSource {
           signal: options.signal,
           timeoutMs: options.timeoutMs,
           rateLimitMs,
+          maxRecordings: mb.maxRecordings,
           logger: log,
         });
         addedTotal += mergeSongs(group, normalizeRecordings(recordings));
@@ -63,11 +68,12 @@ export class MusicBrainzSource {
         // One group's failure shouldn't abort the whole enrichment. Log the message
         // (not the Error object — the server logger JSON.stringifies it to "{}").
         failed += 1;
+        failedThisGroup = true;
         const reason = err instanceof Error ? err.message : String(err);
         log?.warn(`MusicBrainz: failed to enrich "${group.name}" (${group.mbid}): ${reason}`);
       }
-      // Throttle between groups (skip after the last one).
-      if (i < targets.length - 1) await sleep(rateLimitMs);
+      // Throttle between groups (skip after the last one); back off longer after a failure.
+      if (i < targets.length - 1) await sleep(failedThisGroup ? cooldownMs : rateLimitMs);
     }
 
     log?.info(
