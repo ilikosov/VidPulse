@@ -38,6 +38,7 @@ export type {
   PaginatedSongsResponse,
   Pagination,
   ParserLog,
+  ParserTraceStep,
   Playlist,
   PlaylistsResponse,
   ReparseResponse,
@@ -257,8 +258,10 @@ export async function deletePlaylist(id: number, removeVideos = false): Promise<
   });
 }
 
-export async function getPlaylist(id: number | string): Promise<Playlist & { videoCount: number }> {
-  return fetchApi<Playlist & { videoCount: number }>(`/playlists/${id}`);
+export async function getPlaylist(
+  id: number | string,
+): Promise<Playlist & { videoCount: number; hasMore: boolean }> {
+  return fetchApi<Playlist & { videoCount: number; hasMore: boolean }>(`/playlists/${id}`);
 }
 
 export async function syncPlaylist(
@@ -267,6 +270,18 @@ export async function syncPlaylist(
   return fetchApi<{ loaded: number; total: number }>(`/playlists/${id}/sync`, {
     method: 'POST',
   });
+}
+
+export async function loadMorePlaylistVideos(
+  id: number | string,
+  count = 50,
+): Promise<{ loaded: number; total: number; errors: string[] }> {
+  return fetchApi<{ loaded: number; total: number; errors: string[] }>(
+    `/playlists/${id}/load-more?count=${count}`,
+    {
+      method: 'POST',
+    },
+  );
 }
 
 export async function addVideo(url: string): Promise<Video> {

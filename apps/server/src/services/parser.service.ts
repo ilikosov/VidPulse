@@ -155,6 +155,24 @@ class ParserService {
     const forceReview = hasUnresolvedEntity(metadata, resolved);
     const nextStatus = needsReview || forceReview ? 'needs_review' : video.status;
 
+    // Append the dictionary-resolution step to the parser trace so the Reparse Log shows how
+    // raw parsed names mapped to canonical dictionary IDs (and whether anything stayed unresolved).
+    const traceSteps = (reparseLog.output as { trace?: unknown })?.trace;
+    if (Array.isArray(traceSteps)) {
+      traceSteps.push({
+        stage: 'Entity resolution',
+        detail: forceReview
+          ? 'some parsed entity is not in the dictionary → flagged for review'
+          : 'matched parsed names against the dictionary',
+        changes: {
+          group_id: resolved.group_id,
+          artist_id: resolved.artist_id,
+          song_id: resolved.song_id,
+          event_id: resolved.event_id,
+        },
+      });
+    }
+
     const updateData: Record<string, any> = {
       ...buildMetadataUpdate(metadata, resolved),
       status: nextStatus,

@@ -22,6 +22,7 @@ export default function SongPage() {
 
   const tab = searchParams.get('tab') || 'overview';
   const videosPage = Number(searchParams.get('videosPage') || '1');
+  const videosLimit = Number(searchParams.get('videosLimit')) || defaultVideosLimit;
 
   const [song, setSong] = useState<DictionarySong | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
@@ -96,7 +97,7 @@ export default function SongPage() {
       try {
         const [songResponse, videosResponse] = await Promise.all([
           dictionaryApi.getSong(id),
-          dictionaryApi.getSongVideos(id, videosPage, videosPagination.limit),
+          dictionaryApi.getSongVideos(id, videosPage, videosLimit),
         ]);
 
         setSong(songResponse);
@@ -122,7 +123,7 @@ export default function SongPage() {
     };
 
     void load();
-  }, [id, videosPage]);
+  }, [id, videosPage, videosLimit]);
 
   if (loading) return <Spin />;
   if (!song) return <Empty />;
@@ -219,9 +220,11 @@ export default function SongPage() {
                 locale={{ emptyText: <Empty description="No videos found" /> }}
                 pagination={{
                   current: videosPagination.page,
-                  pageSize: videosPagination.limit,
+                  pageSize: videosLimit,
                   total: videosPagination.total,
-                  onChange: (nextPage) => updateParams({ videosPage: nextPage }),
+                  showSizeChanger: true,
+                  onChange: (nextPage, nextPageSize) =>
+                    updateParams({ videosPage: nextPage, videosLimit: nextPageSize }),
                 }}
               />
             ),

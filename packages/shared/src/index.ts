@@ -52,6 +52,17 @@ export interface VideoSong {
   title: string;
 }
 
+/**
+ * One step of the parser pipeline, captured for the Reparse Log so the UI can show
+ * *how* the result was reached (which module/stage set which field, and why).
+ */
+export interface ParserTraceStep {
+  stage: string; // module or pipeline-stage name, e.g. "RegexModule", "Entity resolution"
+  detail?: string; // human-readable note about what happened at this step
+  changes?: Record<string, unknown>; // fields this step set/changed (key → new value)
+  confidence?: number; // module confidence, where the step is a parser module
+}
+
 export interface ParserLog {
   input: {
     title: string;

@@ -9,6 +9,8 @@ import { getBackPath } from '../utils/navigation';
 import { SongLinks } from '../components/SongLinks';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
 
+const defaultVideosLimit = 20;
+
 export default function EventPage() {
   const { id = '' } = useParams();
   const location = useLocation();
@@ -19,10 +21,11 @@ export default function EventPage() {
   const backPath = getBackPath(location.state, '/dictionary/events');
   const tab = searchParams.get('tab') || 'overview';
   const videosPage = Number(searchParams.get('videosPage') || '1');
+  const videosLimit = Number(searchParams.get('videosLimit')) || defaultVideosLimit;
 
   const [event, setEvent] = useState<{ id: number; name: string } | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [pagination, setPagination] = useState({ page: 1, limit: defaultVideosLimit, total: 0 });
 
   const columns: ColumnsType<Video> = useMemo(
     () => [
@@ -51,7 +54,7 @@ export default function EventPage() {
     const load = async () => {
       const [eventResponse, videosResponse] = await Promise.all([
         dictionaryApi.getEvent(id),
-        dictionaryApi.getEventVideos(id, videosPage, pagination.limit),
+        dictionaryApi.getEventVideos(id, videosPage, videosLimit),
       ]);
       setEvent(eventResponse);
       setVideos(videosResponse.videos);
@@ -59,7 +62,7 @@ export default function EventPage() {
     };
 
     void load();
-  }, [id, videosPage]);
+  }, [id, videosPage, videosLimit]);
 
   if (!event) return <Empty />;
 
@@ -104,11 +107,13 @@ export default function EventPage() {
                 dataSource={videos}
                 pagination={{
                   current: pagination.page,
-                  pageSize: pagination.limit,
+                  pageSize: videosLimit,
                   total: pagination.total,
-                  onChange: (page) => {
+                  showSizeChanger: true,
+                  onChange: (page, pageSize) => {
                     const params = new URLSearchParams(searchParams);
                     params.set('videosPage', String(page));
+                    params.set('videosLimit', String(pageSize));
                     setSearchParams(params);
                   },
                 }}

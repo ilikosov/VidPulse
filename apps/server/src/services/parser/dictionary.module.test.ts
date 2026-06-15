@@ -99,6 +99,71 @@ describe('DictionaryModule aliases normalization', () => {
     expect(result.metadata.song_title).toBe('YUNA SONG');
   });
 
+  it('does not fuzzy-snap a new member onto a similar existing artist (GAWON ≠ Dawon)', async () => {
+    // MEOVV's GAWON is not in the dictionary; the closest artist is "Dawon" (1 substitution,
+    // similarity 0.8). A differing first letter must block the fuzzy match so the raw name stays.
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Dawon', group_name: 'SECRET NUMBER' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse("미야오 가원 'MEOW' (MEOVV GAWON FanCam)", {
+      group_name: 'MEOVV',
+      artist_name: 'GAWON',
+    });
+
+    expect(result.metadata.artist_name).toBe('GAWON');
+  });
+
+  it('still fuzzy-resolves a typo that keeps the first letter', async () => {
+    // Guard only blocks differing first letters; a same-initial typo must still resolve.
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'YUNA', group_name: 'ITZY' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse('stage', {
+      artist_name: 'YUNAA', // trailing-letter typo, same first letter
+    });
+
+    expect(result.metadata.artist_name).toBe('YUNA');
+  });
+
+  it('matches a spaced dictionary name against a glued title token (MOONSUA → Moon Sua)', async () => {
+    vi.mocked(groupService.getAllGroups).mockResolvedValue([{ id: 1, name: 'Billlie' }] as any);
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Moon Sua', group_name: 'Billlie' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    // No group/artist pre-set: the dictionary must find them in the title. The credit has
+    // "MOONSUA" (no space) but the dictionary stores "Moon Sua".
+    const result = await module.parse("[4K CATCH CAM] Billlie MOONSUA 'RING X RING' 4K Fancam", {});
+
+    expect(result.metadata.group_name).toBe('Billlie');
+    expect(result.metadata.artist_name).toBe('Moon Sua');
+  });
+
+  it('picks the group credited at the start over one matched inside the trailing show name', async () => {
+    // "Billlie" is the real group (early); "K-Pop" only matches inside the show "Simply K-Pop".
+    // Ordered so the spurious group iterates first — only position awareness picks Billlie.
+    vi.mocked(groupService.getAllGroups).mockResolvedValue([
+      { id: 1, name: 'K-Pop' },
+      { id: 2, name: 'Billlie' },
+    ] as any);
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Moon', group_name: 'Billlie' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse(
+      "[플리캠 4K] Billlie MOON SUA 'song'(빌리 문수아 직캠) lSimply K-Pop CON-TOUR Ep.510",
+      {},
+    );
+
+    expect(result.metadata.group_name).toBe('Billlie');
+  });
+
   it('resolves event alias via dictionary aliases', async () => {
     const module = new DictionaryModule();
     const result = await module.parse('무대 @인기가요', {
@@ -106,5 +171,123 @@ describe('DictionaryModule aliases normalization', () => {
     });
 
     expect(result.metadata.event).toBe('@INKIGAYO');
+  });
+
+  it('resolves the artist within the identified group, not a look-alike elsewhere', async () => {
+    // GAWON belongs to MEOVV; Dawon (SECRET NUMBER) is one substitution away. With the group
+    // known, resolution is scoped to MEOVV's members so the look-alike is never considered.
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Gawon', group_name: 'MEOVV' },
+      { name: 'Dawon', group_name: 'SECRET NUMBER' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse("미야오 가원 'MEOW' (MEOVV GAWON FanCam)", {
+      group_name: 'MEOVV',
+      artist_name: 'GAWON',
+    });
+
+    expect(result.metadata.artist_name).toBe('Gawon');
+  });
+
+  it('resolves a song within the identified group before the global catalogue', async () => {
+    // Two same-spelled songs in different groups; the group context picks the right one.
+    vi.mocked(songService.getAllSongs).mockResolvedValue([
+      { title: 'TOUCH', group_name: 'MEOVV' },
+      { title: 'TOUCH', group_name: 'STAYC' },
+    ] as any);
+    vi.mocked(groupService.getAllGroups).mockResolvedValue([
+      { id: 1, name: 'MEOVV' },
+      { id: 2, name: 'STAYC' },
+    ] as any);
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Gawon', group_name: 'MEOVV' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse("미야오 'touch'", {
+      group_name: 'MEOVV',
+      song_title: 'touch',
+    });
+
+    expect(result.metadata.song_title).toBe('TOUCH');
+  });
+
+  it('scopes a title-extracted artist to the identified group when an alias is shared', async () => {
+    // 예지 is the Korean alias of both ITZY's "Yeji" and the soloist "Yezi". The alias resolves
+    // to "Yezi", and it appears before the English "YEJI" — so the earliest-position scan would
+    // pick the look-alike. With ITZY identified, the in-group member must win.
+    vi.mocked(groupService.getAllGroups).mockResolvedValue([
+      { id: 1, name: 'ITZY' },
+      { id: 2, name: 'FIESTAR' },
+    ] as any);
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Yeji', group_name: 'ITZY' },
+      { name: 'Yezi', group_name: 'FIESTAR' },
+    ] as any);
+    vi.mocked(aliasService.getAllAliases).mockResolvedValue([
+      { entity_type: 'group', alias: '있지' },
+      { entity_type: 'artist', alias: '예지' },
+    ] as any);
+    vi.mocked(aliasService.resolveAlias).mockImplementation(async (entityType: any, alias: any) => {
+      const map: Record<string, { id: number; name: string }> = {
+        'group:있지': { id: 2, name: 'ITZY' },
+        'artist:예지': { id: 99, name: 'Yezi' }, // alias points at the look-alike
+      };
+      return map[`${entityType}:${alias}`] ?? null;
+    });
+
+    const module = new DictionaryModule();
+    const result = await module.parse("260213 예지 YEJI 있지 ITZY 'In My Pocket'", {});
+
+    expect(result.metadata.group_name).toBe('ITZY');
+    expect(result.metadata.artist_name).toBe('Yeji');
+  });
+
+  it('leaves the artist empty and flags review when the named member is absent from the group', async () => {
+    // ITZY's "Yeji" is NOT in the dictionary; only the soloist "Yezi" (another group) carries the
+    // shared Korean alias 예지. With ITZY identified, we must not snap onto the cross-group
+    // look-alike — leave artist_name empty and flag the video for review instead.
+    vi.mocked(groupService.getAllGroups).mockResolvedValue([
+      { id: 1, name: 'ITZY' },
+      { id: 2, name: 'FIESTAR' },
+    ] as any);
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'Yezi', group_name: 'FIESTAR' }, // no ITZY "Yeji" in the dictionary
+    ] as any);
+    vi.mocked(aliasService.getAllAliases).mockResolvedValue([
+      { entity_type: 'group', alias: '있지' },
+      { entity_type: 'artist', alias: '예지' },
+    ] as any);
+    vi.mocked(aliasService.resolveAlias).mockImplementation(async (entityType: any, alias: any) => {
+      const map: Record<string, { id: number; name: string }> = {
+        'group:있지': { id: 1, name: 'ITZY' },
+        'artist:예지': { id: 99, name: 'Yezi' },
+      };
+      return map[`${entityType}:${alias}`] ?? null;
+    });
+
+    const module = new DictionaryModule();
+    const result = await module.parse("260215 있지 예지 ITZY YEJI 'In My Pocket'", {});
+
+    expect(result.metadata.group_name).toBe('ITZY');
+    expect(result.metadata.artist_name).toBeUndefined();
+    expect(result.metadata.unresolved_artist).toBe(true);
+  });
+
+  it('falls back to the global artist list when the group lacks a match', async () => {
+    // A guest/cover whose name is not a member of the identified group still resolves globally.
+    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+      { name: 'YUNA', group_name: 'ITZY' },
+      { name: 'Gawon', group_name: 'MEOVV' },
+    ] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse('stage', {
+      group_name: 'MEOVV', // YUNA is not a MEOVV member → scoped miss → global match
+      artist_name: '유나',
+    });
+
+    expect(result.metadata.artist_name).toBe('YUNA');
   });
 });

@@ -42,6 +42,8 @@ interface KpopDictionary {
   groups: string[];
   artists: Record<string, string[]>;
   songs: string[];
+  /** group name → its song titles (from dictionary_song_groups, via getAllSongs.group_name). */
+  songsByGroup: Record<string, string[]>;
   events: string[];
   aliases: {
     group: Record<string, string>;
@@ -114,11 +116,18 @@ export class DictionaryModule implements ParserModule {
     }
 
     if (/^[a-z0-9\s&'.-]+$/i.test(normalizedNeedle)) {
-      const escaped = normalizedNeedle
-        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        .replace(/\s+/g, '\\s+');
-      const regex = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i');
-      return regex.test(normalizedHaystack);
+      const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const spaced = esc(normalizedNeedle).replace(/\s+/g, '\\s+');
+      if (new RegExp(`(^|[^a-z0-9])${spaced}([^a-z0-9]|$)`, 'i').test(normalizedHaystack)) {
+        return true;
+      }
+      // Also match the dictionary value with spaces removed against a glued title token,
+      // e.g. "Moon Sua" → "moonsua" found in "...Billlie MOONSUA 'RING X RING'...".
+      if (/\s/.test(normalizedNeedle)) {
+        const glued = esc(normalizedNeedle.replace(/\s+/g, ''));
+        return new RegExp(`(^|[^a-z0-9])${glued}([^a-z0-9]|$)`, 'i').test(normalizedHaystack);
+      }
+      return false;
     }
 
     // A Hangul needle must not match inside a longer Hangul run: '이브' (Yves) is a
@@ -143,6 +152,16 @@ export class DictionaryModule implements ParserModule {
       const groupName = String(a.group_name || 'SOLO');
       if (!artistMap[groupName]) artistMap[groupName] = [];
       artistMap[groupName].push(String(a.name));
+    }
+
+    // group name → its song titles. getAllSongs() already carries the linked group
+    // (MIN over dictionary_song_groups), so no extra query is needed.
+    const songsByGroup: Record<string, string[]> = {};
+    for (const s of songs as any[]) {
+      if (!s.group_name) continue;
+      const groupName = String(s.group_name);
+      if (!songsByGroup[groupName]) songsByGroup[groupName] = [];
+      songsByGroup[groupName].push(String(s.title));
     }
 
     const aliasMap: KpopDictionary['aliases'] = { group: {}, artist: {}, song: {}, event: {} };
@@ -171,6 +190,7 @@ export class DictionaryModule implements ParserModule {
       groups: groups.map((g: any) => String(g.name)),
       artists: artistMap,
       songs: songs.map((s: any) => String(s.title)),
+      songsByGroup,
       events: events.map((e: any) => String(e.name)),
       aliases: aliasMap,
       cameraTypes: this.cameraTypeMap,
@@ -231,11 +251,23 @@ export class DictionaryModule implements ParserModule {
     fieldsChecked++;
     if (metadata.artist_name) {
       const allArtists = Object.values(dictionary.artists).flat();
-      const corrected = this.findBestMatch(
-        metadata.artist_name,
-        allArtists,
-        dictionary.aliases.artist,
-      );
+      // When a group is known, resolve the artist among that group's members first — this
+      // keeps a member from snapping onto a similarly-spelled artist in another group.
+      const scopedArtists =
+        metadata.group_name && metadata.group_name !== 'SOLO'
+          ? (dictionary.artists[metadata.group_name] ?? [])
+          : [];
+      let corrected: string | null = null;
+      if (scopedArtists.length) {
+        corrected = this.findBestMatch(
+          metadata.artist_name,
+          scopedArtists,
+          this.filterAliases(dictionary.aliases.artist, scopedArtists),
+        );
+      }
+      if (!corrected) {
+        corrected = this.findBestMatch(metadata.artist_name, allArtists, dictionary.aliases.artist);
+      }
       if (corrected) {
         if (corrected !== metadata.artist_name) {
           metadata.artist_name = corrected;
@@ -258,23 +290,48 @@ export class DictionaryModule implements ParserModule {
         }
       }
     } else {
-      const foundArtist = this.findArtistInTitle(title, dictionary);
+      const knownGroup =
+        metadata.group_name && metadata.group_name !== 'SOLO' ? metadata.group_name : undefined;
+      const foundArtist = this.findArtistInTitle(title, dictionary, knownGroup);
       if (foundArtist) {
         metadata.artist_name = foundArtist.name;
         if (!metadata.group_name && foundArtist.group) {
           metadata.group_name = foundArtist.group;
         }
         correctionsMade++;
+      } else if (knownGroup) {
+        // The group is identified but none of its members appear in the title. If the title
+        // still names a known artist (a shared-alias look-alike from another group), don't
+        // guess — leave the artist empty and flag the video for review.
+        const crossGroup = this.findArtistInTitle(title, dictionary);
+        if (crossGroup) {
+          metadata.unresolved_artist = true;
+        }
       }
     }
 
     fieldsChecked++;
     if (metadata.song_title) {
-      const corrected = this.findBestMatch(
-        metadata.song_title,
-        dictionary.songs,
-        dictionary.aliases.song,
-      );
+      // Prefer a song of the identified group before falling back to the full catalogue.
+      const scopedSongs =
+        metadata.group_name && metadata.group_name !== 'SOLO'
+          ? (dictionary.songsByGroup[metadata.group_name] ?? [])
+          : [];
+      let corrected: string | null = null;
+      if (scopedSongs.length) {
+        corrected = this.findBestMatch(
+          metadata.song_title,
+          scopedSongs,
+          this.filterAliases(dictionary.aliases.song, scopedSongs),
+        );
+      }
+      if (!corrected) {
+        corrected = this.findBestMatch(
+          metadata.song_title,
+          dictionary.songs,
+          dictionary.aliases.song,
+        );
+      }
       if (corrected) {
         if (corrected !== metadata.song_title) {
           metadata.song_title = corrected;
@@ -294,7 +351,9 @@ export class DictionaryModule implements ParserModule {
       const eventName = metadata.event.replace('@', '');
       const aliasEvent = this.eventAliasMap[this.normalizeLookup(eventName)];
       const corrected = this.findBestMatch(eventName, dictionary.events, dictionary.aliases.event);
-      const canonicalEvent = aliasEvent || corrected;
+      // The dictionary is the source of truth; the hardcoded alias map is only a fallback for
+      // events absent from the dictionary (otherwise it overrides canonicals like MCOUNTDOWN).
+      const canonicalEvent = corrected || aliasEvent;
       if (canonicalEvent) {
         metadata.event = '@' + canonicalEvent;
         correctionsMade++;
@@ -567,6 +626,17 @@ export class DictionaryModule implements ParserModule {
     return (songByAlias as { id: number; title: string }) ?? null;
   }
 
+  /** Restrict an alias→canonical map to aliases whose canonical is in `allowed`. */
+  private filterAliases(
+    aliasMap: Record<string, string>,
+    allowed: string[],
+  ): Record<string, string> {
+    const set = new Set(allowed.map((a) => this.normalizeLookup(a)));
+    return Object.fromEntries(
+      Object.entries(aliasMap).filter(([, canonical]) => set.has(this.normalizeLookup(canonical))),
+    );
+  }
+
   private findBestMatch(
     input: string,
     candidates: string[],
@@ -597,8 +667,16 @@ export class DictionaryModule implements ParserModule {
     let bestMatch: string | null = null;
     let bestScore = normalizedInput.length <= 4 ? 0.9 : 0.7;
 
+    // A differing leading character signals a genuinely different name, not a typo or
+    // romanization variant (which keep their first letter). Without this guard a new
+    // member absent from the dictionary snaps onto a similar existing artist — e.g.
+    // "GAWON" (MEOVV) → "Dawon" (similarity 0.8 > 0.7).
+    const inputFirst = normalizedInput[0];
+
     for (const candidate of candidates) {
-      const score = similarity(normalizedInput, this.normalizeLookup(candidate));
+      const normalizedCandidate = this.normalizeLookup(candidate);
+      if (normalizedCandidate[0] !== inputFirst) continue;
+      const score = similarity(normalizedInput, normalizedCandidate);
       if (score > bestScore) {
         bestScore = score;
         bestMatch = candidate;
@@ -609,24 +687,49 @@ export class DictionaryModule implements ParserModule {
   }
 
   private findGroupInTitle(title: string, dictionary: KpopDictionary): string | null {
+    // Pick the group whose name/alias appears earliest in the title (ties broken by the longer
+    // match) rather than the first one in dictionary iteration order. Otherwise a group that
+    // only matches inside a trailing show name (e.g. "K-Pop" in "Simply K-Pop") could outrank
+    // the real group credited at the start of the title.
+    const haystack = this.normalizeLookup(title);
+    const matches: Array<{ name: string; pos: number; len: number }> = [];
+
+    const consider = (needle: string, name: string) => {
+      if (!this.containsTerm(title, needle)) {
+        return;
+      }
+      const normalizedNeedle = this.normalizeLookup(needle);
+      let pos = haystack.indexOf(normalizedNeedle);
+      let len = normalizedNeedle.length;
+      if (pos < 0 && /\s/.test(normalizedNeedle)) {
+        const glued = normalizedNeedle.replace(/\s+/g, '');
+        pos = haystack.indexOf(glued);
+        len = glued.length;
+      }
+      if (pos < 0) {
+        return;
+      }
+      matches.push({ name, pos, len });
+    };
+
     for (const [alias, canonical] of Object.entries(dictionary.aliases.group)) {
-      if (this.containsTerm(title, alias)) {
-        return canonical;
-      }
+      consider(alias, canonical);
     }
-
     for (const group of dictionary.groups) {
-      if (this.containsTerm(title, group)) {
-        return group;
-      }
+      consider(group, group);
     }
 
-    return null;
+    if (matches.length === 0) {
+      return null;
+    }
+    matches.sort((a, b) => a.pos - b.pos || b.len - a.len);
+    return matches[0].name;
   }
 
   private findArtistInTitle(
     title: string,
     dictionary: KpopDictionary,
+    preferredGroup?: string,
   ): { name: string; group?: string } | null {
     // Pick the artist whose name/alias appears earliest in the title (ties broken by the
     // longer match) instead of the first one in dictionary iteration order. Otherwise a song
@@ -640,11 +743,18 @@ export class DictionaryModule implements ParserModule {
         return;
       }
       const normalizedNeedle = this.normalizeLookup(needle);
-      const pos = haystack.indexOf(normalizedNeedle);
+      let pos = haystack.indexOf(normalizedNeedle);
+      let len = normalizedNeedle.length;
+      // The match may be against a space-stripped form (e.g. "moon sua" → "moonsua").
+      if (pos < 0 && /\s/.test(normalizedNeedle)) {
+        const glued = normalizedNeedle.replace(/\s+/g, '');
+        pos = haystack.indexOf(glued);
+        len = glued.length;
+      }
       if (pos < 0) {
         return;
       }
-      matches.push({ name, group, pos, len: normalizedNeedle.length });
+      matches.push({ name, group, pos, len });
     };
 
     for (const [alias, canonical] of Object.entries(dictionary.aliases.artist)) {
@@ -668,6 +778,21 @@ export class DictionaryModule implements ParserModule {
 
     if (matches.length === 0) {
       return null;
+    }
+
+    // When the group is already identified, restrict to its members. Two artists can share a
+    // Korean alias (e.g. 예지 → ITZY's "Yeji" and the soloist "Yezi"); without scoping, the
+    // earliest-position tie would pick the look-alike from another group. If the group has no
+    // member named in the title, return null so the caller doesn't snap onto a cross-group
+    // look-alike — it leaves the artist empty and flags the video for review instead.
+    const preferred = preferredGroup ? this.normalizeLookup(preferredGroup) : null;
+    if (preferred) {
+      const inGroup = matches.filter((m) => m.group && this.normalizeLookup(m.group) === preferred);
+      if (inGroup.length === 0) {
+        return null;
+      }
+      inGroup.sort((a, b) => a.pos - b.pos || b.len - a.len);
+      return { name: inGroup[0].name, group: inGroup[0].group };
     }
 
     // Earliest occurrence wins; ties broken by the longer (more specific) match.

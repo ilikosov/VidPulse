@@ -24,6 +24,8 @@ export default function GroupPage() {
   const tab = searchParams.get('tab') || 'overview';
   const videosPage = Number(searchParams.get('videosPage') || '1');
   const songsPage = Number(searchParams.get('songsPage') || '1');
+  const videosLimit = Number(searchParams.get('videosLimit')) || defaultVideosLimit;
+  const songsLimit = Number(searchParams.get('songsLimit')) || defaultSongsLimit;
 
   const [group, setGroup] = useState<DictionaryGroup | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,8 +105,8 @@ export default function GroupPage() {
       try {
         const [g, videosResponse, songsResponse] = await Promise.all([
           dictionaryApi.getGroup(id),
-          dictionaryApi.getGroupVideos(id, videosPage, videosPagination.limit),
-          dictionaryApi.getGroupSongs(id, songsPage, songsPagination.limit),
+          dictionaryApi.getGroupVideos(id, videosPage, videosLimit),
+          dictionaryApi.getGroupSongs(id, songsPage, songsLimit),
         ]);
 
         setGroup(g);
@@ -118,7 +120,7 @@ export default function GroupPage() {
     };
 
     void load();
-  }, [id, videosPage, songsPage]);
+  }, [id, videosPage, songsPage, videosLimit, songsLimit]);
 
   if (loading) return <Spin />;
   if (!group) return <Empty description="Group not found" />;
@@ -204,9 +206,11 @@ export default function GroupPage() {
                 )}
                 pagination={{
                   current: songsPagination.page,
-                  pageSize: songsPagination.limit,
+                  pageSize: songsLimit,
                   total: songsPagination.total,
-                  onChange: (nextPage) => updateParams({ songsPage: nextPage }),
+                  showSizeChanger: true,
+                  onChange: (nextPage, nextPageSize) =>
+                    updateParams({ songsPage: nextPage, songsLimit: nextPageSize }),
                 }}
               />
             ),
@@ -222,9 +226,11 @@ export default function GroupPage() {
                 locale={{ emptyText: <Empty description="No videos found" /> }}
                 pagination={{
                   current: videosPagination.page,
-                  pageSize: videosPagination.limit,
+                  pageSize: videosLimit,
                   total: videosPagination.total,
-                  onChange: (nextPage) => updateParams({ videosPage: nextPage }),
+                  showSizeChanger: true,
+                  onChange: (nextPage, nextPageSize) =>
+                    updateParams({ videosPage: nextPage, videosLimit: nextPageSize }),
                 }}
               />
             ),

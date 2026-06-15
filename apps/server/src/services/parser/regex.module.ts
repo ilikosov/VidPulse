@@ -24,7 +24,7 @@ export class RegexModule implements ParserModule {
   }
 
   private parseTitle(title: string): Partial<ParsedMetadata> {
-    const compacted = this.compact(title);
+    const compacted = this.normalizeSeparators(this.compact(title));
     const metadata: Partial<ParsedMetadata> = {
       perf_date: this.extractLastDate(compacted),
       camera_type: this.extractCameraType(compacted),
@@ -55,6 +55,16 @@ export class RegexModule implements ParserModule {
     return value.replace(/\s+/g, ' ').trim();
   }
 
+  /**
+   * Titles often use a lowercase "l" as a visual stand-in for the "|" separator
+   * ("… 직캠) l Simply K-Pop Ep.495"). Treat a standalone l — sitting after whitespace and
+   * before an uppercase / Korean / @ / # token — as a pipe, so the segment and event logic
+   * sees it. The lookahead keeps words like "Billlie" or "love" untouched.
+   */
+  private normalizeSeparators(title: string): string {
+    return title.replace(/\s+l\s*(?=[A-Z@#가-힣])/g, ' | ');
+  }
+
   private extractLastDate(title: string): string | undefined {
     const leadingDateRange = title.match(/^\s*(\d{6})(?:\s*[-~–—]\s*(?:\d{2}|\d{6}))?\b/);
     if (leadingDateRange?.[1]) {
@@ -64,6 +74,16 @@ export class RegexModule implements ParserModule {
     const matches = [...title.matchAll(this.datePattern)];
     if (matches.length > 0) {
       return matches[matches.length - 1][1];
+    }
+
+    // 8-digit "YYYYMMDD" dates (e.g. "@SBSInkigayo_20220313"), normalized to YYMMDD. A
+    // lookbehind is used instead of \b because the date is often glued to the event by "_".
+    const yyyymmdd = [
+      ...title.matchAll(/(?<!\d)20(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?!\d)/g),
+    ];
+    if (yyyymmdd.length > 0) {
+      const [, yy, mm, dd] = yyyymmdd[yyyymmdd.length - 1];
+      return `${yy}${mm}${dd}`;
     }
 
     // Fallback: dotted "YYYY.M.D" / "YY.M.D" dates, normalized to YYMMDD. Month/day range
@@ -128,11 +148,24 @@ export class RegexModule implements ParserModule {
   }
 
   private cleanEvent(rawEvent: string): string {
-    return this.compact(rawEvent)
-      .replace(/\b\d{6}\b/g, '')
-      .replace(/#.*$/g, '')
-      .replace(/\b방송\b/gi, '')
-      .trim();
+    return (
+      this.compact(rawEvent)
+        .replace(/\b\d{6}\b/g, '')
+        // Dotted dates with an optional leading separator, e.g. "MCOUNTDOWN_2024.9.26".
+        .replace(/[_\s-]*(?<!\d)(?:20\d{2}|\d{2})\.\d{1,2}\.\d{1,2}(?!\d)/g, '')
+        // 8-digit YYYYMMDD dates with an optional leading separator, e.g. "SBSInkigayo_20220313".
+        .replace(/[_\s-]*\d{8}(?!\d)/g, '')
+        // Underscore-joined 6-digit dates (the \b above misses these — "_" is a word char).
+        .replace(/[_\s-]+\d{6}(?!\d)/g, '')
+        .replace(/#.*$/g, '')
+        .replace(/\b방송\b/gi, '')
+        // Drop the decorative "쇼!" (Show!) prefix so "쇼! 음악중심" → "음악중심".
+        .replace(/^쇼!\s*/, '')
+        // Strip a trailing episode marker glued to the show ("Simply K-Pop Ep.495" → "Simply K-Pop").
+        .replace(/\s*\bep(?:isode)?\.?\s*\d+\b\s*$/i, '')
+        .replace(/[_\s.-]+$/g, '')
+        .trim()
+    );
   }
 
   /**
@@ -150,12 +183,46 @@ export class RegexModule implements ParserModule {
       return null;
     }
 
-    const segments = withoutTag.split('|').map((segment) => this.compact(segment));
-    if (segments.length < 3) {
+    let segments = withoutTag.split('|').map((segment) => this.compact(segment));
+
+    // Drop trailing "service" segments that are not the show: a "broadcaster + date" segment
+    // ("MBC250503", "MBC20220903", "MBC220903방송") or an episode marker ("EP.420"). The show is
+    // then the new last segment.
+    let broadcasterDate: string | undefined;
+    let droppedTrailing = false;
+    while (segments.length >= 2) {
+      const last = segments[segments.length - 1];
+      const bcast = last.match(
+        /^[A-Za-z]{2,4}\s?((?:20)?\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))\s*(?:방송)?$/,
+      );
+      if (bcast) {
+        const digits = bcast[1];
+        broadcasterDate = digits.length === 8 ? digits.slice(2) : digits; // YYYYMMDD → YYMMDD
+        segments = segments.slice(0, -1);
+        droppedTrailing = true;
+        continue;
+      }
+      if (/^ep\.?\s*\d+$/i.test(last)) {
+        segments = segments.slice(0, -1);
+        droppedTrailing = true;
+        continue;
+      }
+      break;
+    }
+
+    // The default shape needs three segments (credit | songs | show); once a trailing
+    // date/episode segment is removed, two (credit | show) are legitimate.
+    if (segments.length < 3 && !droppedTrailing) {
+      return null;
+    }
+    if (segments.length < 2) {
       return null;
     }
 
     const metadata: Partial<ParsedMetadata> = {};
+    if (broadcasterDate) {
+      metadata.perf_date = broadcasterDate;
+    }
 
     // Last segment is the event/show; drop trailing parentheticals like "(ENG/JPN)".
     const eventRaw = this.cleanEvent(segments[segments.length - 1].replace(/\([^)]*\)/g, ''));
@@ -175,9 +242,26 @@ export class RegexModule implements ParserModule {
       metadata.song_title = songs[songs.length - 1];
     }
 
-    // First segment is the credit "group artist [with guest]"; the guest is dropped because
-    // the data model only carries a single artist (tracked in the backlog).
-    const credit = segments[0].match(
+    // First segment is the credit. It is either a plain "group artist [with guest]" or carries
+    // the song + camera after a dash: "GROUP ARTIST (한글 alias) – SONG FanCam".
+    let creditPart = segments[0];
+    const dashSong = creditPart.match(/\s[–—-]\s+(.+)$/);
+    if (dashSong) {
+      const songRaw = this.compact(dashSong[1].replace(/\([^)]*\)/g, ' '))
+        .replace(
+          /(?:\s+(?:fan\s?cam|face\s?cam|full\s?cam|multi\s?cam|[48]k|직캠|페이스캠|얼빡직캠|풀캠))+\s*$/i,
+          '',
+        )
+        .trim();
+      if (songRaw && !metadata.song_title) {
+        metadata.song_title = songRaw;
+        metadata.song_titles = [songRaw];
+      }
+      creditPart = this.compact(creditPart.slice(0, dashSong.index ?? 0));
+    }
+    // Drop a "(한글 alias)" parenthetical so the leading English credit is left to match.
+    creditPart = this.compact(creditPart.replace(/\([^)]*\)/g, ' '));
+    const credit = creditPart.match(
       /^([가-힣A-Za-z0-9_&.-]+)\s+([가-힣A-Za-z0-9'.-]+)(?:\s+with\s+.+)?$/i,
     );
     if (credit && !this.looksLikeDateToken(credit[1])) {
@@ -194,6 +278,8 @@ export class RegexModule implements ParserModule {
       // delimiter, so apostrophes *inside* the title (e.g. `What's`, `Eye-Poppin')`)
       // no longer truncate it. Falls back to the simple pattern below when needed.
       /(?<=^|[\s\[\]("])'(.+?)'(?=$|[\s|\]@])/,
+      // Mismatched straight/curly quotes around the title, e.g. `'GingaMingaYo’`.
+      /(?<=^|[\s\[\]("])['‘](.+?)['’](?=$|[\s|\]@()])/,
       /'([^']+)'/,
       /"([^"]+)"/,
       /‘([^’]+)’/,
@@ -211,10 +297,18 @@ export class RegexModule implements ParserModule {
 
     const dashed = title.match(/^\s*([^|\-]+?)\s*-\s*([^|]+?)\s*\|/);
     if (dashed) {
-      const left = this.compact(dashed[1]);
+      // Strip a leading "[..]" tag (often Korean, e.g. "[주간아 직캠 4K]") before deciding which
+      // side is the credit — otherwise Korean inside the tag fails the ASCII credit test and the
+      // credit ("group artist") is mistaken for the song.
+      const left = this.compact(dashed[1].replace(/^\s*\[[^\]]*\]\s*/, ''));
       const right = this.compact(dashed[2]);
       const leftUpper = left.toUpperCase();
-      return /^[A-Z0-9\s&'.-]+$/.test(leftUpper) ? right : left;
+      const song = /^[A-Z0-9\s&'.-]+$/.test(leftUpper) ? right : left;
+      // Drop a trailing "(한글 alias)" parenthetical and camera markers
+      // ("EUNOIA (빌리 문수아 - 유노이아)" → "EUNOIA"), matching parseSegmentedTitle's cleanup.
+      return (
+        this.stripTrailingCameraMarkers(this.compact(song.replace(/\([^)]*\)/g, ' '))) || undefined
+      );
     }
 
     const bareSong = this.extractBareSongBeforeEvent(title);
@@ -333,6 +427,37 @@ export class RegexModule implements ParserModule {
 
   private extractKoreanPrefix(title: string, songTitle?: string): Partial<ParsedMetadata> {
     const source = songTitle ? title.split(songTitle)[0] : title;
+
+    // "MEOVV GAWON - HANDS UP (미야오 가원 - 핸즈 업)" — an English "group artist - song" credit
+    // mirrored by a Korean parenthetical. Take the English side: left of the dash is
+    // "<group> <member>", right of the dash (before the Korean paren) is the song.
+    const engThenKoreanMirror = source.match(
+      /(?:^|\]\s*)([A-Za-z][A-Za-z0-9_&.' ]*?)\s+[-–—]\s+([A-Za-z0-9_&.' ]+?)\s*\([가-힣]/,
+    );
+    if (engThenKoreanMirror) {
+      const tokens = this.compact(engThenKoreanMirror[1]).split(/\s+/);
+      if (tokens.length >= 2) {
+        return {
+          group_name: tokens.slice(0, -1).join(' '),
+          artist_name: tokens[tokens.length - 1],
+          song_title: this.compact(engThenKoreanMirror[2]),
+        };
+      }
+    }
+
+    // "MEOVV(미야오) GAWON" — the group carries its own Korean alias in parens, followed by
+    // the member. (The song is already stripped from `source`, so the trailing word is the
+    // artist, not a song word.)
+    const groupKoreanParenArtist = source.match(
+      /(?:^|[\]\s])([A-Za-z0-9_&.-]+)\([가-힣]+\)\s+([A-Za-z][A-Za-z0-9'.-]*)/,
+    );
+    if (groupKoreanParenArtist) {
+      return {
+        group_name: this.compact(groupKoreanParenArtist[1]),
+        artist_name: this.compact(groupKoreanParenArtist[2]),
+      };
+    }
+
     const englishWithKoreanParen = source.match(
       /(?:^|\]\s*)([A-Za-z0-9_&.-]+)\s+([A-Za-z][A-Za-z0-9'.-]*)\s*\([가-힣]+\)/,
     );

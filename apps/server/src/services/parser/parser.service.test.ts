@@ -79,6 +79,50 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     );
   });
 
+  it('resolves the Korean show name 음악중심 to the "Show! Music Core" event via the seeded alias', async () => {
+    const title =
+      '[#음중직캠] MEOVV GAWON (미야오 가원) – HANDS UP FanCam | 쇼! 음악중심 | MBC250503';
+    const result = await parseTitle(title);
+
+    expect(result.metadata.event).toBe('@Show! Music Core');
+    expect(result.metadata.song_title).toBe('HANDS UP');
+    expect(result.metadata.perf_date).toBe('250503');
+  });
+
+  it('resolves a spaceless "@SBSInkigayo_<date>" event to @SBS INKIGAYO with the date stripped', async () => {
+    const title =
+      "[안방1열 직캠4K] 빌리 문수아 'GingaMingaYo(the strange world)' (Billlie Moon Sua FanCam)│@SBSInkigayo_20220313";
+    const result = await parseTitle(title);
+
+    expect(result.metadata.event).toBe('@SBS INKIGAYO');
+    // The dictionary canonicalizes the song (the "(the strange world)" suffix is dropped).
+    expect(result.metadata.song_title).toBe('GingaMingaYo');
+    expect(result.metadata.perf_date).toBe('220313');
+  });
+
+  it('keeps the show as the event when a trailing "EP.<n>" segment is present', async () => {
+    const title =
+      '[쇼챔직캠 4K] Billlie MOON SUA - snowy night (빌리 문수아 - 스노이 나이트) | Show Champion | EP.420';
+    const result = await parseTitle(title);
+
+    // The episode segment ("EP.420") is dropped, so the show is the event and the song comes
+    // from the credit (not the show name).
+    expect(result.metadata.event).toBe('@SHOW CHAMPION');
+    expect(result.metadata.song_title).toBe('snowy night');
+    expect(result.metadata.group_name).toBe('Billlie');
+  });
+
+  it('resolves a "broadcaster+date+방송" segment: show → event, credit song wins', async () => {
+    const title =
+      '[예능연구소] Billlie MOONSUA - RING ma Bell(빌리 문수아 - 링 마 벨) FanCam | Show! MusicCore | MBC220903방송';
+    const result = await parseTitle(title);
+
+    expect(result.metadata.event).toBe('@Show! Music Core');
+    expect(result.metadata.song_title).toBe('RING ma Bell');
+    expect(result.metadata.perf_date).toBe('220903');
+    expect(result.metadata.group_name).toBe('Billlie');
+  });
+
   it('case 7: BABYMONSTER AHYEON FaceCam — explicit group credit wins over membership', async () => {
     const title =
       "[페이스캠4K] 베이비몬스터 아현 'SHEESH' (BABYMONSTER AHYEON FaceCam) @SBS Inkigayo 240407";

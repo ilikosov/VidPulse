@@ -51,6 +51,26 @@ router.post(
   }),
 );
 
+router.post(
+  '/:id/load-more',
+  asyncHandler(async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) throw AppError.badRequest('Invalid playlist id');
+
+    const countFromQuery = Number(req.query.count);
+    const countFromBody = Number(req.body?.count);
+    const count =
+      Number.isFinite(countFromQuery) && countFromQuery > 0
+        ? countFromQuery
+        : Number.isFinite(countFromBody) && countFromBody > 0
+          ? countFromBody
+          : 50;
+
+    const result = await playlistService.loadMoreVideos(id, count);
+    res.json(result);
+  }),
+);
+
 router.delete(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {

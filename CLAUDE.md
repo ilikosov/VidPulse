@@ -22,7 +22,8 @@ lets you review/correct it, and organizes everything against a curated dictionar
 - **Tooling:** Prettier, Husky + lint-staged, ts-node / tsx, nodemon.
 - **Monorepo:** npm workspaces — `apps/server` (backend), `apps/web` (frontend), `packages/shared`
   (shared types), `packages/db` (`@vidpulse/db`: knex connection, knexfile, migrations, seeds,
-  repositories, entity types). See [ADR 0003](docs/adr/0003-monorepo.md).
+  repositories, entity types), `packages/kpop-sources` (`@vidpulse/kpop-sources`: parse Wikidata into
+  a media-library snapshot). See [ADR 0003](docs/adr/0003-monorepo.md), [ADR 0004](docs/adr/0004-kpop-data-sources.md).
 
 ## Repository layout
 
@@ -42,11 +43,13 @@ lets you review/correct it, and organizes everything against a curated dictionar
 │   └── web/                  # React frontend (Vite, Ant Design)
 ├── packages/
 │   ├── shared/               # Shared API contracts (@vidpulse/shared)
-│   └── db/                   # @vidpulse/db: connection, knexfile, migrations/, seeds/,
-│       │                     #   repositories, entity types (compiled to dist/)
-│       ├── src/              # connection.ts, knexfile.ts, repositories.ts, types.ts, index.ts
-│       ├── migrations/       # Knex migrations (schema source of truth)
-│       └── seeds/            # Knex seeds (+ examples/media-library.seed.json)
+│   ├── db/                   # @vidpulse/db: connection, knexfile, migrations/, seeds/,
+│   │   │                     #   repositories, entity types (compiled to dist/)
+│   │   ├── src/              # connection.ts, knexfile.ts, repositories.ts, types.ts, index.ts
+│   │   ├── migrations/       # Knex migrations (schema source of truth)
+│   │   └── seeds/            # Knex seeds (+ examples/media-library.seed.json)
+│   └── kpop-sources/         # @vidpulse/kpop-sources: parse Wikidata → media-library snapshot
+│       └── src/              # wikidata/ (queries, source, normalize), buildLibrary.ts (compiled to dist/)
 ├── docs/                     # ADRs, reviews, reference docs, task files
 └── tsconfig.base.json        # Shared TS base config
 ```
@@ -112,6 +115,9 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
 - **DB quirks:** FK enforcement currently relies on the `better-sqlite3` default; `test` and `development`
   share `dev.sqlite3` ([TASK-5](docs/tasks/task-05-knexfile-hardening.md)).
 - The active parser is `apps/server/src/services/parser/`.
+- **K-pop dictionary refresh** (`@vidpulse/kpop-sources` → Wikidata) is **opt-in**
+  (`KPOP_DICT_REFRESH_ENABLED=true`) and needs `query.wikidata.org` in the environment's egress
+  allowlist + a descriptive `KPOP_SOURCES_USER_AGENT`. Manual trigger: `POST /api/kpop-dictionary/refresh`.
 - Secrets live in `.env` (never commit). `YOUTUBE_API_KEY` is required for real syncs.
 
 ## Working as a pet project

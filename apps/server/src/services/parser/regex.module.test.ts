@@ -18,6 +18,112 @@ describe('RegexModule', () => {
     expect(result.metadata.is_fancam).toBe(true);
   });
 
+  it('extracts group/artist from "GROUP(한글) ARTIST \'song\'" credit', async () => {
+    const module = new RegexModule();
+    const title = "(4K) [NPOP CAM] MEOVV(미야오) GAWON 'TOXIC' Ι NPOP LIMITED EDITION - SIDE A";
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.group_name).toBe('MEOVV');
+    expect(result.metadata.artist_name).toBe('GAWON');
+    expect(result.metadata.song_title).toBe('TOXIC');
+  });
+
+  it('extracts group/artist/song from "GROUP ARTIST - SONG (한글 mirror)" credit', async () => {
+    const module = new RegexModule();
+    const title =
+      '[주간아 직캠] MEOVV GAWON - HANDS UP (미야오 가원 - 핸즈 업) l #주간아이돌 l EP.696';
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.group_name).toBe('MEOVV');
+    expect(result.metadata.artist_name).toBe('GAWON');
+    expect(result.metadata.song_title).toBe('HANDS UP');
+  });
+
+  it('extracts the song from the right of the dash when only an "EP.<n>" segment trails (no show)', async () => {
+    const module = new RegexModule();
+    // No separate show segment — just "l EP.606" — so parseSegmentedTitle bails and the dashed
+    // extractor must not let the leading "[주간아 직캠 4K]" tag push it to the left (credit) side.
+    const title = '[주간아 직캠 4K] Billlie MOON SUA - EUNOIA (빌리 문수아 - 유노이아) l EP.606';
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('EUNOIA');
+  });
+
+  it('extracts a song wrapped in mismatched straight/curly quotes', async () => {
+    const module = new RegexModule();
+    const title =
+      "[K-Fancam] 빌리 문수아 직캠 'GingaMingaYo’ (Billlie Moon Sua Fancam) l @MusicBank 220311";
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('GingaMingaYo');
+    expect(result.metadata.event).toBe('@MUSICBANK');
+    expect(result.metadata.perf_date).toBe('220311');
+  });
+
+  it('parses "credit (한글) – song cam | show | broadcasterYYMMDD" segmented titles', async () => {
+    const module = new RegexModule();
+    const title =
+      '[#음중직캠] MEOVV GAWON (미야오 가원) – HANDS UP FanCam | 쇼! 음악중심 | MBC250503';
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.group_name).toBe('MEOVV');
+    expect(result.metadata.artist_name).toBe('GAWON');
+    expect(result.metadata.song_title).toBe('HANDS UP');
+    expect(result.metadata.event).toBe('@음악중심'); // show segment, "쇼!" prefix stripped
+    expect(result.metadata.perf_date).toBe('250503'); // from the "MBC250503" segment
+  });
+
+  it('strips an 8-digit YYYYMMDD date from the event and reads it into perf_date', async () => {
+    const module = new RegexModule();
+    const title =
+      "[안방1열 직캠4K] 빌리 문수아 'GingaMingaYo(the strange world)' (Billlie Moon Sua FanCam)│@SBSInkigayo_20220313";
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('GingaMingaYo(the strange world)');
+    expect(result.metadata.event).toBe('@SBSINKIGAYO'); // date stripped (dictionary normalizes spacing)
+    expect(result.metadata.perf_date).toBe('220313');
+  });
+
+  it('drops a trailing "EP.<n>" segment so the show is the event, not the song', async () => {
+    const module = new RegexModule();
+    const title =
+      '[쇼챔직캠 4K] Billlie MOON SUA - snowy night (빌리 문수아 - 스노이 나이트) | Show Champion | EP.420';
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('snowy night');
+    expect(result.metadata.event).toBe('@SHOW CHAMPION');
+  });
+
+  it('reads the show as event when separated by a lowercase "l" with a glued episode', async () => {
+    const module = new RegexModule();
+    const title =
+      "[플리캠 4K 가로] Billlie MOON SUA 'RING X RING' (빌리 문수아 직캠) l Simply K-Pop Ep.495";
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('RING X RING');
+    expect(result.metadata.event).toBe('@SIMPLY K-POP');
+  });
+
+  it('drops a "broadcaster+date+방송" trailing segment (MBC220903방송)', async () => {
+    const module = new RegexModule();
+    const title =
+      '[예능연구소] Billlie MOONSUA - RING ma Bell(빌리 문수아 - 링 마 벨) FanCam | Show! MusicCore | MBC220903방송';
+
+    const result = await module.parse(title, {});
+
+    expect(result.metadata.song_title).toBe('RING ma Bell');
+    expect(result.metadata.event).toBe('@SHOW! MUSICCORE');
+    expect(result.metadata.perf_date).toBe('220903');
+  });
+
   it.each([
     '250829-31 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM MULTI CAM)',
     '250829 에스파 카리나 GOOD STUFF @ aespa LIVE TOUR -SYNK : aeXIS LINE- in SEOUL (4K FANCAM)',
