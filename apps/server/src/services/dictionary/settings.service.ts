@@ -9,6 +9,11 @@ export class SettingsService {
     }, {});
   }
 
+  async getSetting(key: string): Promise<string | undefined> {
+    const row = await knex('settings').select('value').where({ key }).first();
+    return row?.value;
+  }
+
   async upsertSetting(key: string, value: string) {
     await knex('settings').insert({ key, value }).onConflict('key').merge({ value });
   }

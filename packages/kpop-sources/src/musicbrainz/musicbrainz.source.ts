@@ -40,11 +40,17 @@ export class MusicBrainzSource {
     // connection (e.g. UND_ERR_CONNECT_TIMEOUT through the egress proxy) can recover.
     const cooldownMs = Math.max(rateLimitMs * 3, 3000);
     const candidates = groups.filter((g) => g.mbid);
-    const targets = mb.limit && mb.limit > 0 ? candidates.slice(0, mb.limit) : candidates;
+    const total = candidates.length;
+    // Process a bounded window [offset, offset+limit) so the catalogue can be enriched "по частям"
+    // across several refreshes; the server persists a cursor and advances it via onProgress.
+    const offset = Math.min(Math.max(mb.offset ?? 0, 0), total);
+    const limit = mb.limit && mb.limit > 0 ? mb.limit : total;
+    const targets = candidates.slice(offset, offset + limit);
+    const processedTo = offset + targets.length;
 
     log?.info(
-      `MusicBrainz: enriching ${targets.length}/${groups.length} group(s) with track-lists ` +
-        `(rate=${rateLimitMs}ms)`,
+      `MusicBrainz: enriching ${targets.length} group(s) [${offset}..${processedTo}) of ${total} ` +
+        `with track-lists (rate=${rateLimitMs}ms)`,
     );
     const startedAt = Date.now();
     let addedTotal = 0;
@@ -80,6 +86,9 @@ export class MusicBrainzSource {
       `MusicBrainz: added ${addedTotal} song(s) across ${targets.length - failed} group(s), ` +
         `${failed} failed in ${Date.now() - startedAt}ms`,
     );
+
+    // Report the processed window so the caller can persist a resume cursor.
+    mb.onProgress?.({ total, processedTo });
   }
 }
 

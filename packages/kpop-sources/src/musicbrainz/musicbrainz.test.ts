@@ -147,6 +147,51 @@ describe('MusicBrainzSource.enrich', () => {
     expect(groups[0].songs?.map((s) => s.title)).toEqual(['Born to Be', 'Untouchable']);
   });
 
+  it('enriches only the [offset, offset+limit) window and reports progress', async () => {
+    const groups: EnrichableGroup[] = Array.from({ length: 5 }, (_, i) => ({
+      name: `G${i}`,
+      mbid: `mbid-${i}`,
+    }));
+    const fetchImpl: FetchLike = vi.fn(async () =>
+      jsonResponse({ 'recording-count': 1, recordings: [{ title: 'X' }] }),
+    );
+    const onProgress = vi.fn();
+
+    await musicBrainzSource.enrich(
+      groups,
+      baseOpts({
+        fetchImpl,
+        musicBrainz: { enabled: true, rateLimitMs: 0, offset: 2, limit: 2, onProgress },
+      }),
+    );
+
+    // Only the windowed groups (indices 2 and 3) were enriched.
+    expect(groups.map((g) => g.songs?.length ?? 0)).toEqual([0, 0, 1, 1, 0]);
+    expect((fetchImpl as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2);
+    expect(onProgress).toHaveBeenCalledWith({ total: 5, processedTo: 4 });
+  });
+
+  it('processes nothing once the offset reaches the end and reports the wrap point', async () => {
+    const groups: EnrichableGroup[] = Array.from({ length: 5 }, (_, i) => ({
+      name: `G${i}`,
+      mbid: `mbid-${i}`,
+    }));
+    const fetchImpl = vi.fn();
+    const onProgress = vi.fn();
+
+    await musicBrainzSource.enrich(
+      groups,
+      baseOpts({
+        fetchImpl: fetchImpl as unknown as FetchLike,
+        musicBrainz: { enabled: true, rateLimitMs: 0, offset: 5, limit: 2, onProgress },
+      }),
+    );
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    // processedTo === total signals the caller to wrap the cursor back to 0.
+    expect(onProgress).toHaveBeenCalledWith({ total: 5, processedTo: 5 });
+  });
+
   it('does nothing when disabled or when a group has no mbid', async () => {
     const fetchImpl = vi.fn();
     const groups: EnrichableGroup[] = [{ name: 'NoMbid' }];

@@ -107,10 +107,25 @@ export interface MusicBrainzOptions {
   userAgent?: string;
   /** Minimum ms between MusicBrainz requests (default 1000 → ≤1 req/s). */
   rateLimitMs?: number;
-  /** Cap the number of groups enriched (smoke runs/tests). */
+  /**
+   * Chunk size: how many candidate groups (those with an mbid) to enrich in this run.
+   * `0`/unset enriches all of them at once. Combine with `offset` to process the catalogue
+   * "по частям" across several refreshes, bounding the connection load per run.
+   */
   limit?: number;
+  /**
+   * Index into the (stable, mbid-ordered) candidate list to start this chunk from. The server
+   * persists a cursor and advances it by the processed window each refresh, wrapping at the end,
+   * so repeated refreshes cover everyone and connect-timeout stragglers are retried next cycle.
+   */
+  offset?: number;
   /** Stop paginating an artist after this many recordings (bounds requests for prolific artists). */
   maxRecordings?: number;
+  /**
+   * Reports the processed window so the caller can persist a resume cursor. `total` is the number
+   * of candidate (mbid-bearing) groups; `processedTo` is the exclusive end index of this chunk.
+   */
+  onProgress?: (info: { total: number; processedTo: number }) => void;
 }
 
 export interface SourceOptions {

@@ -9,6 +9,8 @@ import { AppError } from '../middleware/AppError';
 
 export const LAST_REFRESHED_SETTING = 'kpop_dict_last_refreshed';
 export const LAST_SUMMARY_SETTING = 'kpop_dict_last_summary';
+/** Resume cursor for chunked MusicBrainz enrichment (index into the mbid-bearing group list). */
+export const MB_CURSOR_SETTING = 'kpop_dict_mb_cursor';
 
 export class KpopDictionaryService {
   /**
@@ -23,6 +25,14 @@ export class KpopDictionaryService {
     }
 
     const startedAt = Date.now();
+
+    // Chunked MusicBrainz enrichment "по частям": start this run from the persisted cursor and
+    // capture the processed window so we can advance (and wrap) it after a successful import.
+    // `replace` re-imports the whole catalogue, so restart enrichment from the top.
+    const mbCursor =
+      mode === 'replace' ? 0 : Number(await settingsService.getSetting(MB_CURSOR_SETTING)) || 0;
+    let mbProgress: { total: number; processedTo: number } | undefined;
+
     const snapshot = await buildKpopLibrary({
       userAgent: config.kpopDictionary.userAgent,
       limit: config.kpopDictionary.limit,
@@ -34,7 +44,11 @@ export class KpopDictionaryService {
             userAgent: config.musicBrainz.userAgent,
             rateLimitMs: config.musicBrainz.rateLimitMs,
             limit: config.musicBrainz.limit,
+            offset: mbCursor,
             maxRecordings: config.musicBrainz.maxRecordings,
+            onProgress: (info) => {
+              mbProgress = info;
+            },
           }
         : undefined,
     });
@@ -59,6 +73,13 @@ export class KpopDictionaryService {
     );
     await settingsService.upsertSetting(LAST_REFRESHED_SETTING, new Date().toISOString());
     await settingsService.upsertSetting(LAST_SUMMARY_SETTING, JSON.stringify(summary));
+
+    // Advance the chunked-enrichment cursor; wrap to the start once we've covered every group so
+    // the next refresh begins a fresh cycle (and re-attempts any connect-timeout stragglers).
+    if (mbProgress) {
+      const next = mbProgress.processedTo >= mbProgress.total ? 0 : mbProgress.processedTo;
+      await settingsService.upsertSetting(MB_CURSOR_SETTING, String(next));
+    }
 
     return summary;
   }
