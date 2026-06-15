@@ -2,7 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { fetchRecordingsByArtist } from './client';
 import { normalizeRecordings } from './normalize';
 import { musicBrainzSource } from './musicbrainz.source';
+import { fetchJson } from '../http';
 import type { EnrichableGroup, FetchLike, SourceOptions } from '../types';
+
+function errorResponse(status: number, body: string) {
+  return {
+    ok: false,
+    status,
+    statusText: 'Service Unavailable',
+    text: async () => body,
+    json: async () => ({}),
+  };
+}
 
 function jsonResponse(body: unknown) {
   return {
@@ -99,5 +110,45 @@ describe('MusicBrainzSource.enrich', () => {
       }),
     );
     expect(fetchImpl).not.toHaveBeenCalled(); // skipped: no mbid bridge
+  });
+
+  it('logs a readable reason (not "{}") and counts failures', async () => {
+    vi.useFakeTimers();
+    try {
+      const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+      const fetchImpl: FetchLike = vi.fn(async () => errorResponse(503, 'rate limited'));
+      const groups: EnrichableGroup[] = [{ name: 'ITZY', mbid: 'itzy-mbid' }];
+
+      const promise = musicBrainzSource.enrich(
+        groups,
+        baseOpts({ fetchImpl, logger, musicBrainz: { enabled: true, rateLimitMs: 0 } }),
+      );
+      await vi.runAllTimersAsync(); // flush retry backoff sleeps
+      await promise;
+
+      const warned = logger.warn.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(warned).toContain('ITZY');
+      expect(warned).toContain('HTTP 503');
+      expect(warned).not.toContain('{}');
+      const info = logger.info.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(info).toContain('1 failed');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('fetchJson error reporting', () => {
+  it('includes the response body in the thrown error on 5xx', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl: FetchLike = vi.fn(async () => errorResponse(503, 'too many requests'));
+      const promise = fetchJson('http://example.test', { userAgent: 'ua', fetchImpl, retries: 1 });
+      const assertion = expect(promise).rejects.toThrow('too many requests');
+      await vi.runAllTimersAsync();
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

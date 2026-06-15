@@ -45,6 +45,7 @@ export class MusicBrainzSource {
     );
     const startedAt = Date.now();
     let addedTotal = 0;
+    let failed = 0;
 
     for (let i = 0; i < targets.length; i += 1) {
       const group = targets[i];
@@ -58,16 +59,19 @@ export class MusicBrainzSource {
         });
         addedTotal += mergeSongs(group, normalizeRecordings(recordings));
       } catch (err) {
-        // One group's failure shouldn't abort the whole enrichment.
-        log?.warn(`MusicBrainz: failed to enrich "${group.name}" (${group.mbid}):`, err);
+        // One group's failure shouldn't abort the whole enrichment. Log the message
+        // (not the Error object — the server logger JSON.stringifies it to "{}").
+        failed += 1;
+        const reason = err instanceof Error ? err.message : String(err);
+        log?.warn(`MusicBrainz: failed to enrich "${group.name}" (${group.mbid}): ${reason}`);
       }
       // Throttle between groups (skip after the last one).
       if (i < targets.length - 1) await sleep(rateLimitMs);
     }
 
     log?.info(
-      `MusicBrainz: added ${addedTotal} song(s) across ${targets.length} group(s) in ` +
-        `${Date.now() - startedAt}ms`,
+      `MusicBrainz: added ${addedTotal} song(s) across ${targets.length - failed} group(s), ` +
+        `${failed} failed in ${Date.now() - startedAt}ms`,
     );
   }
 }

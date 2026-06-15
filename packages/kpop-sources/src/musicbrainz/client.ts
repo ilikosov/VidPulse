@@ -40,6 +40,9 @@ export async function fetchRecordingsByArtist(
     fetchImpl: options.fetchImpl,
     signal: options.signal,
     timeoutMs: options.timeoutMs,
+    // MusicBrainz is aggressively rate-limited (HTTP 503); more retries with backoff
+    // (1s/2s/4s/8s/16s) ride out bursts over a long enrichment run.
+    retries: 5,
   };
   const rateLimitMs = options.rateLimitMs ?? 1000;
 

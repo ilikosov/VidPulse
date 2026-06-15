@@ -48,7 +48,12 @@ export async function fetchJson<T = unknown>(url: string, options: FetchJsonOpti
       }
       // Retry transient server-side conditions; fail fast on other 4xx.
       if (res.status === 429 || res.status >= 500) {
-        lastError = new Error(`HTTP ${res.status} ${res.statusText}`);
+        // Capture the body so the surfaced error is actionable (e.g. MusicBrainz's
+        // rate-limit message) instead of a bare status line.
+        const body = await res.text().catch(() => '');
+        lastError = new Error(
+          `HTTP ${res.status} ${res.statusText}${body ? `: ${body.slice(0, 200)}` : ''}`,
+        );
       } else {
         const body = await res.text().catch(() => '');
         throw new Error(
