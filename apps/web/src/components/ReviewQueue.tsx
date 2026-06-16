@@ -15,6 +15,7 @@ import {
   message,
 } from 'antd';
 import { useEffect, useState } from 'react';
+import { useSearchParams, useLocation, Link } from 'react-router-dom';
 import {
   getVideos,
   ignoreVideo,
@@ -65,12 +66,20 @@ function ReviewQueue() {
   const [videos, setVideos] = useState<ReviewVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const videoListId = searchParams.get('video_list_id') ?? '';
+  const listName = (location.state as { listName?: string } | null)?.listName;
 
   const fetchVideos = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getVideos({ status: 'needs_review', limit: 50 });
+      const response = await getVideos({
+        status: 'needs_review',
+        limit: 50,
+        video_list_id: videoListId ? Number(videoListId) : undefined,
+      });
       setVideos(
         response.videos.map((video) => ({
           ...video,
@@ -98,7 +107,7 @@ function ReviewQueue() {
 
   useEffect(() => {
     void fetchVideos();
-  }, []);
+  }, [videoListId]);
 
   const handleFieldChange = (id: number, key: keyof ReviewVideo['editForm'], value: string) => {
     setVideos((prev) =>
@@ -240,6 +249,14 @@ function ReviewQueue() {
           status.
         </Typography.Text>
       </div>
+
+      {videoListId ? (
+        <Space>
+          <Typography.Text>Список:</Typography.Text>
+          <Tag color="blue">{listName ?? `#${videoListId}`}</Tag>
+          <Link to="/review">Показать все</Link>
+        </Space>
+      ) : null}
 
       {error ? <Alert type="error" message={error} /> : null}
 
