@@ -192,6 +192,7 @@ export interface IVideoFilters {
   includeIgnored?: boolean;
   channelId?: string;
   playlistId?: string;
+  videoListId?: string;
 }
 
 export interface IVideoRepository {

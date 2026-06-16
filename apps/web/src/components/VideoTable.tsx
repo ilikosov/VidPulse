@@ -39,6 +39,7 @@ import { formatDuration } from '../utils/formatDuration';
 import { SongLinks } from './SongLinks';
 import AddToListModal from './AddToListModal';
 import { useVideoDrawer } from './VideoDrawerProvider';
+import { getVideoLists, type VideoListSummary } from '../api/videoListsApi';
 
 const statusOptions = [
   { value: '', label: 'All' },
@@ -76,6 +77,8 @@ function VideoTable() {
     usePaginationSearchParams(20);
   const statusFilter = searchParams.get('status') ?? '';
   const showIgnored = searchParams.get('includeIgnored') === 'true';
+  const videoListFilter = searchParams.get('video_list_id') ?? '';
+  const [videoLists, setVideoLists] = useState<VideoListSummary[]>([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
   const [batchTagModal, setBatchTagModal] = useState<{ open: boolean; mode: 'add' | 'remove' }>({
     open: false,
@@ -95,6 +98,7 @@ function VideoTable() {
     nextLimit: number,
     status: string,
     includeIgnored = false,
+    videoListId = '',
   ) => {
     setLoading(true);
     setError(null);
@@ -104,6 +108,7 @@ function VideoTable() {
         page: nextPage,
         limit: nextLimit,
         includeIgnored,
+        video_list_id: videoListId ? Number(videoListId) : undefined,
       });
       setVideos(response.videos);
       const tagSet = new Set<string>();
@@ -119,8 +124,14 @@ function VideoTable() {
   };
 
   useEffect(() => {
-    void fetchVideos(page, limit, statusFilter, showIgnored);
-  }, [page, limit, statusFilter, showIgnored]);
+    void fetchVideos(page, limit, statusFilter, showIgnored, videoListFilter);
+  }, [page, limit, statusFilter, showIgnored, videoListFilter]);
+
+  useEffect(() => {
+    getVideoLists()
+      .then(setVideoLists)
+      .catch(() => setVideoLists([]));
+  }, []);
 
   const columns: ColumnsType<Video> = [
     {
@@ -402,6 +413,22 @@ function VideoTable() {
             const params = new URLSearchParams(searchParams);
             if (value) params.set('status', value);
             else params.delete('status');
+            params.delete('page');
+            setSearchParams(params);
+          }}
+        />
+        <Typography.Text strong>List:</Typography.Text>
+        <Select
+          value={videoListFilter}
+          style={{ width: 220 }}
+          options={[
+            { value: '', label: 'All lists' },
+            ...videoLists.map((list) => ({ value: String(list.id), label: list.name })),
+          ]}
+          onChange={(value) => {
+            const params = new URLSearchParams(searchParams);
+            if (value) params.set('video_list_id', value);
+            else params.delete('video_list_id');
             params.delete('page');
             setSearchParams(params);
           }}

@@ -58,6 +58,7 @@ export async function getVideos(filters?: {
   includeIgnored?: boolean;
   channel_id?: number;
   playlist_id?: number;
+  video_list_id?: number;
 }): Promise<VideosResponse> {
   const params = new URLSearchParams();
   if (filters?.status) params.set('status', filters.status);
@@ -66,6 +67,7 @@ export async function getVideos(filters?: {
   if (filters?.includeIgnored) params.set('includeIgnored', 'true');
   if (filters?.channel_id) params.set('channel_id', String(filters.channel_id));
   if (filters?.playlist_id) params.set('playlist_id', String(filters.playlist_id));
+  if (filters?.video_list_id) params.set('video_list_id', String(filters.video_list_id));
 
   const queryString = params.toString();
   return fetchApi<VideosResponse>(`/videos${queryString ? '?' + queryString : ''}`);
