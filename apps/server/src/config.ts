@@ -63,12 +63,13 @@ export const config = {
     /** Minimum ms between MusicBrainz requests (≤1 req/s per their ToS). */
     rateLimitMs: num(process.env.MUSICBRAINZ_RATE_LIMIT_MS, 1000),
     /**
-     * Chunk size: groups enriched per refresh. The server persists a cursor and advances it each
-     * run, so the catalogue is enriched "по частям" across several refreshes — bounding the
-     * connection load per run and letting connect-timeout stragglers retry on the next cycle.
-     * Set to `0` to enrich everyone in a single run (old behaviour). Default 150.
+     * Chunk size: groups enriched per refresh. Each run picks the stalest groups first (by
+     * `dictionary_groups.songs_enriched_at`; never-enriched first) and stamps them once enriched,
+     * so the catalogue fills in "по частям" across several refreshes — bounding the connection load
+     * per run and letting connect-timeout stragglers (left un-stamped) retry first on the next run.
+     * Set to `0` to enrich everyone in a single run (old behaviour). Default 50.
      */
-    limit: num(process.env.MUSICBRAINZ_LIMIT, 150),
+    limit: num(process.env.MUSICBRAINZ_LIMIT, 50),
     /** Stop paginating an artist after this many recordings (bounds requests for prolific artists). */
     maxRecordings: num(process.env.MUSICBRAINZ_MAX_RECORDINGS, 1000),
   },
