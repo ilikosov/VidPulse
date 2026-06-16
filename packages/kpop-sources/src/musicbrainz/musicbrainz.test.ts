@@ -147,7 +147,7 @@ describe('MusicBrainzSource.enrich', () => {
     expect(groups[0].songs?.map((s) => s.title)).toEqual(['Born to Be', 'Untouchable']);
   });
 
-  it('enriches only the [offset, offset+limit) window and reports progress', async () => {
+  it('enriches the stalest groups first (by priority), only a chunk, and reports their names', async () => {
     const groups: EnrichableGroup[] = Array.from({ length: 5 }, (_, i) => ({
       name: `G${i}`,
       mbid: `mbid-${i}`,
@@ -156,40 +156,64 @@ describe('MusicBrainzSource.enrich', () => {
       jsonResponse({ 'recording-count': 1, recordings: [{ title: 'X' }] }),
     );
     const onProgress = vi.fn();
+    // Ages (lower = staler): G3 and G1 are the two oldest, so they go first.
+    const age: Record<string, number> = { G0: 50, G1: 10, G2: 40, G3: 0, G4: 30 };
 
     await musicBrainzSource.enrich(
       groups,
       baseOpts({
         fetchImpl,
-        musicBrainz: { enabled: true, rateLimitMs: 0, offset: 2, limit: 2, onProgress },
+        musicBrainz: {
+          enabled: true,
+          rateLimitMs: 0,
+          limit: 2,
+          priority: (g) => age[g.name],
+          onProgress,
+        },
       }),
     );
 
-    // Only the windowed groups (indices 2 and 3) were enriched.
-    expect(groups.map((g) => g.songs?.length ?? 0)).toEqual([0, 0, 1, 1, 0]);
+    // Only the two stalest groups (G3, G1) were enriched.
+    expect(groups.map((g) => g.songs?.length ?? 0)).toEqual([0, 1, 0, 1, 0]);
     expect((fetchImpl as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2);
-    expect(onProgress).toHaveBeenCalledWith({ total: 5, processedTo: 4 });
+    expect(onProgress).toHaveBeenCalledWith({ total: 5, processed: ['G3', 'G1'] });
   });
 
-  it('processes nothing once the offset reaches the end and reports the wrap point', async () => {
-    const groups: EnrichableGroup[] = Array.from({ length: 5 }, (_, i) => ({
-      name: `G${i}`,
-      mbid: `mbid-${i}`,
-    }));
-    const fetchImpl = vi.fn();
-    const onProgress = vi.fn();
+  it('omits a failed group from processed so it stays stale for next run', async () => {
+    vi.useFakeTimers();
+    try {
+      const groups: EnrichableGroup[] = [
+        { name: 'Bad', mbid: 'mbid-bad' },
+        { name: 'Good', mbid: 'mbid-good' },
+      ];
+      const fetchImpl: FetchLike = vi.fn(async (url: string) =>
+        url.includes('mbid-bad')
+          ? errorResponse(503, 'down')
+          : jsonResponse({ 'recording-count': 1, recordings: [{ title: 'X' }] }),
+      );
+      const onProgress = vi.fn();
 
-    await musicBrainzSource.enrich(
-      groups,
-      baseOpts({
-        fetchImpl: fetchImpl as unknown as FetchLike,
-        musicBrainz: { enabled: true, rateLimitMs: 0, offset: 5, limit: 2, onProgress },
-      }),
-    );
+      const promise = musicBrainzSource.enrich(
+        groups,
+        baseOpts({
+          fetchImpl,
+          // 'Bad' is staler, so it's attempted first and fails; 'Good' succeeds.
+          musicBrainz: {
+            enabled: true,
+            rateLimitMs: 0,
+            priority: (g) => (g.name === 'Bad' ? 0 : 1),
+            onProgress,
+          },
+        }),
+      );
+      await vi.runAllTimersAsync(); // flush retry backoff for the failing group
+      await promise;
 
-    expect(fetchImpl).not.toHaveBeenCalled();
-    // processedTo === total signals the caller to wrap the cursor back to 0.
-    expect(onProgress).toHaveBeenCalledWith({ total: 5, processedTo: 5 });
+      // Only the successful group is reported → the caller won't stamp 'Bad', keeping it first next run.
+      expect(onProgress).toHaveBeenCalledWith({ total: 2, processed: ['Good'] });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does nothing when disabled or when a group has no mbid', async () => {

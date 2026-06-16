@@ -109,23 +109,24 @@ export interface MusicBrainzOptions {
   rateLimitMs?: number;
   /**
    * Chunk size: how many candidate groups (those with an mbid) to enrich in this run.
-   * `0`/unset enriches all of them at once. Combine with `offset` to process the catalogue
+   * `0`/unset enriches all of them at once. Combine with `priority` to process the catalogue
    * "по частям" across several refreshes, bounding the connection load per run.
    */
   limit?: number;
   /**
-   * Index into the (stable, mbid-ordered) candidate list to start this chunk from. The server
-   * persists a cursor and advances it by the processed window each refresh, wrapping at the end,
-   * so repeated refreshes cover everyone and connect-timeout stragglers are retried next cycle.
+   * Ordering key for candidate groups — lower sorts earlier. The server keys this on each group's
+   * stored `songs_enriched_at` (never-enriched = 0 → first), so each chunk picks the stalest groups
+   * and connect-timeout stragglers (left un-stamped) come back to the front next run. Unset keeps
+   * the source order.
    */
-  offset?: number;
+  priority?: (group: EnrichableGroup) => number;
   /** Stop paginating an artist after this many recordings (bounds requests for prolific artists). */
   maxRecordings?: number;
   /**
-   * Reports the processed window so the caller can persist a resume cursor. `total` is the number
-   * of candidate (mbid-bearing) groups; `processedTo` is the exclusive end index of this chunk.
+   * Reports which groups were successfully enriched this run (by `group.name`) so the caller can
+   * stamp their `songs_enriched_at`. Failed groups are omitted, keeping them stale for next run.
    */
-  onProgress?: (info: { total: number; processedTo: number }) => void;
+  onProgress?: (info: { total: number; processed: string[] }) => void;
 }
 
 export interface SourceOptions {

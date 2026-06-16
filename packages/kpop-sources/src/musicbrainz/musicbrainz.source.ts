@@ -41,18 +41,21 @@ export class MusicBrainzSource {
     const cooldownMs = Math.max(rateLimitMs * 3, 3000);
     const candidates = groups.filter((g) => g.mbid);
     const total = candidates.length;
-    // Process a bounded window [offset, offset+limit) so the catalogue can be enriched "по частям"
-    // across several refreshes; the server persists a cursor and advances it via onProgress.
-    const offset = Math.min(Math.max(mb.offset ?? 0, 0), total);
+    // Enrich the stalest groups first (oldest/never `songs_enriched_at` via `priority`) and only a
+    // chunk per run, so the catalogue fills in "по частям" across refreshes — bounding the
+    // connection load per run and letting connect-timeout stragglers come back first next run.
+    const ordered = mb.priority
+      ? [...candidates].sort((a, b) => mb.priority!(a) - mb.priority!(b))
+      : candidates;
     const limit = mb.limit && mb.limit > 0 ? mb.limit : total;
-    const targets = candidates.slice(offset, offset + limit);
-    const processedTo = offset + targets.length;
+    const targets = ordered.slice(0, limit);
 
     log?.info(
-      `MusicBrainz: enriching ${targets.length} group(s) [${offset}..${processedTo}) of ${total} ` +
+      `MusicBrainz: enriching ${targets.length} of ${total} group(s) (oldest first) ` +
         `with track-lists (rate=${rateLimitMs}ms)`,
     );
     const startedAt = Date.now();
+    const processed: string[] = [];
     let addedTotal = 0;
     let failed = 0;
 
@@ -70,6 +73,8 @@ export class MusicBrainzSource {
           logger: log,
         });
         addedTotal += mergeSongs(group, normalizeRecordings(recordings));
+        // Only successful groups are reported; failures stay un-stamped (stale) for next run.
+        processed.push(group.name);
       } catch (err) {
         // One group's failure shouldn't abort the whole enrichment. Log the message
         // (not the Error object — the server logger JSON.stringifies it to "{}").
@@ -87,8 +92,8 @@ export class MusicBrainzSource {
         `${failed} failed in ${Date.now() - startedAt}ms`,
     );
 
-    // Report the processed window so the caller can persist a resume cursor.
-    mb.onProgress?.({ total, processedTo });
+    // Report which groups succeeded so the caller can stamp their `songs_enriched_at`.
+    mb.onProgress?.({ total, processed });
   }
 }
 
