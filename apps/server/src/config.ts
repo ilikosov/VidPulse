@@ -45,6 +45,33 @@ export const config = {
     limit: process.env.KPOP_DICT_LIMIT
       ? num(process.env.KPOP_DICT_LIMIT, 0) || undefined
       : undefined,
+    /** Per-request timeout for the Wikidata SPARQL queries (Wikidata's own limit is ~60s). */
+    timeoutMs: num(process.env.KPOP_DICT_TIMEOUT_MS, 60000),
+  },
+
+  /**
+   * Opt-in MusicBrainz song enrichment for the K-pop refresh. Wikidata only has title
+   * tracks/singles; MusicBrainz adds full track-lists (album tracks, B-sides). It is slow
+   * (≤1 req/s, minutes for the full set), so it is gated separately from the Wikidata refresh
+   * and needs `musicbrainz.org` in the egress allowlist + a descriptive User-Agent.
+   */
+  musicBrainz: {
+    enabled: bool(process.env.MUSICBRAINZ_REFRESH_ENABLED, false),
+    userAgent:
+      process.env.MUSICBRAINZ_USER_AGENT ??
+      'VidPulse-KpopDB/1.0 (+https://github.com/ilikosov/vidpulse)',
+    /** Minimum ms between MusicBrainz requests (≤1 req/s per their ToS). */
+    rateLimitMs: num(process.env.MUSICBRAINZ_RATE_LIMIT_MS, 1000),
+    /**
+     * Chunk size: groups enriched per refresh. Each run picks the stalest groups first (by
+     * `dictionary_groups.songs_enriched_at`; never-enriched first) and stamps them once enriched,
+     * so the catalogue fills in "по частям" across several refreshes — bounding the connection load
+     * per run and letting connect-timeout stragglers (left un-stamped) retry first on the next run.
+     * Set to `0` to enrich everyone in a single run (old behaviour). Default 50.
+     */
+    limit: num(process.env.MUSICBRAINZ_LIMIT, 50),
+    /** Stop paginating an artist after this many recordings (bounds requests for prolific artists). */
+    maxRecordings: num(process.env.MUSICBRAINZ_MAX_RECORDINGS, 1000),
   },
 
   ai: {

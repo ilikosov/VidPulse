@@ -118,6 +118,9 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
 - **K-pop dictionary refresh** (`@vidpulse/kpop-sources` → Wikidata) is **opt-in**
   (`KPOP_DICT_REFRESH_ENABLED=true`) and needs `query.wikidata.org` in the environment's egress
   allowlist + a descriptive `KPOP_SOURCES_USER_AGENT`. Manual trigger: `POST /api/kpop-dictionary/refresh`.
+  Optional **MusicBrainz song enrichment** (full track-lists Wikidata lacks) is a separate opt-in
+  (`MUSICBRAINZ_REFRESH_ENABLED=true`), bridged via Wikidata P434; it's slow (≤1 req/s) and needs
+  `musicbrainz.org` allowlisted + `MUSICBRAINZ_USER_AGENT` ([ADR 0005](docs/adr/0005-musicbrainz-song-source.md)).
 - Secrets live in `.env` (never commit). `YOUTUBE_API_KEY` is required for real syncs.
 
 ## Working as a pet project

@@ -1,5 +1,5 @@
 import { fetchJson } from '../http';
-import type { GroupPayload, SourceOptions } from '../types';
+import type { EnrichableGroup, SourceOptions } from '../types';
 import {
   buildGroupsQuery,
   buildSongsQuery,
@@ -14,13 +14,16 @@ import { normalizeGroups, normalizeSongs } from './normalize';
  * descriptive User-Agent (Wikidata blocks generic agents).
  */
 export class WikidataSource {
-  async fetchGroups(options: SourceOptions): Promise<GroupPayload[]> {
+  async fetchGroups(options: SourceOptions): Promise<EnrichableGroup[]> {
     const log = options.logger;
     const fetchOpts = {
       userAgent: options.userAgent,
       fetchImpl: options.fetchImpl,
       signal: options.signal,
       timeoutMs: options.timeoutMs,
+      // These two queries are heavy; bound the wall-time on a Wikidata outage (with a 60s
+      // timeout, 2 attempts ≈ 2 min worst case) rather than retrying a slow query many times.
+      retries: 2,
     };
     const queryUrl = (query: string) =>
       `${WIKIDATA_SPARQL_ENDPOINT}?format=json&query=${encodeURIComponent(query)}`;
@@ -39,7 +42,11 @@ export class WikidataSource {
         fetchJson<SparqlResults>(queryUrl(buildSongsQuery(options.limit)), fetchOpts),
       ]);
     } catch (err) {
-      log?.error('Wikidata: SPARQL request failed:', err);
+      // Log the message — the server logger JSON.stringifies an Error object to "{}".
+      log?.error(
+        'Wikidata: SPARQL request failed:',
+        err instanceof Error ? err.message : String(err),
+      );
       throw err;
     }
 

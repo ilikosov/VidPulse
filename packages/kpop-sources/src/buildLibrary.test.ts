@@ -28,6 +28,7 @@ describe('buildKpopLibrary', () => {
           groupEn: { type: 'literal', value: 'IVE', 'xml:lang': 'en' },
           groupKo: { type: 'literal', value: '아이브', 'xml:lang': 'ko' },
           typeClass: { type: 'uri', value: 'http://www.wikidata.org/entity/Q641066' },
+          mbid: { type: 'literal', value: 'b2b9d2a0-ive-mbid' },
           member: { type: 'uri', value: 'http://www.wikidata.org/entity/Q111' },
           memberEn: { type: 'literal', value: 'Wonyoung', 'xml:lang': 'en' },
           memberKo: { type: 'literal', value: '장원영', 'xml:lang': 'ko' },
@@ -58,6 +59,9 @@ describe('buildKpopLibrary', () => {
     });
     expect(snapshot.groups[0].artists?.[0].name).toBe('Wonyoung');
     expect(snapshot.groups[0].songs).toEqual([{ title: 'Love Dive', aliases: ['러브 다이브'] }]);
+    // `mbid` is a runtime-only bridge field — the schema forbids extra group props, so it
+    // must be stripped from the snapshot.
+    expect(snapshot.groups[0]).not.toHaveProperty('mbid');
   });
 
   it('logs progress via the injected logger', async () => {
@@ -121,6 +125,7 @@ describe('buildKpopLibrary', () => {
       expect(q).toContain('LIMIT 5');
     }
     expect(queries.some((q) => q.includes('wdt:P527'))).toBe(true); // groups: has-members
+    expect(queries.some((q) => q.includes('wdt:P434'))).toBe(true); // groups: MusicBrainz id bridge
     const songsQuery = queries.find((q) => q.includes('wdt:P175')); // songs: performer
     expect(songsQuery).toBeDefined();
     // Songs use a direct P31 over {song, single, musical work/composition} — not a

@@ -37,6 +37,13 @@ export interface GroupPayload {
   songs?: SongPayload[];
 }
 
+/**
+ * A GroupPayload carrying its MusicBrainz artist id (Wikidata P434) for the song
+ * enrichment step. `mbid` is a RUNTIME-only field — the media-library schema forbids
+ * extra group properties, so `buildKpopLibrary` strips it before producing the snapshot.
+ */
+export type EnrichableGroup = GroupPayload & { mbid?: string };
+
 export interface SoloArtistPayload {
   name: string;
   aliases?: string[];
@@ -87,6 +94,41 @@ export interface Logger {
   error(...args: unknown[]): void;
 }
 
+/**
+ * Opt-in MusicBrainz enrichment: after Wikidata builds the groups, fetch each group's
+ * full recording list (by its Wikidata P434 MusicBrainz id) and merge those titles into
+ * `groups[].songs`. Wikidata only has title tracks/singles as standalone items, so this
+ * is how album tracks and B-sides reach the dictionary. MusicBrainz requires a
+ * descriptive User-Agent and caps requests at ~1/sec.
+ */
+export interface MusicBrainzOptions {
+  enabled: boolean;
+  /** Descriptive User-Agent — required by MusicBrainz ToS. Falls back to SourceOptions.userAgent. */
+  userAgent?: string;
+  /** Minimum ms between MusicBrainz requests (default 1000 → ≤1 req/s). */
+  rateLimitMs?: number;
+  /**
+   * Chunk size: how many candidate groups (those with an mbid) to enrich in this run.
+   * `0`/unset enriches all of them at once. Combine with `priority` to process the catalogue
+   * "по частям" across several refreshes, bounding the connection load per run.
+   */
+  limit?: number;
+  /**
+   * Ordering key for candidate groups — lower sorts earlier. The server keys this on each group's
+   * stored `songs_enriched_at` (never-enriched = 0 → first), so each chunk picks the stalest groups
+   * and connect-timeout stragglers (left un-stamped) come back to the front next run. Unset keeps
+   * the source order.
+   */
+  priority?: (group: EnrichableGroup) => number;
+  /** Stop paginating an artist after this many recordings (bounds requests for prolific artists). */
+  maxRecordings?: number;
+  /**
+   * Reports which groups were successfully enriched this run (by `group.name`) so the caller can
+   * stamp their `songs_enriched_at`. Failed groups are omitted, keeping them stale for next run.
+   */
+  onProgress?: (info: { total: number; processed: string[] }) => void;
+}
+
 export interface SourceOptions {
   /** Descriptive User-Agent — required by Wikidata's access policy. */
   userAgent: string;
@@ -100,4 +142,6 @@ export interface SourceOptions {
   timeoutMs?: number;
   /** Optional logger for progress/diagnostics (defaults to silent). */
   logger?: Logger;
+  /** Opt-in MusicBrainz song enrichment (off unless `enabled`). */
+  musicBrainz?: MusicBrainzOptions;
 }

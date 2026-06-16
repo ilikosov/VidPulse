@@ -1,0 +1,315 @@
+import { describe, expect, it, vi } from 'vitest';
+import { fetchRecordingsByArtist } from './client';
+import { normalizeRecordings } from './normalize';
+import { musicBrainzSource } from './musicbrainz.source';
+import { fetchJson } from '../http';
+import type { EnrichableGroup, FetchLike, SourceOptions } from '../types';
+
+function errorResponse(status: number, body: string) {
+  return {
+    ok: false,
+    status,
+    statusText: 'Service Unavailable',
+    text: async () => body,
+    json: async () => ({}),
+  };
+}
+
+function jsonResponse(body: unknown) {
+  return {
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    text: async () => '',
+    json: async () => body,
+  };
+}
+
+const baseOpts = (over: Partial<SourceOptions> = {}): SourceOptions => ({
+  userAgent: 'test-agent',
+  ...over,
+});
+
+describe('normalizeRecordings', () => {
+  it('dedupes recordings case-insensitively by title and skips blank titles', () => {
+    const songs = normalizeRecordings([
+      { title: 'Untouchable' },
+      { title: 'untouchable' }, // case-dup
+      { title: '   ' }, // blank
+      { title: 'Born to Be' },
+      {}, // no title
+    ]);
+    expect(songs).toEqual([
+      { title: 'Untouchable', aliases: [] },
+      { title: 'Born to Be', aliases: [] },
+    ]);
+  });
+});
+
+describe('fetchRecordingsByArtist', () => {
+  it('paginates until recording-count is exhausted', async () => {
+    const page1 = {
+      'recording-count': 150,
+      recordings: Array.from({ length: 100 }, (_, i) => ({ title: `T${i}` })),
+    };
+    const page2 = {
+      'recording-count': 150,
+      recordings: Array.from({ length: 50 }, (_, i) => ({ title: `T${100 + i}` })),
+    };
+    const fetchImpl: FetchLike = vi.fn(async (url: string) =>
+      jsonResponse(url.includes('offset=0') ? page1 : page2),
+    );
+
+    const recs = await fetchRecordingsByArtist('mbid-1', {
+      userAgent: 'ua',
+      fetchImpl,
+      rateLimitMs: 0,
+    });
+
+    expect(recs).toHaveLength(150);
+    expect((fetchImpl as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2);
+  });
+
+  it('stops paginating once maxRecordings is reached', async () => {
+    const fetchImpl: FetchLike = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      text: async () => '',
+      json: async () => ({
+        'recording-count': 500,
+        recordings: Array.from({ length: 100 }, (_, i) => ({ title: `T${i}` })),
+      }),
+    }));
+
+    const recs = await fetchRecordingsByArtist('mbid-cap', {
+      userAgent: 'ua',
+      fetchImpl,
+      rateLimitMs: 0,
+      maxRecordings: 100,
+    });
+
+    expect(recs).toHaveLength(100);
+    expect((fetchImpl as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1); // no page 2
+  });
+
+  it('keeps partial recordings when a later page fails instead of discarding the artist', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl: FetchLike = vi.fn(async (url: string) => {
+        if (url.includes('offset=0')) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            text: async () => '',
+            json: async () => ({
+              'recording-count': 250,
+              recordings: Array.from({ length: 100 }, (_, i) => ({ title: `T${i}` })),
+            }),
+          };
+        }
+        throw new Error('fetch failed (ECONNRESET)'); // page 2 dies
+      });
+
+      const promise = fetchRecordingsByArtist('mbid-x', {
+        userAgent: 'ua',
+        fetchImpl,
+        rateLimitMs: 0,
+      });
+      await vi.runAllTimersAsync(); // flush page-2 retry backoff
+      const recs = await promise;
+      expect(recs).toHaveLength(100); // page 1 kept, not discarded
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('MusicBrainzSource.enrich', () => {
+  it('merges MusicBrainz titles into group songs, deduping against existing', async () => {
+    const groups: EnrichableGroup[] = [
+      { name: 'ITZY', mbid: 'itzy-mbid', songs: [{ title: 'Born to Be', aliases: [] }] },
+    ];
+    const fetchImpl: FetchLike = vi.fn(async () =>
+      jsonResponse({
+        'recording-count': 2,
+        recordings: [{ title: 'Born to Be' }, { title: 'Untouchable' }],
+      }),
+    );
+
+    await musicBrainzSource.enrich(
+      groups,
+      baseOpts({ fetchImpl, musicBrainz: { enabled: true, rateLimitMs: 0 } }),
+    );
+
+    // 'Born to Be' is deduped against the Wikidata song; only 'Untouchable' is added.
+    expect(groups[0].songs?.map((s) => s.title)).toEqual(['Born to Be', 'Untouchable']);
+  });
+
+  it('enriches the stalest groups first (by priority), only a chunk, and reports their names', async () => {
+    const groups: EnrichableGroup[] = Array.from({ length: 5 }, (_, i) => ({
+      name: `G${i}`,
+      mbid: `mbid-${i}`,
+    }));
+    const fetchImpl: FetchLike = vi.fn(async () =>
+      jsonResponse({ 'recording-count': 1, recordings: [{ title: 'X' }] }),
+    );
+    const onProgress = vi.fn();
+    // Ages (lower = staler): G3 and G1 are the two oldest, so they go first.
+    const age: Record<string, number> = { G0: 50, G1: 10, G2: 40, G3: 0, G4: 30 };
+
+    await musicBrainzSource.enrich(
+      groups,
+      baseOpts({
+        fetchImpl,
+        musicBrainz: {
+          enabled: true,
+          rateLimitMs: 0,
+          limit: 2,
+          priority: (g) => age[g.name],
+          onProgress,
+        },
+      }),
+    );
+
+    // Only the two stalest groups (G3, G1) were enriched.
+    expect(groups.map((g) => g.songs?.length ?? 0)).toEqual([0, 1, 0, 1, 0]);
+    expect((fetchImpl as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2);
+    expect(onProgress).toHaveBeenCalledWith({ total: 5, processed: ['G3', 'G1'] });
+  });
+
+  it('omits a failed group from processed so it stays stale for next run', async () => {
+    vi.useFakeTimers();
+    try {
+      const groups: EnrichableGroup[] = [
+        { name: 'Bad', mbid: 'mbid-bad' },
+        { name: 'Good', mbid: 'mbid-good' },
+      ];
+      const fetchImpl: FetchLike = vi.fn(async (url: string) =>
+        url.includes('mbid-bad')
+          ? errorResponse(503, 'down')
+          : jsonResponse({ 'recording-count': 1, recordings: [{ title: 'X' }] }),
+      );
+      const onProgress = vi.fn();
+
+      const promise = musicBrainzSource.enrich(
+        groups,
+        baseOpts({
+          fetchImpl,
+          // 'Bad' is staler, so it's attempted first and fails; 'Good' succeeds.
+          musicBrainz: {
+            enabled: true,
+            rateLimitMs: 0,
+            priority: (g) => (g.name === 'Bad' ? 0 : 1),
+            onProgress,
+          },
+        }),
+      );
+      await vi.runAllTimersAsync(); // flush retry backoff for the failing group
+      await promise;
+
+      // Only the successful group is reported → the caller won't stamp 'Bad', keeping it first next run.
+      expect(onProgress).toHaveBeenCalledWith({ total: 2, processed: ['Good'] });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does nothing when disabled or when a group has no mbid', async () => {
+    const fetchImpl = vi.fn();
+    const groups: EnrichableGroup[] = [{ name: 'NoMbid' }];
+
+    await musicBrainzSource.enrich(
+      groups,
+      baseOpts({ fetchImpl: fetchImpl as unknown as FetchLike, musicBrainz: { enabled: false } }),
+    );
+    expect(fetchImpl).not.toHaveBeenCalled();
+
+    await musicBrainzSource.enrich(
+      groups,
+      baseOpts({
+        fetchImpl: fetchImpl as unknown as FetchLike,
+        musicBrainz: { enabled: true, rateLimitMs: 0 },
+      }),
+    );
+    expect(fetchImpl).not.toHaveBeenCalled(); // skipped: no mbid bridge
+  });
+
+  it('logs a readable reason (not "{}") and counts failures', async () => {
+    vi.useFakeTimers();
+    try {
+      const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+      const fetchImpl: FetchLike = vi.fn(async () => errorResponse(503, 'rate limited'));
+      const groups: EnrichableGroup[] = [{ name: 'ITZY', mbid: 'itzy-mbid' }];
+
+      const promise = musicBrainzSource.enrich(
+        groups,
+        baseOpts({ fetchImpl, logger, musicBrainz: { enabled: true, rateLimitMs: 0 } }),
+      );
+      await vi.runAllTimersAsync(); // flush retry backoff sleeps
+      await promise;
+
+      const warned = logger.warn.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(warned).toContain('ITZY');
+      expect(warned).toContain('HTTP 503');
+      expect(warned).not.toContain('{}');
+      const info = logger.info.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(info).toContain('1 failed');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('fetchJson error reporting', () => {
+  it('includes the response body in the thrown error on 5xx', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl: FetchLike = vi.fn(async () => errorResponse(503, 'too many requests'));
+      const promise = fetchJson('http://example.test', { userAgent: 'ua', fetchImpl, retries: 1 });
+      const assertion = expect(promise).rejects.toThrow('too many requests');
+      await vi.runAllTimersAsync();
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('surfaces the underlying cause of a generic "fetch failed" error', async () => {
+    const fetchImpl: FetchLike = vi.fn(async () => {
+      const err = new TypeError('fetch failed');
+      (err as { cause?: unknown }).cause = { code: 'ECONNRESET' };
+      throw err;
+    });
+    await expect(
+      fetchJson('http://example.test', { userAgent: 'ua', fetchImpl, retries: 0 }),
+    ).rejects.toThrow('fetch failed (ECONNRESET)');
+  });
+
+  it('reports a clear timeout (not an opaque abort) when the request times out', async () => {
+    vi.useFakeTimers();
+    try {
+      // Never resolves; only rejects when our timeout aborts the request signal.
+      const fetchImpl: FetchLike = vi.fn(
+        (_url, init) =>
+          new Promise<never>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new Error('This operation was aborted')),
+            );
+          }),
+      );
+      const promise = fetchJson('http://example.test', {
+        userAgent: 'ua',
+        fetchImpl,
+        retries: 0,
+        timeoutMs: 5000,
+      });
+      const assertion = expect(promise).rejects.toThrow('request timed out after 5000ms');
+      await vi.advanceTimersByTimeAsync(5000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

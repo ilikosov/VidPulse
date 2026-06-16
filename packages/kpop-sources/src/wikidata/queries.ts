@@ -25,11 +25,14 @@ export const GROUP_TYPE_BY_QID: Record<string, 'female' | 'male'> = {
  * en/ko). Stage names are what video titles actually use (e.g. "Yeji", not the legal
  * "Hwang Ye-ji"), so normalize prefers them. A bounded sub-select keeps the group set
  * deterministic (ORDER BY) and cappable.
+ *
+ * Also fetches the group's MusicBrainz artist id (P434, `?mbid`) — a stable bridge to
+ * MusicBrainz used by the opt-in song enrichment (full track-lists, which Wikidata lacks).
  */
 export function buildGroupsQuery(limit?: number): string {
   const limitClause = limit && limit > 0 ? `LIMIT ${Math.floor(limit)}` : 'LIMIT 2000';
   return `
-SELECT ?group ?groupEn ?groupKo ?typeClass ?dissolved ?member ?memberEn ?memberKo ?memberStageEn ?memberStageKo WHERE {
+SELECT ?group ?groupEn ?groupKo ?typeClass ?dissolved ?mbid ?member ?memberEn ?memberKo ?memberStageEn ?memberStageKo WHERE {
   {
     SELECT DISTINCT ?group WHERE {
       ?group wdt:P136 ${QID.KPOP_GENRE} .
@@ -38,6 +41,7 @@ SELECT ?group ?groupEn ?groupKo ?typeClass ?dissolved ?member ?memberEn ?memberK
   }
   OPTIONAL { ?group rdfs:label ?groupEn FILTER(LANG(?groupEn) = "en") }
   OPTIONAL { ?group rdfs:label ?groupKo FILTER(LANG(?groupKo) = "ko") }
+  OPTIONAL { ?group wdt:P434 ?mbid }
   OPTIONAL { ?group wdt:P31 ?typeClass FILTER(?typeClass IN (${QID.GIRL_GROUP}, ${QID.BOY_BAND})) }
   OPTIONAL { ?group wdt:P576 ?dissolved }
   OPTIONAL {

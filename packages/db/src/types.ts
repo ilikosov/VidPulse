@@ -82,6 +82,8 @@ export interface DictionaryGroupEntity {
   name: string;
   type: string;
   active: boolean;
+  /** ISO timestamp of the last MusicBrainz song enrichment; null/undefined = never enriched. */
+  songs_enriched_at?: string | null;
 }
 
 export interface DictionaryArtistEntity {

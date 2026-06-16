@@ -1,32 +1,36 @@
 # TASK-21 — K-pop sources phase 2 (songs + solo artists)
 
-- **Status:** [ ] not started
+- **Status:** [~] in progress — songs (MusicBrainz) done; solo artists remaining
 - **Priority:** medium
-- **Related:** [ADR 0004](../adr/0004-kpop-data-sources.md), `packages/kpop-sources`
+- **Related:** [ADR 0004](../adr/0004-kpop-data-sources.md),
+  [ADR 0005](../adr/0005-musicbrainz-song-source.md), `packages/kpop-sources`
 
 ## Context
 
 Phase 1 (`@vidpulse/kpop-sources`) sources **groups + members + aliases + type + active** from
 Wikidata and feeds `MediaLibraryService.importMediaLibrary` via `kpopDictionaryService.refresh()`.
-Songs, solo artists, and events are not yet sourced (events stay seeded manually).
+Wikidata only has title tracks/singles as standalone items; full track-lists and solo artists were
+not yet sourced (events stay seeded manually).
 
 ## Scope
 
-1. **Solo artists (Wikidata):** humans with genre P136 = K-pop (Q213714) who are not (only) band
-   members → `soloArtists[]` with Korean aliases and a `solo` membership.
-2. **Songs / discography (MusicBrainz):** for each group/artist, fetch recordings/works
-   (CC0 data, **1 req/s** rate limit, descriptive User-Agent required) → `songs[]` with aliases,
-   linked to the group/artist. Add a `MusicBrainzSource` adapter mirroring `WikidataSource`
-   (injectable `fetchImpl`, fixture-based tests).
+1. **Songs / discography (MusicBrainz):** ✅ **done** (ADR 0005). `MusicBrainzSource` enriches each
+   group's `songs[]` with its full recording list, bridged via the group's Wikidata MusicBrainz id
+   (P434). Opt-in via `MUSICBRAINZ_REFRESH_ENABLED`, throttled to ≤1 req/s, fixture-based tests.
+2. **Solo artists (Wikidata):** ⬜ humans with genre P136 = K-pop who are not (only) band members
+   → `soloArtists[]` with Korean aliases and a `solo` membership.
 
-## Notes
+## Steps
 
-- Keep the same snapshot contract (`MediaLibrarySnapshot`) and `merge` import.
-- Respect MusicBrainz rate limits (throttle); cache where sensible.
-- Egress: `musicbrainz.org` must be allowlisted in the environment (like `query.wikidata.org`).
+- [x] `MusicBrainzSource` adapter (client + normalize) mirroring `WikidataSource`, injectable fetch.
+- [x] Wikidata groups query fetches P434 (`?mbid`); `normalizeGroups` carries it as a runtime field
+      stripped before the snapshot.
+- [x] Wire opt-in MusicBrainz enrichment into `buildKpopLibrary` + `kpopDictionaryService.refresh()`.
+- [x] Config/env + docs (ADR 0005, `.env.example`); rate-limiting documented.
+- [ ] Solo artists from Wikidata → `soloArtists[]`.
 
 ## Acceptance
 
-- `buildKpopLibrary` optionally includes solo artists and songs (behind options/flags).
-- Unit tests on fixtures (no network); a refresh against the test DB lands songs/solo artists.
-- Docs/env updated; rate-limiting documented.
+- `buildKpopLibrary` optionally enriches songs from MusicBrainz behind a flag — **met**.
+- Unit tests on fixtures (no network) — **met** for songs.
+- Solo artists sourced and landed on a test-DB refresh — **pending**.
