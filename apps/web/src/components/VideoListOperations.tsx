@@ -87,6 +87,7 @@ export default function VideoListOperations({
         <Button onClick={() => handleStatusOp('confirmDownload')}>Confirm Download</Button>
         <Button onClick={() => handleStatusOp('complete')}>Complete</Button>
         <Button onClick={() => handleStatusOp('ignore')}>Ignore</Button>
+        <Button onClick={() => handleStatusOp('reparse')}>Reparse</Button>
         <Button onClick={() => setTagModal('addTag')}>Add Tag</Button>
         <Button onClick={() => setTagModal('removeTag')}>Remove Tag</Button>
         <Button danger onClick={handleRemoveFromList} disabled={selectedVideoIds.length === 0}>

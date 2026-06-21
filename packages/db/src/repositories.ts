@@ -220,7 +220,7 @@ export class KnexVideoRepository implements IVideoRepository {
   }
 
   private applyFilters(query: ReturnType<typeof knex>, filters: IVideoFilters): void {
-    const { status, includeIgnored, channelId, playlistId } = filters;
+    const { status, includeIgnored, channelId, playlistId, videoListId } = filters;
     if (channelId)
       query.whereExists(
         knex('video_channels')
@@ -233,6 +233,7 @@ export class KnexVideoRepository implements IVideoRepository {
           .whereRaw('video_playlists.video_id = videos.id')
           .where('video_playlists.playlist_id', playlistId),
       );
+    if (videoListId) query.where('videos.video_list_id', videoListId);
     if (status) query.where('videos.status', status);
     else if (!includeIgnored) query.whereNot('videos.status', 'ignored');
     if (hideFlaggedVideos()) {

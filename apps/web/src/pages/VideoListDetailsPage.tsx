@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Table, Tag, Tooltip, Typography, notification } from 'antd';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Button, Space, Table, Tag, Tooltip, Typography, notification } from 'antd';
 import { PaperClipOutlined } from '@ant-design/icons';
 import { getListDetails } from '../api/videoListsApi';
 import type { VideoListDetails, VideoListVideo } from '../api/videoListsApi';
@@ -9,6 +9,7 @@ import { useVideoDrawer } from '../components/VideoDrawerProvider';
 
 export default function VideoListDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { openVideo } = useVideoDrawer();
   const [list, setList] = useState<VideoListDetails | null>(null);
   const [videos, setVideos] = useState<VideoListVideo[]>([]);
@@ -31,6 +32,8 @@ export default function VideoListDetailsPage() {
       setLoading(false);
     }
   }
+
+  const hasNeedsReview = videos.some((v) => v.status === 'needs_review');
 
   const rowSelection = {
     selectedRowKeys: selectedVideoIds,
@@ -93,10 +96,22 @@ export default function VideoListDetailsPage() {
 
   return (
     <div>
-      <h1>
-        {list ? list.name : 'Video List Details'}{' '}
-        {list?.status ? <Tag color="blue">{list.status}</Tag> : null}
-      </h1>
+      <Space align="center" style={{ marginBottom: 16 }}>
+        <h1 style={{ margin: 0 }}>
+          {list ? list.name : 'Video List Details'}{' '}
+          {list?.status ? <Tag color="blue">{list.status}</Tag> : null}
+        </h1>
+        <Tooltip title={hasNeedsReview ? '' : 'Нет видео для ревью'}>
+          <Button
+            disabled={!hasNeedsReview}
+            onClick={() =>
+              navigate(`/review?video_list_id=${id}`, { state: { listName: list?.name } })
+            }
+          >
+            Ревью
+          </Button>
+        </Tooltip>
+      </Space>
       <VideoListOperations
         listId={Number(id)}
         selectedVideoIds={selectedVideoIds}
