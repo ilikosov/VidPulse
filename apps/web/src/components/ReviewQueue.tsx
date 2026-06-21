@@ -15,10 +15,11 @@ import {
   message,
 } from 'antd';
 import { useEffect, useState } from 'react';
-import { useSearchParams, useLocation, Link } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   getVideos,
   ignoreVideo,
+  reparseBatch,
   reparseVideo,
   resyncVideo,
   suggestMetadata,
@@ -66,8 +67,11 @@ function ReviewQueue() {
   const [videos, setVideos] = useState<ReviewVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkReparsing, setBulkReparsing] = useState(false);
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const videoListId = searchParams.get('video_list_id') ?? '';
   const listName = (location.state as { listName?: string } | null)?.listName;
 
@@ -135,31 +139,49 @@ function ReviewQueue() {
     }
   };
 
-  const handleSave = async (video: ReviewVideo) => {
-    setVideos((prev) =>
-      prev.map((item) => (item.id === video.id ? { ...item, saving: true } : item)),
+  const toMetadataPayload = (video: ReviewVideo) => ({
+    perf_date: video.editForm.perf_date || null,
+    group_name: video.editForm.group_name || null,
+    artist_name: video.editForm.artist_name || null,
+    song_titles: video.editForm.song_titles,
+    event: video.editForm.event ? '@' + video.editForm.event.toUpperCase() : null,
+    camera_type: video.editForm.camera_type || null,
+  });
+
+  // Save edits for every video in the queue, then return to the originating list (if any).
+  const handleSaveAll = async () => {
+    if (videos.length === 0) return;
+    setBulkSaving(true);
+    const results = await Promise.allSettled(
+      videos.map((video) => updateMetadata(video.id, toMetadataPayload(video))),
     );
+    const failed = results.filter((result) => result.status === 'rejected').length;
+    setBulkSaving(false);
+    if (failed > 0) {
+      message.error(`Не удалось сохранить ${failed} из ${videos.length}`);
+      await fetchVideos();
+      return;
+    }
+    message.success(`Сохранено: ${videos.length}`);
+    if (videoListId) {
+      navigate(`/video-lists/${videoListId}`);
+    } else {
+      await fetchVideos();
+    }
+  };
+
+  // Re-parse every video currently in the queue (re-fetches metadata from YouTube).
+  const handleReparseAll = async () => {
+    if (videos.length === 0) return;
+    setBulkReparsing(true);
     try {
-      await updateMetadata(video.id, {
-        perf_date: video.editForm.perf_date || null,
-        group_name: video.editForm.group_name || null,
-        artist_name: video.editForm.artist_name || null,
-        song_titles: video.editForm.song_titles,
-        event: video.editForm.event ? '@' + video.editForm.event.toUpperCase() : null,
-        camera_type: video.editForm.camera_type || null,
-      });
-      message.success(`Saved: ${video.original_title}`);
-      setVideos((prev) =>
-        prev.map((item) => (item.id === video.id ? { ...item, saving: false, saved: true } : item)),
-      );
-      setTimeout(() => {
-        setVideos((prev) => prev.filter((item) => item.id !== video.id));
-      }, 1200);
+      const { updated } = await reparseBatch(videos.map((video) => video.id));
+      message.success(`Reparsed: ${updated}`);
+      await fetchVideos();
     } catch (err) {
-      setVideos((prev) =>
-        prev.map((item) => (item.id === video.id ? { ...item, saving: false } : item)),
-      );
-      message.error(err instanceof Error ? err.message : 'Failed to save changes');
+      message.error(err instanceof Error ? err.message : 'Failed to reparse videos');
+    } finally {
+      setBulkReparsing(false);
     }
   };
 
@@ -255,6 +277,17 @@ function ReviewQueue() {
           <Typography.Text>Список:</Typography.Text>
           <Tag color="blue">{listName ?? `#${videoListId}`}</Tag>
           <Link to="/review">Показать все</Link>
+        </Space>
+      ) : null}
+
+      {videos.length > 0 ? (
+        <Space>
+          <Button type="primary" loading={bulkSaving} onClick={() => void handleSaveAll()}>
+            Save all & move to new
+          </Button>
+          <Button loading={bulkReparsing} onClick={() => void handleReparseAll()}>
+            Reparse all
+          </Button>
         </Space>
       ) : null}
 
@@ -395,14 +428,6 @@ function ReviewQueue() {
                 disabled={video.saved || video.reparsing}
               >
                 Resync
-              </Button>
-              <Button
-                type="primary"
-                loading={video.saving}
-                disabled={video.saved}
-                onClick={() => void handleSave(video)}
-              >
-                {video.saved ? 'Saved!' : 'Save & Move to New'}
               </Button>
               <Popconfirm
                 title="Ignore this video?"

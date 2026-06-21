@@ -1,6 +1,7 @@
 import { knex } from '@vidpulse/db';
 import { videoListRepository } from '@vidpulse/db';
 import { videoService } from './video.service';
+import { parserService } from './parser.service';
 import { AppError } from '../middleware/AppError';
 import { config } from '../config';
 
@@ -168,6 +169,12 @@ class VideoListService {
       }
       const status = await this.recomputeStatus(listId);
       return { operation, ...result, status };
+    }
+
+    if (operation === 'reparse') {
+      const result = await parserService.reparseBatch(allIds);
+      const status = await this.recomputeStatus(listId);
+      return { operation, processed: allIds.length, succeeded: result.updated, status };
     }
 
     throw AppError.badRequest(`Unsupported operation '${operation}'`);
