@@ -40,3 +40,6 @@ apps/server/src/db/dev.sqlite3-wal
 dev.sqlite3
 dev.sqlite3-wal
 dev.sqlite3-shm
+
+# TypeScript incremental build cache
+*.tsbuildinfo
