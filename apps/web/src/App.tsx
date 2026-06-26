@@ -5,8 +5,6 @@ import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { fetchApi } from './api/client';
 import ReviewQueue from './components/ReviewQueue';
 import VideoTable from './components/VideoTable';
-import { VideoDrawerProvider } from './components/VideoDrawerProvider';
-import { MediaLibraryDrawerProvider } from './components/MediaLibraryDrawerProvider';
 import { useMediaLibraryDrawer } from './components/mediaLibraryDrawerContext';
 import ChannelPage from './pages/ChannelPage';
 import SourcesPage from './pages/SourcesPage';
@@ -154,14 +152,10 @@ function AppShell() {
   );
 }
 
+// The drawer providers now live above BrowserRouter in main.tsx, so the Media
+// Library drawer's MemoryRouter is not nested inside the app router.
 function App() {
-  return (
-    <VideoDrawerProvider>
-      <MediaLibraryDrawerProvider>
-        <AppShell />
-      </MediaLibraryDrawerProvider>
-    </VideoDrawerProvider>
-  );
+  return <AppShell />;
 }
 
 export default App;
