@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { Avatar, Button, Card, Descriptions, message, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -12,6 +12,7 @@ import {
   type Video,
 } from '../api';
 import { SongLinks } from '../components/SongLinks';
+import { LibraryLink } from '../components/LibraryLink';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
 import AddToListModal from '../components/AddToListModal';
 
@@ -107,9 +108,7 @@ function PlaylistPage() {
       render: (_value: string | null | undefined, row: Video) =>
         row.group_name ? (
           row.group_id ? (
-            <Link to={`/dictionary/groups/${row.group_id}`} state={{ from }}>
-              {row.group_name}
-            </Link>
+            <LibraryLink to={`/dictionary/groups/${row.group_id}`}>{row.group_name}</LibraryLink>
           ) : (
             row.group_name
           )
@@ -123,9 +122,7 @@ function PlaylistPage() {
       render: (_value: string | null | undefined, row: Video) =>
         row.artist_name ? (
           row.artist_id ? (
-            <Link to={`/dictionary/artists/${row.artist_id}`} state={{ from }}>
-              {row.artist_name}
-            </Link>
+            <LibraryLink to={`/dictionary/artists/${row.artist_id}`}>{row.artist_name}</LibraryLink>
           ) : (
             row.artist_name
           )
