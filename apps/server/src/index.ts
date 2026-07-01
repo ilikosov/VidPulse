@@ -18,6 +18,7 @@ import videoListsRoutes from './routes/video-lists.routes';
 import kpopDictionaryRoutes from './routes/kpop-dictionary.routes';
 import { syncService } from './services/sync.service';
 import { kpopDictionaryService } from './services/kpopDictionary.service';
+import { assertParserStrategy } from './services/parser/registry';
 import healthRoutes from './routes/health.routes';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 import { config, validateConfig } from './config';
@@ -56,9 +57,11 @@ export function createApp() {
 
 if (require.main === module) {
   validateConfig();
+  const parserStrategy = assertParserStrategy();
   const { app } = createApp();
   app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
+    console.log(`Active parser strategy: ${parserStrategy}`);
     syncService.runScheduler();
     kpopDictionaryService.runScheduler();
   });

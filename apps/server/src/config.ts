@@ -81,6 +81,18 @@ export const config = {
     apiKey: process.env.LM_STUDIO_API_KEY ?? null,
   },
 
+  parser: {
+    /**
+     * Which parser implementation processes video titles. Resolved by services/parser/registry.ts;
+     * an unknown value fails fast at startup. Default 'pipeline' (regex + dictionary). Applies to
+     * every parse entry point (add / sync / reparse). Read dynamically (like dangerousActionsEnabled)
+     * so tests can set process.env after module load.
+     */
+    get strategy(): string {
+      return (process.env.PARSER_STRATEGY ?? 'pipeline').trim().toLowerCase();
+    },
+  },
+
   /** Read dynamically so tests can set process.env after module load. */
   get dangerousActionsEnabled(): boolean {
     return bool(process.env.MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED, false);

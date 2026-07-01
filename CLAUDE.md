@@ -114,7 +114,11 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
   Target model & display rule in [ADR 0002](docs/adr/0002-raw-parse-vs-canonical-display.md) / TASK-1.
 - **DB quirks:** FK enforcement currently relies on the `better-sqlite3` default; `test` and `development`
   share `dev.sqlite3` ([TASK-5](docs/tasks/task-05-knexfile-hardening.md)).
-- The active parser is `apps/server/src/services/parser/`.
+- The active parser is `apps/server/src/services/parser/`. Which implementation runs is selected by
+  `PARSER_STRATEGY` (default `pipeline` = regex + dictionary) via `services/parser/registry.ts`; every
+  parse entry point funnels through `parseTitle()` → `getActiveParser()`, and all parsers go through
+  the dictionary (normalize names + `resolveParsedMetadata` for IDs). Contract: `IParser`/`ParseResult`
+  ([ADR 0006](docs/adr/0006-pluggable-parser.md)). Add a parser = implement `IParser` + register it.
 - **K-pop dictionary refresh** (`@vidpulse/kpop-sources` → Wikidata) is **opt-in**
   (`KPOP_DICT_REFRESH_ENABLED=true`) and needs `query.wikidata.org` in the environment's egress
   allowlist + a descriptive `KPOP_SOURCES_USER_AGENT`. Manual trigger: `POST /api/kpop-dictionary/refresh`.
