@@ -1,4 +1,4 @@
-import type { ParsedMetadata } from '../services/parser/parser.types';
+import type { ParseResult } from '../services/parser/parser.types';
 import type { VideoDetails, VideoInfo } from '../models/youtube.types';
 
 export interface IYouTubeService {
@@ -19,13 +19,19 @@ export interface ITagService {
   assignAutoTags(videoId: number, durationSeconds?: number, privacyStatus?: string): Promise<void>;
 }
 
+/**
+ * The pinned parser contract. Any parser implementation (regex+dictionary pipeline, LLM, …) must
+ * satisfy this. The selected implementation is resolved by the parser registry from
+ * config.parser.strategy (PARSER_STRATEGY). Callers always follow parseTitle with the shared
+ * resolveParsedMetadata step, so entity linking to the dictionary is parser-agnostic.
+ */
 export interface IParser {
   parseTitle(
     title: string,
     publishedAt?: string,
     tags?: string[],
     description?: string,
-  ): Promise<{ metadata: Partial<ParsedMetadata>; needsReview: boolean }>;
+  ): Promise<ParseResult>;
 }
 
 export interface IChannelSyncService {

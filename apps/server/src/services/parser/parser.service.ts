@@ -1,9 +1,11 @@
 import { ParsedMetadata, ParserModule } from './parser.types';
 import type { ParserTraceStep } from '@vidpulse/shared';
+import type { IParser } from '../../interfaces/services';
 import { RegexModule, SOLO_GROUP } from './regex.module';
 import { DictionaryModule } from './dictionary.module';
 import { logger } from '../../lib/logger';
 import { splitSongTitles } from './songTitles.util';
+import { getActiveParser } from './registry';
 
 const MIN_CONFIDENCE_THRESHOLD = 0.5;
 
@@ -76,7 +78,7 @@ function hasRequiredFields(
   return true;
 }
 
-export class ParserService {
+export class ParserService implements IParser {
   constructor(
     private modules: ParserModule[],
     private dictionaryModule?: DictionaryModule,
@@ -309,18 +311,28 @@ export class ParserService {
 }
 
 const defaultDictionaryModule = new DictionaryModule();
-const defaultParserService = new ParserService(
+
+/**
+ * The default regex + dictionary pipeline parser. Registered as the 'pipeline' strategy in
+ * services/parser/registry.ts. Exported so the registry can select it without rebuilding modules.
+ */
+export const pipelineParser = new ParserService(
   [new RegexModule(), defaultDictionaryModule],
   defaultDictionaryModule,
 );
 
+/**
+ * Parse a title with the ACTIVE parser (selected via PARSER_STRATEGY, see the parser registry).
+ * All parse entry points funnel through here, so switching PARSER_STRATEGY changes the parser
+ * everywhere without touching callers.
+ */
 export async function parseTitle(
   title: string,
   publishedAt?: string,
   tags?: string[],
   description?: string,
 ) {
-  return defaultParserService.parseTitle(title, publishedAt, tags, description);
+  return getActiveParser().parseTitle(title, publishedAt, tags, description);
 }
 
 export function validateField(

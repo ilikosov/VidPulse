@@ -1,3 +1,5 @@
+import type { ParserTraceStep } from '@vidpulse/shared';
+
 /**
  * Parsed metadata from a video title
  */
@@ -21,6 +23,24 @@ export interface ParsedMetadata {
   // (no DB column maps to it); surfaces only in the parser trace.
   unresolved_artist?: boolean;
 }
+
+/**
+ * The pinned parser contract result. Every parser implementation (see IParser) returns this shape:
+ * raw parsed names as evidence (metadata), a review flag, and a stage-by-stage trace. Linking the
+ * raw names to canonical dictionary IDs is a separate, parser-agnostic step (resolveParsedMetadata),
+ * so swapping the parser never bypasses the media-library dictionary.
+ */
+export interface ParseResult {
+  metadata: Partial<ParsedMetadata>;
+  needsReview: boolean;
+  trace: ParserTraceStep[];
+}
+
+/**
+ * Identifiers of the selectable parser implementations (see the parser registry). Extend this union
+ * when adding a strategy (e.g. 'llm') and register it in services/parser/registry.ts.
+ */
+export type ParserStrategy = 'pipeline';
 
 /**
  * Parser module interface for multi-stage parsing
