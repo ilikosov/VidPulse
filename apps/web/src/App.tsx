@@ -6,13 +6,13 @@ import { fetchApi } from './api/client';
 import ReviewQueue from './components/ReviewQueue';
 import VideoTable from './components/VideoTable';
 import { useMediaLibraryDrawer } from './components/mediaLibraryDrawerContext';
+import { useFilesDrawer } from './components/FilesDrawerProvider';
 import ChannelPage from './pages/ChannelPage';
 import SourcesPage from './pages/SourcesPage';
 import EventLogPage from './pages/EventLogPage';
 import SettingsPage from './pages/SettingsPage';
 import VideoListsPage from './pages/VideoListsPage';
 import VideoListDetailsPage from './pages/VideoListDetailsPage';
-import FilesPage from './pages/FilesPage';
 import PlaylistPage from './pages/PlaylistPage';
 
 const { Header, Content } = Layout;
@@ -46,12 +46,20 @@ function useYouTubeHealth() {
 function AppShell() {
   const location = useLocation();
   const { openLibrary } = useMediaLibraryDrawer();
+  const { openFiles } = useFilesDrawer();
   const { state: ytHealthState, retry: retryYtHealth } = useYouTubeHealth();
 
   const menuItems = [
     { key: '/videos', label: <Link to="/videos">Videos</Link> },
     { key: '/video-lists', label: <Link to="/video-lists">Video Lists</Link> },
-    { key: '/files', label: <Link to="/files">Files</Link> },
+    {
+      key: '/files',
+      label: (
+        <a onClick={() => openFiles()} style={{ cursor: 'pointer' }}>
+          Files
+        </a>
+      ),
+    },
     { key: '/review', label: <Link to="/review">Review Queue</Link> },
     { key: '/sources', label: <Link to="/sources">Sources</Link> },
     {
@@ -138,7 +146,6 @@ function AppShell() {
           <Route path="/videos" element={<VideoTable />} />
           <Route path="/video-lists" element={<VideoListsPage />} />
           <Route path="/video-lists/:id" element={<VideoListDetailsPage />} />
-          <Route path="/files" element={<FilesPage />} />
           <Route path="/review" element={<ReviewQueue />} />
           <Route path="/sources" element={<SourcesPage />} />
           <Route path="/channels/:id" element={<ChannelPage />} />
