@@ -1,12 +1,20 @@
 import { knex } from '@vidpulse/db';
 import type { AliasEntityType } from './utils';
 
+/** better-sqlite3 returns boolean columns as raw 0/1; coerce to a real boolean at the boundary. */
+function withBooleanPrimary<T extends { is_primary: unknown }>(
+  row: T,
+): T & { is_primary: boolean } {
+  return { ...row, is_primary: Boolean(row.is_primary) };
+}
+
 export class AliasService {
   async getAliases(entityType: AliasEntityType, entityId: number) {
-    return knex('dictionary_aliases')
-      .select('id', 'alias')
+    const rows = await knex('dictionary_aliases')
+      .select('id', 'alias', 'is_primary')
       .where({ entity_type: entityType, entity_id: entityId })
-      .orderBy('alias');
+      .orderBy([{ column: 'is_primary', order: 'desc' }, 'alias']);
+    return rows.map(withBooleanPrimary);
   }
 
   async addAlias(entityType: AliasEntityType, entityId: number, alias: string) {
@@ -16,13 +24,50 @@ export class AliasService {
       entity_id: entityId,
       alias: trimmedAlias,
     });
-    return knex('dictionary_aliases').select('id', 'alias').where({ id }).first();
+    const row = await knex('dictionary_aliases')
+      .select('id', 'alias', 'is_primary')
+      .where({ id })
+      .first();
+    return withBooleanPrimary(row);
   }
 
   async removeAlias(entityType: AliasEntityType, entityId: number, aliasId: number) {
     return knex('dictionary_aliases')
       .where({ id: aliasId, entity_type: entityType, entity_id: entityId })
       .delete();
+  }
+
+  /**
+   * Marks (or unmarks) an alias as the one to display instead of the entity's canonical
+   * name/title. Setting one primary unsets any previous primary for the same entity (single
+   * primary, enforced by the partial unique index on dictionary_aliases). Returns the updated
+   * alias, or null if it doesn't belong to the given entity.
+   */
+  async setPrimaryAlias(
+    entityType: AliasEntityType,
+    entityId: number,
+    aliasId: number,
+    isPrimary: boolean,
+  ) {
+    return knex.transaction(async (trx) => {
+      const alias = await trx('dictionary_aliases')
+        .where({ id: aliasId, entity_type: entityType, entity_id: entityId })
+        .first();
+      if (!alias) return null;
+
+      if (isPrimary) {
+        await trx('dictionary_aliases')
+          .where({ entity_type: entityType, entity_id: entityId, is_primary: true })
+          .update({ is_primary: false });
+      }
+      await trx('dictionary_aliases').where({ id: aliasId }).update({ is_primary: isPrimary });
+
+      const updated = await trx('dictionary_aliases')
+        .select('id', 'alias', 'is_primary')
+        .where({ id: aliasId })
+        .first();
+      return withBooleanPrimary(updated);
+    });
   }
 
   async getAllAliases(entityType?: AliasEntityType) {

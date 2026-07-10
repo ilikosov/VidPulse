@@ -67,12 +67,18 @@ export async function getVideoSongsMap(
 
   const rows = await db('video_songs as vs')
     .leftJoin('dictionary_songs as ds', 'vs.song_id', 'ds.id')
+    .leftJoin('dictionary_aliases as pa', function joinPrimaryAlias() {
+      this.on('pa.entity_id', '=', 'ds.id')
+        .andOnVal('pa.entity_type', 'song')
+        .andOnVal('pa.is_primary', true);
+    })
     .select(
       'vs.video_id',
       'vs.song_id',
       'vs.raw_title',
       'vs.position',
       'ds.title as canonical_title',
+      'pa.alias as primary_alias_title',
     )
     .whereIn('vs.video_id', videoIds)
     .orderBy(['vs.video_id', 'vs.position']);
@@ -81,7 +87,9 @@ export async function getVideoSongsMap(
     const songs = songsByVideo.get(row.video_id) ?? [];
     songs.push({
       id: row.song_id ?? null,
-      title: row.canonical_title ?? row.raw_title,
+      // Primary alias (if the song has one) wins over the canonical title, which wins over the
+      // raw parsed text — same COALESCE order as videos_display (ADR 0002).
+      title: row.primary_alias_title ?? row.canonical_title ?? row.raw_title,
     });
     songsByVideo.set(row.video_id, songs);
   }

@@ -98,6 +98,7 @@ beforeAll(async () => {
     t.string('entity_type').notNullable();
     t.integer('entity_id').notNullable();
     t.string('alias').notNullable();
+    t.boolean('is_primary').notNullable().defaultTo(false);
   });
   await testKnex.schema.createTable('videos', (t: Knex.CreateTableBuilder) => {
     t.increments('id').primary();

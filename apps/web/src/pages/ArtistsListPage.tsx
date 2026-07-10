@@ -137,7 +137,7 @@ export default function ArtistsListPage() {
         dataIndex: 'name',
         render: (_v, row) => (
           <Link to={`/dictionary/artists/${row.id}`} state={{ from }}>
-            {row.name}
+            {row.display_name ?? row.name}
           </Link>
         ),
       },

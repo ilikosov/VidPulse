@@ -25,6 +25,7 @@ import dictionaryArtistSchema from '../../schemas/request/dictionary-artist.sche
 import dictionarySongSchema from '../../schemas/request/dictionary-song.schema.json';
 import dictionaryEventSchema from '../../schemas/request/dictionary-event.schema.json';
 import dictionaryAliasSchema from '../../schemas/request/dictionary-alias.schema.json';
+import dictionaryAliasPrimarySchema from '../../schemas/request/dictionary-alias-primary.schema.json';
 import paramsIdSchema from '../../schemas/request/params-id.schema.json';
 import paramsEntitySchema from '../../schemas/request/params-entity.schema.json';
 import paramsEntityAliasSchema from '../../schemas/request/params-entity-alias.schema.json';
@@ -339,6 +340,27 @@ router.delete(
       return res.status(400).json({ error: { message: 'Invalid entity parameters' } });
     await aliasService.removeAlias(entityType, entityId, aliasId);
     return res.status(204).send();
+  }),
+);
+
+router.patch(
+  '/:entityType/:entityId/aliases/:aliasId',
+  validateParams(paramsEntityAliasSchema),
+  validateBody(dictionaryAliasPrimarySchema),
+  asyncHandler(async (req, res) => {
+    const entityType = aliasEntityMap[req.params.entityType as string];
+    const entityId = Number(req.params.entityId);
+    const aliasId = Number(req.params.aliasId);
+    if (!entityType || !entityId || !aliasId)
+      return res.status(400).json({ error: { message: 'Invalid entity parameters' } });
+    const updated = await aliasService.setPrimaryAlias(
+      entityType,
+      entityId,
+      aliasId,
+      req.body.is_primary,
+    );
+    if (!updated) return res.status(404).json({ error: { message: 'Alias not found' } });
+    return res.json(updated);
   }),
 );
 

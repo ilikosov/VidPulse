@@ -7,6 +7,7 @@ import {
   type MembershipStatus,
   normalizeName,
   attachSongs,
+  primaryAliasSelect,
 } from './utils';
 
 export class ArtistService {
@@ -159,6 +160,7 @@ export class ArtistService {
   async getArtists(groupId?: number, q?: string, limit = 20, offset = 0) {
     const query = knex('dictionary_artists as a')
       .select('a.id', 'a.name', 'a.group_id', 'g.name as group_name')
+      .select(primaryAliasSelect('artist', 'a.id'))
       .leftJoin('dictionary_groups as g', 'g.id', 'a.group_id')
       .orderBy('a.name');
     if (groupId) query.where('a.group_id', groupId);
@@ -197,6 +199,7 @@ export class ArtistService {
   async getArtistById(id: number) {
     const artist = await knex('dictionary_artists as a')
       .distinct('a.id', 'a.name', 'a.group_id', 'g.name as group_name')
+      .select(primaryAliasSelect('artist', 'a.id'))
       .leftJoin('dictionary_groups as g', 'g.id', 'a.group_id')
       .where('a.id', id)
       .first();

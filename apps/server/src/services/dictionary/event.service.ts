@@ -1,6 +1,6 @@
 import { knex } from '@vidpulse/db';
 import type Knex from 'knex';
-import { type DbClient, normalizeName, attachSongs } from './utils';
+import { type DbClient, normalizeName, attachSongs, primaryAliasSelect } from './utils';
 
 export class EventService {
   async findEventByNameOrAlias(trx: DbClient, name: string) {
@@ -16,7 +16,10 @@ export class EventService {
   }
 
   async getEvents(q?: string, limit = 20, offset = 0) {
-    const query = knex('dictionary_events').select('id', 'name').orderBy('name');
+    const query = knex('dictionary_events')
+      .select('id', 'name')
+      .select(primaryAliasSelect('event', 'dictionary_events.id'))
+      .orderBy('name');
     if (q) query.whereILike('name', `%${q}%`);
     return query.limit(limit).offset(offset);
   }

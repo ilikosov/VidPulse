@@ -66,6 +66,21 @@ export function upsertMembership(payload: {
   // Direct knex usage for simple upsert
 }
 
+/**
+ * A scalar-subquery `SELECT` for the entity's primary alias, aliased as `display_name`. Used
+ * alongside an entity's own name/title column so callers can render
+ * `display_name ?? name` — the primary alias, when set, is what should be shown instead of the
+ * canonical name (see docs/adr/0002-raw-parse-vs-canonical-display.md). A scalar subquery (rather
+ * than a LEFT JOIN) keeps this independent of any existing GROUP BY/countDistinct aggregation on
+ * the query it's added to.
+ */
+export function primaryAliasSelect(entityType: AliasEntityType, idColumn: string) {
+  return knex.raw(
+    `(SELECT alias FROM dictionary_aliases WHERE entity_type = ? AND entity_id = ${idColumn} AND is_primary = 1 LIMIT 1) AS display_name`,
+    [entityType],
+  );
+}
+
 export async function attachSongs<T extends { id: number }>(
   videos: T[],
 ): Promise<Array<T & { songs: Array<{ id: number | null; title: string }> }>> {

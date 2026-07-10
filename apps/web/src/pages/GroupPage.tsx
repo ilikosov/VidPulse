@@ -127,7 +127,9 @@ export default function GroupPage() {
 
   return (
     <Card
-      title={<Typography.Title level={3}>Group: {group.name}</Typography.Title>}
+      title={
+        <Typography.Title level={3}>Group: {group.display_name ?? group.name}</Typography.Title>
+      }
       extra={
         <Button type="text" onClick={() => navigate(backPath)} style={{ paddingLeft: 0 }}>
           ← Back

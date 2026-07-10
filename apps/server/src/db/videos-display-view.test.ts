@@ -13,8 +13,13 @@ describe('videos_display view (TASK-1)', () => {
 
   afterAll(async () => {
     if (createdVideoIds.length) await knex('videos').whereIn('id', createdVideoIds).del();
-    if (createdGroupIds.length)
+    if (createdGroupIds.length) {
+      await knex('dictionary_aliases')
+        .where({ entity_type: 'group' })
+        .whereIn('entity_id', createdGroupIds)
+        .del();
       await knex('dictionary_groups').whereIn('id', createdGroupIds).del();
+    }
   });
 
   it('derives display = COALESCE(dictionary, raw) and keeps the raw parse as evidence', async () => {
@@ -66,5 +71,40 @@ describe('videos_display view (TASK-1)', () => {
 
     const row = await knex('videos_display').where({ id: videoId }).first('group_name');
     expect(row.group_name).toBe('only-raw');
+  });
+
+  it('a primary alias wins over the canonical dictionary name', async () => {
+    const [groupId] = await knex('dictionary_groups').insert({
+      name: 'PRIMARY ALIAS GROUP',
+      type: 'female',
+      active: 1,
+    });
+    createdGroupIds.push(groupId);
+
+    const [videoId] = await knex('videos').insert({
+      youtube_id: 'task1-display-view-primary-alias',
+      original_title: 't',
+      group_name: 'raw-alias',
+      group_id: groupId,
+      status: 'new',
+    });
+    createdVideoIds.push(videoId);
+
+    let row = await knex('videos_display').where({ id: videoId }).first('group_name');
+    expect(row.group_name).toBe('PRIMARY ALIAS GROUP'); // no primary alias yet → canonical name
+
+    const [aliasId] = await knex('dictionary_aliases').insert({
+      entity_type: 'group',
+      entity_id: groupId,
+      alias: 'STAGE NAME',
+      is_primary: true,
+    });
+
+    row = await knex('videos_display').where({ id: videoId }).first('group_name');
+    expect(row.group_name).toBe('STAGE NAME'); // primary alias wins
+
+    await knex('dictionary_aliases').where({ id: aliasId }).update({ is_primary: false });
+    row = await knex('videos_display').where({ id: videoId }).first('group_name');
+    expect(row.group_name).toBe('PRIMARY ALIAS GROUP'); // unset → back to canonical
   });
 });
