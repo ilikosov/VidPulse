@@ -7,6 +7,7 @@ import {
   normalizeName,
   toTypes,
   attachSongs,
+  primaryAliasSelect,
 } from './utils';
 
 export class GroupService {
@@ -26,6 +27,7 @@ export class GroupService {
     const types = toTypes(type);
     const query = knex('dictionary_groups as g')
       .select('g.id', 'g.name', 'g.type', 'g.active')
+      .select(primaryAliasSelect('group', 'g.id'))
       .countDistinct('a.id as artist_count')
       .countDistinct('s.id as song_count')
       .countDistinct('v.id as video_count')
@@ -72,6 +74,7 @@ export class GroupService {
   async getGroupById(id: number) {
     const group = await knex('dictionary_groups')
       .select('id', 'name', 'type', 'active')
+      .select(primaryAliasSelect('group', 'dictionary_groups.id'))
       .where({ id })
       .first();
     if (!group) return null;

@@ -57,7 +57,7 @@ export default function EventDictionaryPage() {
         dataIndex: 'name',
         render: (_: any, row: any) => (
           <Link to={`/dictionary/events/${row.id}`} state={{ from }}>
-            {row.name}
+            {row.display_name ?? row.name}
           </Link>
         ),
       },

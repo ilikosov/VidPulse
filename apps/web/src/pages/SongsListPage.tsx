@@ -190,7 +190,7 @@ export default function SongsListPage() {
         dataIndex: 'title',
         render: (_v, row) => (
           <Link to={`/dictionary/songs/${row.id}`} state={{ from }}>
-            {row.title}
+            {row.display_name ?? row.title}
           </Link>
         ),
       },

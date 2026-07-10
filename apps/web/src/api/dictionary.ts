@@ -2,6 +2,7 @@ import { apiUrl, createXhrError, fetchApi, parseXhrResponse } from './client';
 import type {
   DictionaryAlias,
   DictionaryAliasEntityType,
+  DictionaryAliasPrimaryRequest,
   DictionaryAliasRequest,
   DictionaryArtist,
   DictionaryArtistRequest,
@@ -247,6 +248,16 @@ export const dictionaryApi = {
     entityId: number | string,
     aliasId: number,
   ) => fetchApi(`/dictionary/${entityType}/${entityId}/aliases/${aliasId}`, { method: 'DELETE' }),
+  setPrimaryAlias: (
+    entityType: DictionaryAliasEntityType,
+    entityId: number | string,
+    aliasId: number,
+    isPrimary: boolean,
+  ) =>
+    fetchApi<DictionaryAlias>(`/dictionary/${entityType}/${entityId}/aliases/${aliasId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_primary: isPrimary } satisfies DictionaryAliasPrimaryRequest),
+    }),
 };
 
 export type {

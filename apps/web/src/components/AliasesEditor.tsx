@@ -1,3 +1,4 @@
+import { StarFilled, StarOutlined } from '@ant-design/icons';
 import { Button, Input, Space, Tag, Typography, message } from 'antd';
 import { useEffect, useState } from 'react';
 import {
@@ -47,6 +48,21 @@ export default function AliasesEditor({ entityType, entityId }: Props) {
     }
   };
 
+  const togglePrimary = async (alias: DictionaryAlias) => {
+    const isPrimary = !alias.is_primary;
+    try {
+      await dictionaryApi.setPrimaryAlias(entityType, entityId, alias.id, isPrimary);
+      setAliases((prev) =>
+        prev.map((a) => ({
+          ...a,
+          is_primary: a.id === alias.id ? isPrimary : isPrimary ? false : a.is_primary,
+        })),
+      );
+    } catch {
+      message.error('Failed to update primary alias');
+    }
+  };
+
   return (
     <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
       <Typography.Text strong>Aliases</Typography.Text>
@@ -54,6 +70,16 @@ export default function AliasesEditor({ entityType, entityId }: Props) {
         {aliases.map((a) => (
           <Tag
             key={a.id}
+            color={a.is_primary ? 'gold' : undefined}
+            icon={
+              <span
+                onClick={() => void togglePrimary(a)}
+                style={{ cursor: 'pointer', marginRight: 4 }}
+                title={a.is_primary ? 'Primary alias — click to unset' : 'Set as primary alias'}
+              >
+                {a.is_primary ? <StarFilled /> : <StarOutlined />}
+              </span>
+            }
             closable
             onClose={(e) => {
               e.preventDefault();

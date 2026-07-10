@@ -30,6 +30,7 @@ beforeAll(async () => {
     t.string('entity_type').notNullable();
     t.integer('entity_id').notNullable();
     t.string('alias').notNullable();
+    t.boolean('is_primary').notNullable().defaultTo(false);
   });
   await testKnex.schema.createTable('video_songs', (t: Knex.CreateTableBuilder) => {
     t.integer('video_id').notNullable();
@@ -126,5 +127,20 @@ describe('getVideoSongsMap', () => {
   it('omits videos without songs and handles empty input', async () => {
     expect((await getVideoSongsMap([])).size).toBe(0);
     expect((await getVideoSongsMap([42])).has(42)).toBe(false);
+  });
+
+  it('prefers the primary alias over the canonical title', async () => {
+    await syncVideoSongs(42, undefined, ['ASAP']); // matched -> id 1, canonical title 'ASAP'
+    const [aliasId] = await testKnex('dictionary_aliases').insert({
+      entity_type: 'song',
+      entity_id: 1,
+      alias: 'ASAP (Remix)',
+      is_primary: true,
+    });
+
+    const map = await getVideoSongsMap([42]);
+    expect(map.get(42)).toEqual([{ id: 1, title: 'ASAP (Remix)' }]);
+
+    await testKnex('dictionary_aliases').where({ id: aliasId }).del();
   });
 });

@@ -9,6 +9,7 @@ export type {
   CreateVideoListRequest,
   DictionaryAlias,
   DictionaryAliasEntityType,
+  DictionaryAliasPrimaryRequest,
   DictionaryAliasRequest,
   DictionaryArtist,
   DictionaryArtistRequest,

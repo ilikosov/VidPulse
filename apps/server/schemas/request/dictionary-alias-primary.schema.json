@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vidpulse.local/schemas/request/dictionary-alias-primary.schema.json",
+  "title": "Dictionary Alias Primary Flag",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["is_primary"],
+  "properties": {
+    "is_primary": { "type": "boolean" }
+  }
+}

@@ -125,7 +125,9 @@ export default function ArtistPage() {
 
   return (
     <Card
-      title={<Typography.Title level={3}>Artist: {artist.name}</Typography.Title>}
+      title={
+        <Typography.Title level={3}>Artist: {artist.display_name ?? artist.name}</Typography.Title>
+      }
       extra={
         <Button type="text" onClick={() => navigate(backPath)} style={{ paddingLeft: 0 }}>
           ← Back

@@ -59,6 +59,7 @@ vi.mock('../services/dictionary', () => ({
     getAliases: vi.fn().mockResolvedValue([]),
     addAlias: vi.fn(),
     removeAlias: vi.fn(),
+    setPrimaryAlias: vi.fn(),
   },
   statsService: {
     getStats: vi.fn().mockResolvedValue({
@@ -214,6 +215,66 @@ it('returns dictionary stats payload', async () => {
     events: 1,
     aliases: 1,
     unmatched: { groups: 0, artists: 0, songs: 0, events: 0 },
+  });
+});
+
+describe('dictionary alias primary route', () => {
+  it('sets an alias as primary and returns the updated alias', async () => {
+    const { aliasService } = await import('../services/dictionary');
+    (aliasService.setPrimaryAlias as any).mockResolvedValueOnce({
+      id: 5,
+      alias: 'AKA',
+      is_primary: true,
+    });
+    const app = express();
+    app.use(express.json());
+    app.use('/api/dictionary', router);
+    const server = app.listen(0);
+    const { port } = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${port}/api/dictionary/artist/10/aliases/5`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_primary: true }),
+    });
+    const body = await res.json();
+    server.close();
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ id: 5, alias: 'AKA', is_primary: true });
+    expect(aliasService.setPrimaryAlias).toHaveBeenCalledWith('artist', 10, 5, true);
+  });
+
+  it('returns 404 when the alias does not belong to the entity', async () => {
+    const { aliasService } = await import('../services/dictionary');
+    (aliasService.setPrimaryAlias as any).mockResolvedValueOnce(null);
+    const app = express();
+    app.use(express.json());
+    app.use('/api/dictionary', router);
+    const server = app.listen(0);
+    const { port } = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${port}/api/dictionary/artist/10/aliases/999`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_primary: true }),
+    });
+    const body = await res.json();
+    server.close();
+    expect(res.status).toBe(404);
+    expect(body.error.message).toBe('Alias not found');
+  });
+
+  it('rejects a body missing is_primary', async () => {
+    const app = express();
+    app.use(express.json());
+    app.use('/api/dictionary', router);
+    const server = app.listen(0);
+    const { port } = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${port}/api/dictionary/artist/10/aliases/5`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    server.close();
+    expect(res.status).toBe(400);
   });
 });
 

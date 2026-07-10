@@ -126,7 +126,7 @@ export default function GroupsListPage() {
         dataIndex: 'name',
         render: (_value, row) => (
           <Link to={`/dictionary/groups/${row.id}`} state={{ from }}>
-            {row.name}
+            {row.display_name ?? row.name}
           </Link>
         ),
       },

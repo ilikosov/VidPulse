@@ -1,6 +1,6 @@
 import { knex } from '@vidpulse/db';
 import type Knex from 'knex';
-import { type DbClient, normalizeName, attachSongs } from './utils';
+import { type DbClient, normalizeName, attachSongs, primaryAliasSelect } from './utils';
 import { config } from '../../config';
 
 export class SongService {
@@ -36,6 +36,7 @@ export class SongService {
         knex.raw('MIN(g.id) as group_id'),
         knex.raw('MIN(g.name) as group_name'),
       )
+      .select(primaryAliasSelect('song', 's.id'))
       .countDistinct('vs.video_id as videos_count')
       .countDistinct('soa.id as aliases_count')
       .leftJoin('video_songs as vs', 'vs.song_id', 's.id');
@@ -71,6 +72,7 @@ export class SongService {
   async getSongById(id: number) {
     const song = await knex('dictionary_songs')
       .select('id', 'title', 'artist')
+      .select(primaryAliasSelect('song', 'dictionary_songs.id'))
       .where({ id })
       .first();
     if (!song) return null;

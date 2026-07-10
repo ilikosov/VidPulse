@@ -139,7 +139,7 @@ export default function SongPage() {
 
   return (
     <Card
-      title={<Typography.Title level={3}>Song: {song.title}</Typography.Title>}
+      title={<Typography.Title level={3}>Song: {song.display_name ?? song.title}</Typography.Title>}
       extra={
         <Button type="text" onClick={() => navigate(backPath)} style={{ paddingLeft: 0 }}>
           ← Back

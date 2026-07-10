@@ -3,7 +3,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Video } from '../api';
-import { dictionaryApi } from '../api/dictionary';
+import { dictionaryApi, type DictionaryEvent } from '../api/dictionary';
 import AliasesEditor from '../components/AliasesEditor';
 import { getBackPath } from '../utils/navigation';
 import { SongLinks } from '../components/SongLinks';
@@ -23,7 +23,7 @@ export default function EventPage() {
   const videosPage = Number(searchParams.get('videosPage') || '1');
   const videosLimit = Number(searchParams.get('videosLimit')) || defaultVideosLimit;
 
-  const [event, setEvent] = useState<{ id: number; name: string } | null>(null);
+  const [event, setEvent] = useState<DictionaryEvent | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: defaultVideosLimit, total: 0 });
 
@@ -68,7 +68,9 @@ export default function EventPage() {
 
   return (
     <Card
-      title={<Typography.Title level={3}>Event: {event.name}</Typography.Title>}
+      title={
+        <Typography.Title level={3}>Event: {event.display_name ?? event.name}</Typography.Title>
+      }
       extra={
         <Button type="text" onClick={() => navigate(backPath)}>
           ← Back

@@ -194,6 +194,8 @@ export interface DictionaryGroup {
   name: string;
   type: DictionaryGroupType;
   active: boolean;
+  /** The group's primary alias, if one is set — display this instead of `name` (ADR 0002). */
+  display_name?: string | null;
   artist_count?: number;
   song_count?: number;
   video_count?: number;
@@ -206,6 +208,8 @@ export interface DictionaryArtist {
   name: string;
   group_id: number;
   group_name: string | null;
+  /** The artist's primary alias, if one is set — display this instead of `name` (ADR 0002). */
+  display_name?: string | null;
   songs_count?: number;
   videos_count?: number;
   aliases_count?: number;
@@ -219,6 +223,8 @@ export interface DictionarySong {
   artist_name?: string | null;
   group_id?: number;
   group_name?: string | null;
+  /** The song's primary alias, if one is set — display this instead of `title` (ADR 0002). */
+  display_name?: string | null;
   videos_count?: number;
   aliases_count?: number;
 }
@@ -226,6 +232,8 @@ export interface DictionarySong {
 export interface DictionaryEvent {
   id: number;
   name: string;
+  /** The event's primary alias, if one is set — display this instead of `name` (ADR 0002). */
+  display_name?: string | null;
 }
 
 export type DictionaryAliasEntityType = 'group' | 'artist' | 'song' | 'event';
@@ -233,6 +241,7 @@ export type DictionaryAliasEntityType = 'group' | 'artist' | 'song' | 'event';
 export interface DictionaryAlias {
   id: number;
   alias: string;
+  is_primary: boolean;
 }
 
 export interface ListParams {
@@ -308,6 +317,10 @@ export interface DictionaryEventRequest {
 
 export interface DictionaryAliasRequest {
   alias: string;
+}
+
+export interface DictionaryAliasPrimaryRequest {
+  is_primary: boolean;
 }
 
 export type ImportStartResponse = { jobId: string };
