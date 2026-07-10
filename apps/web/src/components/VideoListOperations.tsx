@@ -6,7 +6,7 @@ import { buildFileCommand, renameFiles } from '../api';
 
 interface VideoListOperationsProps {
   listId: number;
-  selectedVideoIds: number[];
+  videoIds: number[];
   refreshVideos: () => void;
 }
 
@@ -14,7 +14,7 @@ type TagMode = 'addTag' | 'removeTag';
 
 export default function VideoListOperations({
   listId,
-  selectedVideoIds,
+  videoIds,
   refreshVideos,
 }: VideoListOperationsProps) {
   const [tagModal, setTagModal] = useState<TagMode | null>(null);
@@ -30,25 +30,16 @@ export default function VideoListOperations({
     }
   }
 
-  // Status operations apply to the whole list, so it moves through the pipeline as a unit.
+  // Every operation below applies to the whole list, so it moves through the pipeline as a unit.
   const handleStatusOp = (operation: string) => run(operation);
 
-  const handleRemoveFromList = () => {
-    if (selectedVideoIds.length === 0) {
-      notification.error({ message: 'No videos selected' });
-      return;
-    }
-    run('removeFromList', { videoIds: selectedVideoIds });
-  };
-
   const handleFileCommand = async () => {
-    const ids = selectedVideoIds.length > 0 ? selectedVideoIds : undefined;
-    if (!ids) {
-      notification.error({ message: 'Выберите видео' });
+    if (videoIds.length === 0) {
+      notification.error({ message: 'Список пуст' });
       return;
     }
     try {
-      const { command } = await buildFileCommand(ids);
+      const { command } = await buildFileCommand(videoIds);
       await navigator.clipboard.writeText(command);
       message.success('Скопировано в буфер');
     } catch (err: any) {
@@ -57,12 +48,12 @@ export default function VideoListOperations({
   };
 
   const handleRename = async () => {
-    if (selectedVideoIds.length === 0) {
-      notification.error({ message: 'Выберите видео' });
+    if (videoIds.length === 0) {
+      notification.error({ message: 'Список пуст' });
       return;
     }
     try {
-      const { moved, skipped, errors } = await renameFiles(selectedVideoIds);
+      const { moved, skipped, errors } = await renameFiles(videoIds);
       if (errors.length > 0) {
         message.error(`Перемещено: ${moved}, ошибки: ${errors.join('; ')}`);
       } else {
@@ -90,17 +81,14 @@ export default function VideoListOperations({
         <Button onClick={() => handleStatusOp('reparse')}>Reparse</Button>
         <Button onClick={() => setTagModal('addTag')}>Add Tag</Button>
         <Button onClick={() => setTagModal('removeTag')}>Remove Tag</Button>
-        <Button danger onClick={handleRemoveFromList} disabled={selectedVideoIds.length === 0}>
-          Remove from List
-        </Button>
         <Button
           icon={<CopyOutlined />}
           onClick={() => void handleFileCommand()}
-          disabled={selectedVideoIds.length === 0}
+          disabled={videoIds.length === 0}
         >
           Команда для видео
         </Button>
-        <Button onClick={() => void handleRename()} disabled={selectedVideoIds.length === 0}>
+        <Button onClick={() => void handleRename()} disabled={videoIds.length === 0}>
           Переименовать
         </Button>
       </Space>

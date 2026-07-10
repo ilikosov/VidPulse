@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Space, Table, Tag, Tooltip, Typography, notification } from 'antd';
+import { Button, Popconfirm, Space, Table, Tag, Tooltip, Typography, notification } from 'antd';
 import { PaperClipOutlined } from '@ant-design/icons';
-import { getListDetails } from '../api/videoListsApi';
+import { batchVideoOperation, getListDetails } from '../api/videoListsApi';
 import type { VideoListDetails, VideoListVideo } from '../api/videoListsApi';
 import VideoListOperations from '../components/VideoListOperations';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
@@ -13,7 +13,6 @@ export default function VideoListDetailsPage() {
   const { openVideo } = useVideoDrawer();
   const [list, setList] = useState<VideoListDetails | null>(null);
   const [videos, setVideos] = useState<VideoListVideo[]>([]);
-  const [selectedVideoIds, setSelectedVideoIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,10 +34,14 @@ export default function VideoListDetailsPage() {
 
   const hasNeedsReview = videos.some((v) => v.status === 'needs_review');
 
-  const rowSelection = {
-    selectedRowKeys: selectedVideoIds,
-    onChange: (selectedRowKeys: React.Key[]) => setSelectedVideoIds(selectedRowKeys as number[]),
-  };
+  async function handleRemoveVideo(videoId: number) {
+    try {
+      await batchVideoOperation(Number(id), 'removeFromList', { videoIds: [videoId] });
+      fetchVideos();
+    } catch (err: any) {
+      notification.error({ message: err?.message || 'Failed to remove video from list' });
+    }
+  }
 
   const columns = [
     {
@@ -92,6 +95,21 @@ export default function VideoListDetailsPage() {
       key: 'tags',
       render: (tags: string[]) => tags.map((t) => <span key={t}>{t} </span>),
     },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      render: (_: unknown, record: VideoListVideo) => (
+        <Popconfirm
+          title="Remove this video from the list?"
+          onConfirm={() => handleRemoveVideo(record.id)}
+        >
+          <Button danger size="small">
+            Remove
+          </Button>
+        </Popconfirm>
+      ),
+    },
   ];
 
   return (
@@ -114,16 +132,10 @@ export default function VideoListDetailsPage() {
       </Space>
       <VideoListOperations
         listId={Number(id)}
-        selectedVideoIds={selectedVideoIds}
+        videoIds={videos.map((v) => v.id)}
         refreshVideos={fetchVideos}
       />
-      <Table
-        dataSource={videos}
-        rowKey="id"
-        loading={loading}
-        rowSelection={rowSelection}
-        columns={columns}
-      />
+      <Table dataSource={videos} rowKey="id" loading={loading} columns={columns} />
     </div>
   );
 }
