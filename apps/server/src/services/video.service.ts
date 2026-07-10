@@ -753,7 +753,9 @@ class VideoService {
    * Move each video's linked file(s) from their current location into FILES_OUTPUT_DIR,
    * renaming them with the RENAME_TEMPLATE_VIDEO new-name template (the source extension is
    * preserved; `/` in the rendered name is replaced with `-`). Videos without a linked file
-   * are skipped; per-file failures are collected and reported without aborting the batch.
+   * are skipped. Each video (and each of its files) is processed independently — a failure
+   * looking up one video, or a destination filename collision, is recorded in `errors` without
+   * aborting the rest of the batch.
    */
   async renameFiles(
     videoIds: number[],
@@ -770,31 +772,46 @@ class VideoService {
     let moved = 0;
     let skipped = 0;
     const errors: string[] = [];
+    // Destinations already claimed during this run, so two files that render to the same name
+    // don't silently clobber each other (fs.rename overwrites an existing destination with no error).
+    const claimedDestPaths = new Set<string>();
 
     for (const videoId of videoIds) {
-      const video = await this.getVideoById(videoId);
-      const { files } = await fileRepository.getAll({ videoId, limit: 1000 });
-      if (files.length === 0) {
-        skipped++;
-        continue;
-      }
-
-      const baseName = renderTemplate(template, { video: [buildVideoContext(video)] })
-        .replace(/\//g, '-')
-        .trim();
-
-      for (const file of files) {
-        const newFilename = baseName + (file.extension ?? '');
-        const sourcePath = path.join(file.directory, file.filename);
-        const destPath = path.join(outputDir, newFilename);
-        try {
-          await fs.promises.mkdir(outputDir, { recursive: true });
-          await fs.promises.rename(sourcePath, destPath);
-          await fileRepository.updatePath(file.id, outputDir, newFilename);
-          moved++;
-        } catch (err) {
-          errors.push(`${file.filename}: ${err instanceof Error ? err.message : String(err)}`);
+      try {
+        const video = await this.getVideoById(videoId);
+        const { files } = await fileRepository.getAll({ videoId, limit: 1000 });
+        if (files.length === 0) {
+          skipped++;
+          continue;
         }
+
+        const baseName = renderTemplate(template, { video: [buildVideoContext(video)] })
+          .replace(/\//g, '-')
+          .trim();
+
+        for (const file of files) {
+          const newFilename = baseName + (file.extension ?? '');
+          const sourcePath = path.join(file.directory, file.filename);
+          const destPath = path.join(outputDir, newFilename);
+          try {
+            if (destPath === sourcePath) {
+              moved++; // already at the correct location
+              continue;
+            }
+            if (claimedDestPaths.has(destPath) || fs.existsSync(destPath)) {
+              throw new Error(`destination already exists: ${newFilename}`);
+            }
+            await fs.promises.mkdir(outputDir, { recursive: true });
+            await fs.promises.rename(sourcePath, destPath);
+            await fileRepository.updatePath(file.id, outputDir, newFilename);
+            claimedDestPaths.add(destPath);
+            moved++;
+          } catch (err) {
+            errors.push(`${file.filename}: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+      } catch (err) {
+        errors.push(`video ${videoId}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
 
