@@ -105,8 +105,10 @@ export const config = {
   files: {
     /** Directory scanned for new files. */
     inputDir: process.env.FILES_INPUT_DIR ?? null,
-    /** Directory files are moved to after renaming. */
-    outputDir: process.env.FILES_OUTPUT_DIR ?? null,
+    /** Directory files are moved to after renaming. Read dynamically so tests can override it. */
+    get outputDir(): string | null {
+      return process.env.FILES_OUTPUT_DIR ?? null;
+    },
     /**
      * Comma-separated list of extensions to include during scan (without dot,
      * case-insensitive). When null/empty, all files are included.
@@ -126,8 +128,11 @@ export const config = {
      * New-name template for the rename action. Defines ONLY the destination filename
      * (without extension — the source extension is preserved); the `mv` command is built
      * automatically against the video's linked file on disk. Uses {{video.param}} tokens.
+     * Read dynamically so tests can override it.
      */
-    renameTemplate: process.env.RENAME_TEMPLATE_VIDEO ?? null,
+    get renameTemplate(): string | null {
+      return process.env.RENAME_TEMPLATE_VIDEO ?? null;
+    },
   },
 };
 
