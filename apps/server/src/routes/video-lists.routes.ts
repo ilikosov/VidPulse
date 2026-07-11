@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express';
 import { videoListService } from '../services/video-list.service';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { validateBody, validateParams } from '../middleware/validate';
+import { getPaginationParams } from './pagination';
 import videoListSchema from '../../schemas/request/video-list.schema.json';
 import videoListVideosSchema from '../../schemas/request/video-list-videos.schema.json';
 import videoListPatchSchema from '../../schemas/request/video-list-patch.schema.json';
@@ -31,7 +32,9 @@ router.get(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const list = await videoListService.getById(id);
+    const { page, limit } = getPaginationParams(req, 20, 100);
+    const duplicatesOnly = req.query.duplicatesOnly === 'true';
+    const list = await videoListService.getById(id, { page, limit, duplicatesOnly });
     res.json(list);
   }),
 );

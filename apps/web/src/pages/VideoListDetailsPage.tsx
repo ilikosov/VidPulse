@@ -1,30 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Popconfirm, Space, Table, Tag, Tooltip, Typography, notification } from 'antd';
+import {
+  Button,
+  Checkbox,
+  Popconfirm,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+  notification,
+} from 'antd';
 import { PaperClipOutlined } from '@ant-design/icons';
 import { batchVideoOperation, getListDetails } from '../api/videoListsApi';
 import type { VideoListDetails, VideoListVideo } from '../api/videoListsApi';
 import VideoListOperations from '../components/VideoListOperations';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
+import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 
 export default function VideoListDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { openVideo } = useVideoDrawer();
+  const { page, limit, setPagination, searchParams, setSearchParams } =
+    usePaginationSearchParams(20);
+  const duplicatesOnly = searchParams.get('duplicatesOnly') === 'true';
+
   const [list, setList] = useState<VideoListDetails | null>(null);
   const [videos, setVideos] = useState<VideoListVideo[]>([]);
+  const [pagination, setPaginationState] = useState({ page: 1, limit: 20, total: 0 });
+  const [allVideoIds, setAllVideoIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchVideos();
-  }, [id]);
+    void fetchVideos();
+  }, [id, page, limit, duplicatesOnly]);
 
   async function fetchVideos() {
     setLoading(true);
     try {
-      const res = await getListDetails(Number(id));
+      const res = await getListDetails(Number(id), { page, limit, duplicatesOnly });
       setList(res);
       setVideos(res.videos);
+      setPaginationState(res.pagination);
+      setAllVideoIds(res.allVideoIds);
     } catch (err) {
       notification.error({ message: 'Failed to fetch list videos' });
     } finally {
@@ -32,7 +51,9 @@ export default function VideoListDetailsPage() {
     }
   }
 
-  const hasNeedsReview = videos.some((v) => v.status === 'needs_review');
+  // The list's status is homogeneous across its videos (see video-list.service.ts
+  // recomputeStatus), so this is correct for the whole list, not just the current page.
+  const hasNeedsReview = list?.status === 'needs_review';
 
   async function handleRemoveVideo(videoId: number) {
     try {
@@ -96,6 +117,20 @@ export default function VideoListDetailsPage() {
       render: (tags: string[]) => tags.map((t) => <span key={t}>{t} </span>),
     },
     {
+      title: 'Filename',
+      dataIndex: 'predicted_filename',
+      key: 'predicted_filename',
+      render: (filename: string | null, record: VideoListVideo) => {
+        if (!filename) return <Typography.Text type="secondary">—</Typography.Text>;
+        if (!record.has_duplicate_name) return filename;
+        return (
+          <Tooltip title="Duplicate predicted filename in this list">
+            <Typography.Text type="danger">{filename}</Typography.Text>
+          </Tooltip>
+        );
+      },
+    },
+    {
       title: 'Actions',
       key: 'actions',
       width: 100,
@@ -129,13 +164,33 @@ export default function VideoListDetailsPage() {
             Ревью
           </Button>
         </Tooltip>
+        <Checkbox
+          checked={duplicatesOnly}
+          onChange={(e) => {
+            const params = new URLSearchParams(searchParams);
+            if (e.target.checked) params.set('duplicatesOnly', 'true');
+            else params.delete('duplicatesOnly');
+            params.delete('page');
+            setSearchParams(params);
+          }}
+        >
+          Show only duplicate names
+        </Checkbox>
       </Space>
-      <VideoListOperations
-        listId={Number(id)}
-        videoIds={videos.map((v) => v.id)}
-        refreshVideos={fetchVideos}
+      <VideoListOperations listId={Number(id)} videoIds={allVideoIds} refreshVideos={fetchVideos} />
+      <Table
+        dataSource={videos}
+        rowKey="id"
+        loading={loading}
+        columns={columns}
+        pagination={{
+          current: page,
+          pageSize: limit,
+          total: pagination.total,
+          showSizeChanger: true,
+          onChange: (nextPage, nextLimit) => setPagination({ page: nextPage, limit: nextLimit }),
+        }}
       />
-      <Table dataSource={videos} rowKey="id" loading={loading} columns={columns} />
     </div>
   );
 }

@@ -91,3 +91,106 @@ describe('videoListService status semantics', () => {
     expect(reloaded.status).toBeNull();
   });
 });
+
+// Regression coverage for predicted_filename / has_duplicate_name / duplicatesOnly / pagination
+// added to getById. Uses its own prefix, channel, and RENAME_TEMPLATE_VIDEO env override so it
+// doesn't interact with the status-semantics suite above.
+describe('videoListService.getById — predicted filenames & pagination', () => {
+  const GB_PREFIX = 'vl-getbyid-test-';
+  let gbChannelId: number;
+  const originalTemplate = process.env.RENAME_TEMPLATE_VIDEO;
+
+  async function insertGroupVideo(suffix: string, groupName: string): Promise<number> {
+    const [row] = await knex('videos')
+      .insert({
+        youtube_id: `${GB_PREFIX}${suffix}`,
+        channel_id: gbChannelId,
+        original_title: `test ${suffix}`,
+        group_name: groupName,
+        status: 'new',
+      })
+      .returning('id');
+    return typeof row === 'object' ? row.id : row;
+  }
+
+  beforeEach(async () => {
+    const [row] = await knex('channels')
+      .insert({ youtube_id: `${GB_PREFIX}channel`, title: 'getById test channel' })
+      .returning('id');
+    gbChannelId = typeof row === 'object' ? row.id : row;
+  });
+
+  afterEach(async () => {
+    if (originalTemplate === undefined) delete process.env.RENAME_TEMPLATE_VIDEO;
+    else process.env.RENAME_TEMPLATE_VIDEO = originalTemplate;
+
+    const ids = await knex('videos')
+      .where('youtube_id', 'like', `${GB_PREFIX}%`)
+      .pluck('video_list_id');
+    const listIds = [...new Set(ids.filter((x): x is number => x != null))];
+    await knex('videos').where('youtube_id', 'like', `${GB_PREFIX}%`).delete();
+    if (listIds.length) await knex('video_lists').whereIn('id', listIds).delete();
+    await knex('channels').where('youtube_id', `${GB_PREFIX}channel`).delete();
+  });
+
+  it('flags videos with a matching predicted filename as duplicates', async () => {
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    const a = await insertGroupVideo('a', 'SAME GROUP');
+    const b = await insertGroupVideo('b', 'SAME GROUP');
+    const c = await insertGroupVideo('c', 'OTHER GROUP');
+    const created = await videoListService.create('dup-list', [a, b, c]);
+
+    const result = await videoListService.getById(created.id!, { limit: 10 });
+
+    const byId = new Map(result.videos.map((v) => [v.id, v]));
+    expect(byId.get(a)?.predicted_filename).toBe('SAME GROUP');
+    expect(byId.get(a)?.has_duplicate_name).toBe(true);
+    expect(byId.get(b)?.has_duplicate_name).toBe(true);
+    expect(byId.get(c)?.predicted_filename).toBe('OTHER GROUP');
+    expect(byId.get(c)?.has_duplicate_name).toBe(false);
+  });
+
+  it('duplicatesOnly narrows videos but allVideoIds still lists the whole list', async () => {
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    const a = await insertGroupVideo('a', 'DUP GROUP');
+    const b = await insertGroupVideo('b', 'DUP GROUP');
+    const c = await insertGroupVideo('c', 'UNIQUE GROUP');
+    const created = await videoListService.create('dup-only-list', [a, b, c]);
+
+    const result = await videoListService.getById(created.id!, {
+      limit: 10,
+      duplicatesOnly: true,
+    });
+
+    expect(result.videos.map((v) => v.id).sort()).toEqual([a, b].sort());
+    expect(result.pagination.total).toBe(2);
+    expect(result.allVideoIds.sort()).toEqual([a, b, c].sort());
+  });
+
+  it('paginates the (possibly filtered) result', async () => {
+    const a = await insertGroupVideo('a', 'G1');
+    const b = await insertGroupVideo('b', 'G2');
+    const c = await insertGroupVideo('c', 'G3');
+    const created = await videoListService.create('page-list', [a, b, c]);
+
+    const page1 = await videoListService.getById(created.id!, { page: 1, limit: 2 });
+    expect(page1.videos).toHaveLength(2);
+    expect(page1.pagination).toMatchObject({ page: 1, limit: 2, total: 3, totalPages: 2 });
+
+    const page2 = await videoListService.getById(created.id!, { page: 2, limit: 2 });
+    expect(page2.videos).toHaveLength(1);
+    expect(page2.pagination).toMatchObject({ page: 2, limit: 2, total: 3, totalPages: 2 });
+  });
+
+  it('leaves predicted_filename null and has_duplicate_name false when no template is configured', async () => {
+    delete process.env.RENAME_TEMPLATE_VIDEO;
+    const a = await insertGroupVideo('a', 'SOME GROUP');
+    const b = await insertGroupVideo('b', 'SOME GROUP');
+    const created = await videoListService.create('no-template-list', [a, b]);
+
+    const result = await videoListService.getById(created.id!, { limit: 10 });
+
+    expect(result.videos.every((v) => v.predicted_filename === null)).toBe(true);
+    expect(result.videos.every((v) => v.has_duplicate_name === false)).toBe(true);
+  });
+});

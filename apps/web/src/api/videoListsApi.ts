@@ -22,8 +22,17 @@ export type {
 export const getVideoLists = (): Promise<VideoListSummary[]> =>
   fetchApi<VideoListSummary[]>('/video-lists');
 
-export const getListDetails = (id: number | string): Promise<VideoListDetails> =>
-  fetchApi<VideoListDetails>(`/video-lists/${id}`);
+export const getListDetails = (
+  id: number | string,
+  params?: { page?: number; limit?: number; duplicatesOnly?: boolean },
+): Promise<VideoListDetails> => {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.duplicatesOnly) query.set('duplicatesOnly', 'true');
+  const qs = query.toString();
+  return fetchApi<VideoListDetails>(`/video-lists/${id}${qs ? `?${qs}` : ''}`);
+};
 
 export const createVideoList = (data: CreateVideoListRequest): Promise<VideoListSummary> =>
   fetchApi<VideoListSummary>('/video-lists', {

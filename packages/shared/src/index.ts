@@ -346,10 +346,19 @@ export interface VideoListVideo {
   status?: string | null;
   has_file: boolean;
   tags: string[];
+  /** Base filename RENAME_TEMPLATE_VIDEO would produce for this video (no extension); null if
+   *  the template isn't configured. */
+  predicted_filename: string | null;
+  /** True when another video in the same list shares this predicted_filename. */
+  has_duplicate_name: boolean;
 }
 
 export interface VideoListDetails extends VideoListSummary {
   videos: VideoListVideo[];
+  pagination: Pagination;
+  /** Every video id in the list, ignoring the current page/filter — for bulk actions that must
+   *  target the whole list regardless of what's currently displayed. */
+  allVideoIds: number[];
 }
 
 export interface CreateVideoListRequest {

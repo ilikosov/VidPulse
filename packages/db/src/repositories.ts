@@ -694,6 +694,13 @@ export class KnexVideoListRepository implements IVideoListRepository {
         status: string;
         has_file: boolean;
         tags: string[];
+        // Extra fields needed to render RENAME_TEMPLATE_VIDEO (see buildVideoContext) for the
+        // predicted-filename preview — not shown as their own table columns.
+        perf_date: string | null;
+        event: string | null;
+        camera_type: string | null;
+        channel_title: string | null;
+        playlist_title: string | null;
       }
     >;
   }> {
@@ -702,6 +709,8 @@ export class KnexVideoListRepository implements IVideoListRepository {
     const baseQuery = knex('videos as v')
       .leftJoin('video_tags as vt', 'vt.video_id', 'v.id')
       .leftJoin('tags as t', 't.id', 'vt.tag_id')
+      .leftJoin('channels as c', 'c.id', 'v.channel_id')
+      .leftJoin('playlists as p', 'p.id', 'v.playlist_id')
       .where('v.video_list_id', id)
       .orderBy('v.updated_at', 'asc')
       .select(
@@ -709,9 +718,17 @@ export class KnexVideoListRepository implements IVideoListRepository {
         'v.youtube_id as youtube_id',
         'v.original_title as title',
         'v.artist_name as artist',
-        'v.group_name as `group`',
+        // No manual backticks: knex's query-builder .select() double-wraps a raw-backtick
+        // alias string (producing a literal `group` column with backticks in the name) — let
+        // knex quote the reserved word itself.
+        'v.group_name as group',
         'v.duration_seconds as duration',
         'v.status as status',
+        'v.perf_date as perf_date',
+        'v.event as event',
+        'v.camera_type as camera_type',
+        'c.title as channel_title',
+        'p.title as playlist_title',
         't.name as tag',
         knex.raw('EXISTS(SELECT 1 FROM files f WHERE f.video_id = v.id) as has_file'),
       );
@@ -737,6 +754,11 @@ export class KnexVideoListRepository implements IVideoListRepository {
         status: string;
         has_file: boolean;
         tags: string[];
+        perf_date: string | null;
+        event: string | null;
+        camera_type: string | null;
+        channel_title: string | null;
+        playlist_title: string | null;
       }
     >();
     for (const row of rows) {
@@ -751,6 +773,11 @@ export class KnexVideoListRepository implements IVideoListRepository {
           status: row.status,
           has_file: Boolean(row.has_file),
           tags: [],
+          perf_date: row.perf_date,
+          event: row.event,
+          camera_type: row.camera_type,
+          channel_title: row.channel_title,
+          playlist_title: row.playlist_title,
         });
       if (row.tag) videos.get(row.id)!.tags.push(row.tag);
     }
