@@ -34,7 +34,14 @@ router.get(
     const id = Number(req.params.id);
     const { page, limit } = getPaginationParams(req, 20, 100);
     const duplicatesOnly = req.query.duplicatesOnly === 'true';
-    const list = await videoListService.getById(id, { page, limit, duplicatesOnly });
+    const predictedFilename =
+      typeof req.query.predictedFilename === 'string' ? req.query.predictedFilename : undefined;
+    const list = await videoListService.getById(id, {
+      page,
+      limit,
+      duplicatesOnly,
+      predictedFilename,
+    });
     res.json(list);
   }),
 );

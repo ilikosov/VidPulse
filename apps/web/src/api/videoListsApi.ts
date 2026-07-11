@@ -24,12 +24,18 @@ export const getVideoLists = (): Promise<VideoListSummary[]> =>
 
 export const getListDetails = (
   id: number | string,
-  params?: { page?: number; limit?: number; duplicatesOnly?: boolean },
+  params?: {
+    page?: number;
+    limit?: number;
+    duplicatesOnly?: boolean;
+    predictedFilename?: string;
+  },
 ): Promise<VideoListDetails> => {
   const query = new URLSearchParams();
   if (params?.page) query.set('page', String(params.page));
   if (params?.limit) query.set('limit', String(params.limit));
   if (params?.duplicatesOnly) query.set('duplicatesOnly', 'true');
+  if (params?.predictedFilename) query.set('predictedFilename', params.predictedFilename);
   const qs = query.toString();
   return fetchApi<VideoListDetails>(`/video-lists/${id}${qs ? `?${qs}` : ''}`);
 };
