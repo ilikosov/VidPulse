@@ -121,16 +121,26 @@ class VideoService {
     };
   }
 
-  async getVideoById(
-    id: number,
-  ): Promise<
-    VideoEntity & { tags: Array<{ id: number; name: string }>; songs: Array<{ title: string }> }
+  async getVideoById(id: number): Promise<
+    VideoEntity & {
+      tags: Array<{ id: number; name: string }>;
+      songs: Array<{ title: string }>;
+      file_width: number | null;
+      file_height: number | null;
+    }
   > {
     const video = await videoRepository.findByIdDisplay(id);
     if (!video) throw AppError.notFound('Video not found');
     const tags = await tagRepository.getVideoTags(id);
     const songs = (await getVideoSongsMap([id])).get(id) ?? [];
-    return { ...video, tags, songs };
+    const dims = (await fileRepository.getDimensionsByVideoIds([id])).get(id);
+    return {
+      ...video,
+      tags,
+      songs,
+      file_width: dims?.width ?? null,
+      file_height: dims?.height ?? null,
+    };
   }
 
   async addVideo(url: string): Promise<VideoEntity> {

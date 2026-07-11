@@ -1,5 +1,5 @@
 import { knex } from '@vidpulse/db';
-import { videoListRepository } from '@vidpulse/db';
+import { videoListRepository, fileRepository } from '@vidpulse/db';
 import { videoService } from './video.service';
 import { parserService } from './parser.service';
 import { AppError } from '../middleware/AppError';
@@ -89,6 +89,9 @@ class VideoListService {
     const songsByVideo = template
       ? await getVideoSongsMap(rawVideos.map((v) => v.id))
       : new Map<number, Array<{ id: number | null; title: string }>>();
+    const dimensionsByVideo = template
+      ? await fileRepository.getDimensionsByVideoIds(rawVideos.map((v) => v.id))
+      : new Map<number, { width: number | null; height: number | null }>();
 
     const withPredictedNames = rawVideos.map((v) => {
       let predicted_filename: string | null = null;
@@ -107,6 +110,8 @@ class VideoListService {
           status: v.status,
           songs: (songsByVideo.get(v.id) ?? []).map((s) => ({ title: s.title })),
           tags: v.tags.map((name) => ({ name })),
+          file_width: dimensionsByVideo.get(v.id)?.width ?? null,
+          file_height: dimensionsByVideo.get(v.id)?.height ?? null,
         } as unknown as Parameters<typeof buildVideoContext>[0]);
         const rendered = renderTemplate(template, { video: [context] })
           .replace(/\//g, '-')

@@ -406,6 +406,8 @@ export interface FileRecord {
   size_bytes: number | null;
   youtube_id: string | null;
   video_id: number | null;
+  width: number | null;
+  height: number | null;
   /** Joined from the linked video, when present. */
   video_title?: string | null;
   scanned_at: string;
@@ -419,6 +421,7 @@ export interface FilesResponse {
 export interface ScanResult {
   scanned: number;
   linked: number;
+  probed: number;
   errors: string[];
 }
 

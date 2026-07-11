@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { knex } from '@vidpulse/db';
+import { knex, fileRepository } from '@vidpulse/db';
 import { videoListService } from './video-list.service';
 
 // Integration test against the migrated test DB (see tests/vitest.global-setup.ts).
@@ -113,6 +113,23 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
     return typeof row === 'object' ? row.id : row;
   }
 
+  async function linkFileWithDimensions(
+    videoId: number,
+    width: number,
+    height: number,
+  ): Promise<void> {
+    await fileRepository.upsert({
+      filename: `file-${videoId}.mp4`,
+      directory: '/tmp/vl-orientation-test',
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: videoId,
+    });
+    const { files } = await fileRepository.getAll({ videoId });
+    await fileRepository.updateDimensions(files[0].id, width, height);
+  }
+
   beforeEach(async () => {
     const [row] = await knex('channels')
       .insert({ youtube_id: `${GB_PREFIX}channel`, title: 'getById test channel' })
@@ -128,6 +145,9 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
       .where('youtube_id', 'like', `${GB_PREFIX}%`)
       .pluck('video_list_id');
     const listIds = [...new Set(ids.filter((x): x is number => x != null))];
+    await knex('files')
+      .whereIn('video_id', knex('videos').select('id').where('youtube_id', 'like', `${GB_PREFIX}%`))
+      .delete();
     await knex('videos').where('youtube_id', 'like', `${GB_PREFIX}%`).delete();
     if (listIds.length) await knex('video_lists').whereIn('id', listIds).delete();
     await knex('channels').where('youtube_id', `${GB_PREFIX}channel`).delete();
@@ -228,6 +248,26 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
     const page2 = await videoListService.getById(created.id!, { page: 2, limit: 2 });
     expect(page2.videos).toHaveLength(1);
     expect(page2.pagination).toMatchObject({ page: 2, limit: 2, total: 3, totalPages: 2 });
+  });
+
+  it('renders {{video.orientation}} from the linked file dimensions and flags matching orientations as duplicates', async () => {
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.orientation}}';
+    const a = await insertGroupVideo('a', 'G');
+    const b = await insertGroupVideo('b', 'G');
+    const c = await insertGroupVideo('c', 'G');
+    await linkFileWithDimensions(a, 1080, 1920); // portrait → vertical
+    await linkFileWithDimensions(b, 720, 1280); // portrait → vertical
+    await linkFileWithDimensions(c, 1920, 1080); // landscape → horizontal
+    const created = await videoListService.create('orientation-list', [a, b, c]);
+
+    const result = await videoListService.getById(created.id!, { limit: 10 });
+
+    const byId = new Map(result.videos.map((v) => [v.id, v]));
+    expect(byId.get(a)?.predicted_filename).toBe('vertical');
+    expect(byId.get(a)?.has_duplicate_name).toBe(true);
+    expect(byId.get(b)?.has_duplicate_name).toBe(true);
+    expect(byId.get(c)?.predicted_filename).toBe('horizontal');
+    expect(byId.get(c)?.has_duplicate_name).toBe(false);
   });
 
   it('leaves predicted_filename null and has_duplicate_name false when no template is configured', async () => {

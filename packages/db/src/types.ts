@@ -159,6 +159,8 @@ export interface FileEntity {
   size_bytes: number | null;
   youtube_id: string | null;
   video_id: number | null;
+  width: number | null;
+  height: number | null;
   scanned_at: string;
 }
 
@@ -339,11 +341,16 @@ export interface IFileRepository {
     limit?: number;
   }): Promise<{ files: FileWithVideo[]; total: number }>;
   getById(id: number): Promise<FileWithVideo | null>;
-  upsert(data: Omit<FileEntity, 'id' | 'scanned_at'>): Promise<void>;
+  upsert(data: Omit<FileEntity, 'id' | 'scanned_at' | 'width' | 'height'>): Promise<void>;
   linkVideo(id: number, videoId: number | null): Promise<void>;
   updatePath(id: number, directory: string, filename: string): Promise<void>;
   linkAllByYoutubeId(): Promise<number>;
   deleteById(id: number): Promise<void>;
+  updateDimensions(id: number, width: number | null, height: number | null): Promise<void>;
+  getUnprobedLinked(): Promise<FileEntity[]>;
+  getDimensionsByVideoIds(
+    videoIds: number[],
+  ): Promise<Map<number, { width: number | null; height: number | null }>>;
 }
 
 export interface VideoListVideoRow {
