@@ -69,7 +69,15 @@ class VideoListService {
    * `duplicatesOnly` narrows that full set before paginating it. Lists are capped at
    * MAX_VIDEO_LIST_ITEMS, so fetching everything and paginating in memory is cheap.
    */
-  async getById(id: number, options?: { page?: number; limit?: number; duplicatesOnly?: boolean }) {
+  async getById(
+    id: number,
+    options?: {
+      page?: number;
+      limit?: number;
+      duplicatesOnly?: boolean;
+      predictedFilename?: string;
+    },
+  ) {
     const list = await videoListRepository.findById(id);
     if (!list) throw AppError.notFound('List not found');
 
@@ -119,9 +127,12 @@ class VideoListService {
         Boolean(v.predicted_filename) && (nameCounts.get(v.predicted_filename!) ?? 0) > 1,
     }));
 
-    const filtered = options?.duplicatesOnly
+    let filtered = options?.duplicatesOnly
       ? withDuplicateFlag.filter((v) => v.has_duplicate_name)
       : withDuplicateFlag;
+    if (options?.predictedFilename) {
+      filtered = filtered.filter((v) => v.predicted_filename === options.predictedFilename);
+    }
 
     const page = Math.max(1, options?.page ?? 1);
     const limit = Math.max(1, options?.limit ?? 20);

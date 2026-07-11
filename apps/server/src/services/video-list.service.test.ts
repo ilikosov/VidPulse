@@ -167,6 +167,54 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
     expect(result.allVideoIds.sort()).toEqual([a, b, c].sort());
   });
 
+  it('predictedFilename narrows videos to an exact match, independent of allVideoIds', async () => {
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    const a = await insertGroupVideo('a', 'DUP GROUP');
+    const b = await insertGroupVideo('b', 'DUP GROUP');
+    const c = await insertGroupVideo('c', 'UNIQUE GROUP');
+    const created = await videoListService.create('filename-filter-list', [a, b, c]);
+
+    const result = await videoListService.getById(created.id!, {
+      limit: 10,
+      predictedFilename: 'DUP GROUP',
+    });
+
+    expect(result.videos.map((v) => v.id).sort()).toEqual([a, b].sort());
+    expect(result.pagination.total).toBe(2);
+    expect(result.allVideoIds.sort()).toEqual([a, b, c].sort());
+  });
+
+  it('combines predictedFilename with duplicatesOnly without conflict', async () => {
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    const a = await insertGroupVideo('a', 'DUP GROUP');
+    const b = await insertGroupVideo('b', 'DUP GROUP');
+    const c = await insertGroupVideo('c', 'UNIQUE GROUP');
+    const created = await videoListService.create('filename-filter-combo-list', [a, b, c]);
+
+    const result = await videoListService.getById(created.id!, {
+      limit: 10,
+      duplicatesOnly: true,
+      predictedFilename: 'DUP GROUP',
+    });
+
+    expect(result.videos.map((v) => v.id).sort()).toEqual([a, b].sort());
+    expect(result.pagination.total).toBe(2);
+  });
+
+  it('predictedFilename with no matching video returns an empty page', async () => {
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    const a = await insertGroupVideo('a', 'SOME GROUP');
+    const created = await videoListService.create('filename-filter-empty-list', [a]);
+
+    const result = await videoListService.getById(created.id!, {
+      limit: 10,
+      predictedFilename: 'NO SUCH FILENAME',
+    });
+
+    expect(result.videos).toHaveLength(0);
+    expect(result.pagination.total).toBe(0);
+  });
+
   it('paginates the (possibly filtered) result', async () => {
     const a = await insertGroupVideo('a', 'G1');
     const b = await insertGroupVideo('b', 'G2');

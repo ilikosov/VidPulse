@@ -11,7 +11,7 @@ import {
   Typography,
   notification,
 } from 'antd';
-import { PaperClipOutlined } from '@ant-design/icons';
+import { FilterOutlined, PaperClipOutlined } from '@ant-design/icons';
 import { batchVideoOperation, getListDetails } from '../api/videoListsApi';
 import type { VideoListDetails, VideoListVideo } from '../api/videoListsApi';
 import VideoListOperations from '../components/VideoListOperations';
@@ -25,6 +25,7 @@ export default function VideoListDetailsPage() {
   const { page, limit, setPagination, searchParams, setSearchParams } =
     usePaginationSearchParams(20);
   const duplicatesOnly = searchParams.get('duplicatesOnly') === 'true';
+  const filenameFilter = searchParams.get('filename') ?? undefined;
 
   const [list, setList] = useState<VideoListDetails | null>(null);
   const [videos, setVideos] = useState<VideoListVideo[]>([]);
@@ -34,12 +35,17 @@ export default function VideoListDetailsPage() {
 
   useEffect(() => {
     void fetchVideos();
-  }, [id, page, limit, duplicatesOnly]);
+  }, [id, page, limit, duplicatesOnly, filenameFilter]);
 
   async function fetchVideos() {
     setLoading(true);
     try {
-      const res = await getListDetails(Number(id), { page, limit, duplicatesOnly });
+      const res = await getListDetails(Number(id), {
+        page,
+        limit,
+        duplicatesOnly,
+        predictedFilename: filenameFilter,
+      });
       setList(res);
       setVideos(res.videos);
       setPaginationState(res.pagination);
@@ -124,9 +130,24 @@ export default function VideoListDetailsPage() {
         if (!filename) return <Typography.Text type="secondary">—</Typography.Text>;
         if (!record.has_duplicate_name) return filename;
         return (
-          <Tooltip title="Duplicate predicted filename in this list">
-            <Typography.Text type="danger">{filename}</Typography.Text>
-          </Tooltip>
+          <Space size={4}>
+            <Tooltip title="Duplicate predicted filename in this list">
+              <Typography.Text type="danger">{filename}</Typography.Text>
+            </Tooltip>
+            <Tooltip title="Show all videos with this filename">
+              <Button
+                type="text"
+                size="small"
+                icon={<FilterOutlined />}
+                onClick={() => {
+                  const params = new URLSearchParams(searchParams);
+                  params.set('filename', filename);
+                  params.delete('page');
+                  setSearchParams(params);
+                }}
+              />
+            </Tooltip>
+          </Space>
         );
       },
     },
@@ -176,6 +197,19 @@ export default function VideoListDetailsPage() {
         >
           Show only duplicate names
         </Checkbox>
+        {filenameFilter ? (
+          <Tag
+            closable
+            onClose={() => {
+              const params = new URLSearchParams(searchParams);
+              params.delete('filename');
+              params.delete('page');
+              setSearchParams(params);
+            }}
+          >
+            Имя файла: {filenameFilter}
+          </Tag>
+        ) : null}
       </Space>
       <VideoListOperations listId={Number(id)} videoIds={allVideoIds} refreshVideos={fetchVideos} />
       <Table
