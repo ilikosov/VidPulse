@@ -142,6 +142,17 @@ describe('RegexModule', () => {
     expect(result.metadata.is_fancam).toBe(true);
   });
 
+  it('collapses a doubled "@@EVENT" prefix to a single "@" without corrupting the captured text', async () => {
+    const module = new RegexModule();
+    const resultA = await module.parse('260523 Itzy Hwang Ye-ji - Motto @@MUSIC CORE', {});
+    const resultB = await module.parse('260522 Itzy Hwang Ye-ji - Motto @@MUSICBANK', {});
+
+    expect(resultA.metadata.event).toBe('@MUSIC CORE');
+    expect(resultB.metadata.event).toBe('@MUSICBANK');
+    expect(resultA.metadata.perf_date).toBe('260523');
+    expect(resultB.metadata.perf_date).toBe('260522');
+  });
+
   describe('dotted dates (MPD style)', () => {
     it('extracts "YYYY.M.D" after an event suffix, normalized to YYMMDD', async () => {
       const module = new RegexModule();

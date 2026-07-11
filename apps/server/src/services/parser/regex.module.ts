@@ -128,7 +128,11 @@ export class RegexModule implements ParserModule {
   }
 
   private extractEvent(title: string): string | undefined {
-    const atMatch = title.match(/@\s*([^|\]\[()#]+(?:\s+[^|\]\[()#]+)*)/i);
+    // "@+" (not just "@") consumes a doubled "@@EVENT" prefix as the delimiter, and "@" is
+    // excluded from the capture class so a leftover "@" can never be re-absorbed into the
+    // captured text — without both, "@@MUSIC CORE" captured as "@MUSIC CORE" instead of
+    // "MUSIC CORE", corrupting every downstream dictionary/alias lookup for that event.
+    const atMatch = title.match(/@+\s*([^@|\]\[()#]+(?:\s+[^@|\]\[()#]+)*)/i);
     if (atMatch?.[1]) {
       const cleaned = this.cleanEvent(atMatch[1]);
       return cleaned ? `@${/[A-Za-z]/.test(cleaned) ? cleaned.toUpperCase() : cleaned}` : undefined;

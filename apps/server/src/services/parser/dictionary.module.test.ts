@@ -173,6 +173,38 @@ describe('DictionaryModule aliases normalization', () => {
     expect(result.metadata.event).toBe('@INKIGAYO');
   });
 
+  it('corrects an event with a doubled "@@" prefix via the hardcoded alias fallback', async () => {
+    // Dictionary has no matching event (default mock only has 'INKIGAYO') — the hardcoded
+    // eventAliasMap is the only path that can resolve "MUSIC CORE". A doubled "@@" prefix
+    // (regex.module's raw output for a literal "@@EVENT" in the title) must not block it.
+    const module = new DictionaryModule();
+    const result = await module.parse('260523 Itzy Hwang Ye-ji - Motto @@MUSIC CORE', {
+      event: '@@MUSIC CORE',
+    });
+
+    expect(result.metadata.event).toBe('@MUSIC CORE');
+  });
+
+  it('resolves a doubled "@@" event exactly against the dictionary', async () => {
+    vi.mocked(eventService.getAllEvents).mockResolvedValue([{ name: 'MUSICBANK' }] as any);
+
+    const module = new DictionaryModule();
+    const result = await module.parse('260522 Itzy Hwang Ye-ji - Motto @@MUSICBANK', {
+      event: '@@MUSICBANK',
+    });
+
+    expect(result.metadata.event).toBe('@MUSICBANK');
+  });
+
+  it('normalizes an unresolved event to a single leading "@" instead of leaving it raw', async () => {
+    const module = new DictionaryModule();
+    const result = await module.parse('title', {
+      event: '@@SOME UNKNOWN SHOW',
+    });
+
+    expect(result.metadata.event).toBe('@SOME UNKNOWN SHOW');
+  });
+
   it('resolves the artist within the identified group, not a look-alike elsewhere', async () => {
     // GAWON belongs to MEOVV; Dawon (SECRET NUMBER) is one substitution away. With the group
     // known, resolution is scoped to MEOVV's members so the look-alike is never considered.
