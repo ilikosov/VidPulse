@@ -348,7 +348,9 @@ export class DictionaryModule implements ParserModule {
 
     fieldsChecked++;
     if (metadata.event) {
-      const eventName = metadata.event.replace('@', '');
+      // Strip ALL leading '@' (not just the first) — a doubled "@@EVENT" prefix would
+      // otherwise leave a stray '@' that breaks every exact/alias/fuzzy lookup below.
+      const eventName = metadata.event.replace(/^@+/, '');
       const aliasEvent = this.eventAliasMap[this.normalizeLookup(eventName)];
       const corrected = this.findBestMatch(eventName, dictionary.events, dictionary.aliases.event);
       // The dictionary is the source of truth; the hardcoded alias map is only a fallback for
@@ -357,6 +359,10 @@ export class DictionaryModule implements ParserModule {
       if (canonicalEvent) {
         metadata.event = '@' + canonicalEvent;
         correctionsMade++;
+      } else {
+        // No dictionary/alias match — keep the raw name, but normalized to exactly one
+        // leading '@' so a failed correction can never leave stray '@' characters behind.
+        metadata.event = '@' + eventName;
       }
     }
 
