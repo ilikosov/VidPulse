@@ -40,7 +40,7 @@ export interface ParseResult {
  * Identifiers of the selectable parser implementations (see the parser registry). Extend this union
  * when adding a strategy (e.g. 'llm') and register it in services/parser/registry.ts.
  */
-export type ParserStrategy = 'pipeline';
+export type ParserStrategy = 'pipeline' | 'pipeline-v1' | 'empty';
 
 /**
  * Parser module interface for multi-stage parsing
