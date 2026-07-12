@@ -15,14 +15,14 @@ lets you review/correct it, and organizes everything against a curated dictionar
 
 ## Tech stack
 
-- **Backend:** Node.js 18+, TypeScript 5, Express 4.
+- **Backend:** Node.js 18+, TypeScript 5/6 workspaces, Express 5.
 - **DB:** SQLite via `better-sqlite3` + Knex (query builder & migrations).
 - **Frontend:** React 18, Ant Design 5, Vite (in `apps/web/`).
 - **Tests:** Vitest (unit/integration), Playwright (e2e).
 - **Tooling:** Prettier, Husky + lint-staged, ts-node / tsx, nodemon.
 - **Monorepo:** npm workspaces — `apps/server` (backend), `apps/web` (frontend), `packages/shared`
   (shared types), `packages/db` (`@vidpulse/db`: knex connection, knexfile, migrations, seeds,
-  repositories, entity types), `packages/kpop-sources` (`@vidpulse/kpop-sources`: parse Wikidata into
+  repositories, entity types), `packages/kpop-sources` (`@vidpulse/kpop-sources`: parse Wikidata/MusicBrainz into
   a media-library snapshot). See [ADR 0003](docs/adr/0003-monorepo.md), [ADR 0004](docs/adr/0004-kpop-data-sources.md).
 
 ## Repository layout
@@ -48,7 +48,7 @@ lets you review/correct it, and organizes everything against a curated dictionar
 │   │   ├── src/              # connection.ts, knexfile.ts, repositories.ts, types.ts, index.ts
 │   │   ├── migrations/       # Knex migrations (schema source of truth)
 │   │   └── seeds/            # Knex seeds (+ examples/media-library.seed.json)
-│   └── kpop-sources/         # @vidpulse/kpop-sources: parse Wikidata → media-library snapshot
+│   └── kpop-sources/         # @vidpulse/kpop-sources: Wikidata/MusicBrainz → media-library snapshot
 │       └── src/              # wikidata/ (queries, source, normalize), buildLibrary.ts (compiled to dist/)
 ├── docs/                     # ADRs, reviews, reference docs, task files
 └── tsconfig.base.json        # Shared TS base config
@@ -61,7 +61,7 @@ lets you review/correct it, and organizes everything against a curated dictionar
 | `npm run dev:all`                                                     | Install deps, run migrations, launch backend+frontend |
 | `npm run dev`                                                         | Backend only (nodemon + ts-node)                      |
 | `npm run launch`                                                      | Backend + frontend together                           |
-| `npm run build`                                                       | Compile `@vidpulse/db` → backend → frontend           |
+| `npm run build`                                                       | Compile `@vidpulse/db` + sources → backend → frontend |
 | `npm test`                                                            | Vitest (unit/integration)                             |
 | `npm run test:e2e`                                                    | Playwright (e2e)                                      |
 | `npm run format`                                                      | Prettier write                                        |
@@ -99,7 +99,7 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
 
 ## Testing
 
-- Unit/integration tests live next to the code (`apps/server/src/**/*.test.ts`); DB tests use in-memory SQLite.
+- Unit/integration tests live next to the code (`apps/server/src/**/*.test.ts`); DB tests use an isolated SQLite test database prepared by Vitest global setup.
 - e2e tests + page objects live in `apps/server/tests/e2e/`.
 - ⚠️ The suite currently has known failures — see the **Tests** section of
   [`docs/code-review.md`](docs/code-review.md) and [TASK-15](docs/tasks/task-15-fix-tests.md). Aim to get
@@ -112,8 +112,8 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
   removed in TASK-3 ([ADR 0002](docs/adr/0002-raw-parse-vs-canonical-display.md)).
 - **Dual source of truth** for group/artist/event: text columns (`group_name`…) vs FKs (`group_id`…).
   Target model & display rule in [ADR 0002](docs/adr/0002-raw-parse-vs-canonical-display.md) / TASK-1.
-- **DB quirks:** FK enforcement currently relies on the `better-sqlite3` default; `test` and `development`
-  share `dev.sqlite3` ([TASK-5](docs/tasks/task-05-knexfile-hardening.md)).
+- **DB runtime:** `@vidpulse/db` enables WAL, foreign keys, and `busy_timeout` in the Knex `afterCreate` hook.
+  Test migrations run through `packages/db/src/knexfile.ts` with `TEST_DATABASE_PATH`.
 - The active parser is `apps/server/src/services/parser/`. Which implementation runs is selected by
   `PARSER_STRATEGY` (default `pipeline` = regex + dictionary) via `services/parser/registry.ts`; every
   parse entry point funnels through `parseTitle()` → `getActiveParser()`, and all parsers go through

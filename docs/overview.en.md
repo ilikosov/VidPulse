@@ -53,10 +53,10 @@ VidPulse is a monorepo with a layered backend and a React frontend.
                                    └──────────────────────────────┘
 ```
 
-- **Routes** (`src/routes`) are thin HTTP controllers.
-- **Services** (`src/services`) hold business logic (parser, dictionary, sync, tags, YouTube, AI).
-- **Repositories** (`src/repositories`) wrap data access.
-- Dependencies are wired in `src/compositionRoot.ts` (composition root / DI).
+- **Routes** (`apps/server/src/routes`) are thin HTTP controllers.
+- **Services** (`apps/server/src/services`) hold business logic (parser, dictionary, sync, tags, YouTube, AI).
+- **Repositories** (`packages/db/src/repositories.ts`) live in the `@vidpulse/db` workspace and wrap data access.
+- Runtime configuration is centralized in `apps/server/src/config.ts`; shared DB/sources code is published as workspace packages.
 
 ---
 
@@ -64,7 +64,7 @@ VidPulse is a monorepo with a layered backend and a React frontend.
 
 | Layer    | Technology                                                    |
 | -------- | ------------------------------------------------------------- |
-| Backend  | Node.js, TypeScript, Express 4                                |
+| Backend  | Node.js, TypeScript, Express 5                                |
 | Database | SQLite via `better-sqlite3` + Knex query builder & migrations |
 | Frontend | React 18, Ant Design 5, React Router 6, Vite                  |
 | Testing  | Vitest (unit/integration), Playwright (E2E)                   |
@@ -90,17 +90,17 @@ git clone <repo-url> VidPulse && cd VidPulse
 cp .env.example .env
 #   then edit .env and set YOUTUBE_API_KEY
 
-# 3. One-shot setup: installs deps (root + client), runs migrations, launches BE+FE
+# 3. One-shot setup: installs workspace deps, runs migrations, launches BE+FE
 npm run dev:all
 ```
 
 `dev:all` is the fastest path. To run things manually:
 
 ```bash
-npm install                                              # backend deps
-cd client && npm install && cd ..                        # frontend deps
-npx knex migrate:latest --knexfile src/db/knexfile.ts    # apply migrations
-npm run launch                                           # backend + frontend together
+npm install                                                            # install all workspace deps
+npm run build -w @vidpulse/db && npm run build -w @vidpulse/kpop-sources
+npm run migrate                                                        # apply DB migrations
+npm run launch                                                         # backend + frontend together
 ```
 
 - Backend runs on **http://localhost:3000** (`PORT`)
@@ -130,20 +130,20 @@ Defined in `.env` (see `.env.example`):
 
 **Root:**
 
-| Script                 | Description                                 |
-| ---------------------- | ------------------------------------------- |
-| `npm run dev`          | Backend only (nodemon + ts-node)            |
-| `npm run launch`       | Backend + frontend concurrently             |
-| `npm run dev:all`      | Install + migrate + launch (full bootstrap) |
-| `npm run build`        | Compile backend TypeScript to `dist/`       |
-| `npm start`            | Run compiled backend                        |
-| `npm test`             | Run Vitest unit/integration tests           |
-| `npm run test:e2e`     | Run Playwright E2E tests                    |
-| `npm run format`       | Format with Prettier                        |
-| `npm run format:check` | Check formatting                            |
-| `npm run backfill:*`   | One-off data backfill/maintenance scripts   |
+| Script                 | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| `npm run dev`          | Backend only (nodemon + ts-node)                 |
+| `npm run launch`       | Backend + frontend concurrently                  |
+| `npm run dev:all`      | Install + migrate + launch (full bootstrap)      |
+| `npm run build`        | Build DB/source packages, backend, and frontend  |
+| `npm start`            | Run compiled backend                             |
+| `npm test`             | Run Vitest unit/integration tests                |
+| `npm run test:e2e`     | Run Playwright E2E tests                         |
+| `npm run format`       | Format with Prettier                             |
+| `npm run format:check` | Check formatting                                 |
+| `npm run backfill:*`   | One-off server data backfill/maintenance scripts |
 
-**Client (`cd client`):**
+**Frontend workspace (`npm run <script> -w apps/web`):**
 
 | Script            | Description                   |
 | ----------------- | ----------------------------- |
@@ -157,28 +157,27 @@ Defined in `.env` (see `.env.example`):
 
 ```
 VidPulse/
-├── src/                     # Backend
-│   ├── routes/              # Express controllers (videos, channels, playlists, dictionary, parser, …)
-│   ├── services/            # Business logic
-│   │   ├── parser/          # Title → metadata parsing pipeline (active)
-│   │   ├── sync/            # Channel/playlist sync from YouTube
-│   │   └── …                # dictionary, youtube, ai, tag services
-│   ├── repositories/        # Data-access layer
-│   ├── models/ interfaces/ types/   # TypeScript definitions
-│   ├── middleware/          # Express middleware
-│   ├── scripts/             # Backfill / maintenance scripts
-│   ├── db/                  # Knex config & SQLite connection
-│   ├── compositionRoot.ts   # Dependency injection wiring
-│   └── index.ts             # App entry point
-├── client/                  # Frontend (React + Vite)
-│   └── src/
-│       ├── pages/           # Route-level screens
-│       ├── components/      # Reusable UI (VideoTable, VideoCard, ReviewQueue, …)
-│       ├── api/ api.ts      # API client layer
-│       ├── hooks/ utils/
-├── migrations/              # Knex migrations (schema source of truth)
-├── tests/e2e/               # Playwright E2E tests & page objects
-├── docs/                    # ADRs, API notes, audits
+├── apps/
+│   ├── server/              # Backend (Express + TypeScript)
+│   │   ├── src/
+│   │   │   ├── routes/      # Express controllers (videos, channels, playlists, dictionary, parser, …)
+│   │   │   ├── services/    # Business logic (parser, sync, dictionary, youtube, ai, files, tags)
+│   │   │   ├── middleware/  # Express middleware
+│   │   │   ├── scripts/     # Backfill / maintenance scripts
+│   │   │   └── index.ts     # App factory + server entry point
+│   │   ├── schemas/         # JSON schemas for request/media-library validation
+│   │   └── tests/e2e/       # Playwright E2E tests and page objects
+│   └── web/                 # Frontend (React + Vite)
+│       └── src/
+│           ├── pages/       # Route-level screens
+│           ├── components/  # Reusable UI (VideoTable, VideoCard, ReviewQueue, drawers, …)
+│           ├── api/         # API client layer
+│           ├── hooks/ utils/
+├── packages/
+│   ├── db/                  # @vidpulse/db: Knex config, connection, migrations, seeds, repositories
+│   ├── kpop-sources/        # @vidpulse/kpop-sources: Wikidata/MusicBrainz → media-library snapshot
+│   └── shared/              # @vidpulse/shared: shared API/domain contracts
+├── docs/                    # ADRs, API notes, audits, task files
 └── CLAUDE.md                # Contributor conventions & workflow
 ```
 
@@ -188,7 +187,7 @@ VidPulse/
 
 > For full table-by-table columns, keys and an ER diagram, see **[Entities & Relationships](./entities.en.md)**.
 
-Core entities (defined across `migrations/`):
+Core entities (defined across `packages/db/migrations/`):
 
 - **`videos`** — ingested videos with denormalized metadata fields and FKs to `channels`, `playlists`, `video_lists`, `duplicate_groups`.
 - **`channels`, `playlists`** — YouTube sources.
@@ -229,7 +228,7 @@ npm test          # Vitest (unit/integration)
 npm run test:e2e  # Playwright (E2E; spins up backend with a mocked YouTube API)
 ```
 
-Unit tests live next to the code (`src/**/*.test.ts`). Tests that exercise the database use an in-memory SQLite instance — see `src/services/parser/videoSongs.service.test.ts` for the mocking pattern. E2E tests and page objects live in `tests/e2e/`.
+Unit tests live next to the backend code (`apps/server/src/**/*.test.ts`). Tests that exercise the database use an isolated SQLite test database prepared by Vitest global setup. E2E tests and page objects live in `apps/server/tests/e2e/`.
 
 ---
 
@@ -240,5 +239,5 @@ See [`CLAUDE.md`](../CLAUDE.md) for the full contributor guide. Highlights:
 - Work on feature branches; never commit directly to the default branch.
 - **Commits** follow Conventional Commits: `<type>(<scope>): <subject>` (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`).
 - Keep **routes thin** and put logic in **services**.
-- Create schema changes via `npx knex migrate:make <name>` and apply with `npx knex migrate:latest --knexfile src/db/knexfile.ts`.
+- Create schema changes via `npx knex migrate:make <name> --knexfile packages/db/src/knexfile.ts` and apply with `npm run migrate` or `npx knex migrate:latest --knexfile packages/db/src/knexfile.ts`.
 - Run `npm run format` before committing (a Husky pre-commit hook also formats staged files).
