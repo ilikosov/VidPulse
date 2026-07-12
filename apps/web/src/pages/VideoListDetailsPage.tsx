@@ -14,14 +14,17 @@ import {
 import { FilterOutlined, PaperClipOutlined } from '@ant-design/icons';
 import { batchVideoOperation, getListDetails } from '../api/videoListsApi';
 import type { VideoListDetails, VideoListVideo } from '../api/videoListsApi';
+import { getFiles } from '../api/filesApi';
 import VideoListOperations from '../components/VideoListOperations';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
+import { useFileEditorDrawer } from '../components/FileEditorDrawerProvider';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 
 export default function VideoListDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { openVideo } = useVideoDrawer();
+  const { openFileEditor } = useFileEditorDrawer();
   const { page, limit, setPagination, searchParams, setSearchParams } =
     usePaginationSearchParams(20);
   const duplicatesOnly = searchParams.get('duplicatesOnly') === 'true';
@@ -60,6 +63,21 @@ export default function VideoListDetailsPage() {
   // The list's status is homogeneous across its videos (see video-list.service.ts
   // recomputeStatus), so this is correct for the whole list, not just the current page.
   const hasNeedsReview = list?.status === 'needs_review';
+
+  // A video can have several linked files; this opens the first one — the same "first linked
+  // file" convention predicted_filename/orientation already use for a representative file.
+  async function handleOpenFile(videoId: number) {
+    try {
+      const { files } = await getFiles({ videoId, limit: 1 });
+      if (files.length === 0) {
+        notification.error({ message: 'No linked file found' });
+        return;
+      }
+      openFileEditor(files[0].id, fetchVideos);
+    } catch (err: any) {
+      notification.error({ message: err?.message || 'Failed to open file editor' });
+    }
+  }
 
   async function handleRemoveVideo(videoId: number) {
     try {
@@ -107,10 +125,12 @@ export default function VideoListDetailsPage() {
       key: 'has_file',
       width: 60,
       align: 'center' as const,
-      render: (hasFile: boolean) =>
+      render: (hasFile: boolean, record: VideoListVideo) =>
         hasFile ? (
-          <Tooltip title="Linked file on disk">
-            <PaperClipOutlined style={{ color: '#52c41a' }} />
+          <Tooltip title="Linked file on disk — open file editor">
+            <a onClick={() => void handleOpenFile(record.id)} style={{ cursor: 'pointer' }}>
+              <PaperClipOutlined style={{ color: '#52c41a' }} />
+            </a>
           </Tooltip>
         ) : (
           <Typography.Text type="secondary">—</Typography.Text>
