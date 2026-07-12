@@ -53,10 +53,10 @@ VidPulse — это монорепозиторий со слоистым бэк�
                                    └──────────────────────────────┘
 ```
 
-- **Routes** (`src/routes`) — тонкие HTTP-контроллеры.
-- **Services** (`src/services`) — бизнес-логика (парсер, словарь, синк, теги, YouTube, AI).
-- **Repositories** (`src/repositories`) — слой доступа к данным.
-- Зависимости связываются в `src/compositionRoot.ts` (composition root / DI).
+- **Routes** (`apps/server/src/routes`) — тонкие HTTP-контроллеры.
+- **Services** (`apps/server/src/services`) — бизнес-логика (парсер, словарь, синк, теги, YouTube, AI).
+- **Repositories** (`packages/db/src/repositories.ts`) живут в workspace-пакете `@vidpulse/db` и закрывают доступ к данным.
+- Runtime-конфигурация централизована в `apps/server/src/config.ts`; общие DB/source-модули вынесены в workspace-пакеты.
 
 ---
 
@@ -64,7 +64,7 @@ VidPulse — это монорепозиторий со слоистым бэк�
 
 | Слой        | Технология                                                      |
 | ----------- | --------------------------------------------------------------- |
-| Бэкенд      | Node.js, TypeScript, Express 4                                  |
+| Бэкенд      | Node.js, TypeScript, Express 5                                  |
 | База данных | SQLite через `better-sqlite3` + Knex (query builder и миграции) |
 | Фронтенд    | React 18, Ant Design 5, React Router 6, Vite                    |
 | Тесты       | Vitest (unit/интеграционные), Playwright (E2E)                  |
@@ -90,17 +90,17 @@ git clone <repo-url> VidPulse && cd VidPulse
 cp .env.example .env
 #   затем отредактируйте .env и задайте YOUTUBE_API_KEY
 
-# 3. Установка «в один шаг»: ставит зависимости (root + client), применяет миграции, запускает BE+FE
+# 3. Установка «в один шаг»: ставит зависимости workspaces, применяет миграции, запускает BE+FE
 npm run dev:all
 ```
 
 `dev:all` — самый быстрый путь. Чтобы выполнить шаги вручную:
 
 ```bash
-npm install                                              # зависимости бэкенда
-cd client && npm install && cd ..                        # зависимости фронтенда
-npx knex migrate:latest --knexfile src/db/knexfile.ts    # применить миграции
-npm run launch                                           # бэкенд + фронтенд вместе
+npm install                                                            # установить зависимости всех workspaces
+npm run build -w @vidpulse/db && npm run build -w @vidpulse/kpop-sources
+npm run migrate                                                        # применить DB-миграции
+npm run launch                                                         # бэкенд + фронтенд вместе
 ```
 
 - Бэкенд работает на **http://localhost:3000** (`PORT`)
@@ -135,7 +135,7 @@ npm run launch                                           # бэкенд + фро
 | `npm run dev`          | Только бэкенд (nodemon + ts-node)                |
 | `npm run launch`       | Бэкенд + фронтенд одновременно                   |
 | `npm run dev:all`      | Установка + миграции + запуск (полный bootstrap) |
-| `npm run build`        | Компиляция бэкенда TypeScript в `dist/`          |
+| `npm run build`        | Сборка DB/source-пакетов, бэкенда и фронтенда    |
 | `npm start`            | Запуск скомпилированного бэкенда                 |
 | `npm test`             | Запуск unit/интеграционных тестов Vitest         |
 | `npm run test:e2e`     | Запуск E2E-тестов Playwright                     |
@@ -143,7 +143,7 @@ npm run launch                                           # бэкенд + фро
 | `npm run format:check` | Проверка форматирования                          |
 | `npm run backfill:*`   | Разовые скрипты backfill/обслуживания данных     |
 
-**Клиент (`cd client`):**
+**Frontend workspace (`npm run <script> -w apps/web`):**
 
 | Скрипт            | Описание                           |
 | ----------------- | ---------------------------------- |
@@ -157,28 +157,27 @@ npm run launch                                           # бэкенд + фро
 
 ```
 VidPulse/
-├── src/                     # Бэкенд
-│   ├── routes/              # Express-контроллеры (videos, channels, playlists, dictionary, parser, …)
-│   ├── services/            # Бизнес-логика
-│   │   ├── parser/          # Пайплайн разбора «название → метаданные» (активный)
-│   │   ├── sync/            # Синхронизация каналов/плейлистов с YouTube
-│   │   └── …                # сервисы dictionary, youtube, ai, tag
-│   ├── repositories/        # Слой доступа к данным
-│   ├── models/ interfaces/ types/   # Определения TypeScript
-│   ├── middleware/          # Express middleware
-│   ├── scripts/             # Скрипты backfill / обслуживания
-│   ├── db/                  # Конфиг Knex и подключение к SQLite
-│   ├── compositionRoot.ts   # Связывание зависимостей (DI)
-│   └── index.ts             # Точка входа приложения
-├── client/                  # Фронтенд (React + Vite)
-│   └── src/
-│       ├── pages/           # Экраны уровня маршрутов
-│       ├── components/      # Переиспользуемый UI (VideoTable, VideoCard, ReviewQueue, …)
-│       ├── api/ api.ts      # Слой API-клиента
-│       ├── hooks/ utils/
-├── migrations/              # Миграции Knex (источник истины для схемы)
-├── tests/e2e/               # E2E-тесты Playwright и page objects
-├── docs/                    # ADR, заметки по API, аудиты
+├── apps/
+│   ├── server/              # Бэкенд (Express + TypeScript)
+│   │   ├── src/
+│   │   │   ├── routes/      # Express-контроллеры (videos, channels, playlists, dictionary, parser, …)
+│   │   │   ├── services/    # Бизнес-логика (parser, sync, dictionary, youtube, ai, files, tags)
+│   │   │   ├── middleware/  # Express middleware
+│   │   │   ├── scripts/     # Скрипты backfill / обслуживания
+│   │   │   └── index.ts     # App factory + точка входа сервера
+│   │   ├── schemas/         # JSON-схемы для валидации requests/media-library
+│   │   └── tests/e2e/       # E2E-тесты Playwright и page objects
+│   └── web/                 # Фронтенд (React + Vite)
+│       └── src/
+│           ├── pages/       # Экраны уровня маршрутов
+│           ├── components/  # Переиспользуемый UI (VideoTable, VideoCard, ReviewQueue, drawers, …)
+│           ├── api/         # Слой API-клиента
+│           ├── hooks/ utils/
+├── packages/
+│   ├── db/                  # @vidpulse/db: Knex config, connection, migrations, seeds, repositories
+│   ├── kpop-sources/        # @vidpulse/kpop-sources: Wikidata/MusicBrainz → media-library snapshot
+│   └── shared/              # @vidpulse/shared: общие API/domain contracts
+├── docs/                    # ADR, заметки по API, аудиты, task-файлы
 └── CLAUDE.md                # Соглашения и рабочий процесс для контрибьюторов
 ```
 
@@ -188,7 +187,7 @@ VidPulse/
 
 > Полное описание колонок, ключей и ER-диаграмму см. в **[Сущности и связи](./entities.ru.md)**.
 
-Основные сущности (заданы в `migrations/`):
+Основные сущности (заданы в `packages/db/migrations/`):
 
 - **`videos`** — загруженные видео с денормализованными полями метаданных и FK на `channels`, `playlists`, `video_lists`, `duplicate_groups`.
 - **`channels`, `playlists`** — источники YouTube.
@@ -229,7 +228,7 @@ npm test          # Vitest (unit/интеграционные)
 npm run test:e2e  # Playwright (E2E; поднимает бэкенд с замоканным YouTube API)
 ```
 
-Unit-тесты лежат рядом с кодом (`src/**/*.test.ts`). Тесты, работающие с БД, используют in-memory SQLite — см. паттерн мокинга в `src/services/parser/videoSongs.service.test.ts`. E2E-тесты и page objects находятся в `tests/e2e/`.
+Unit-тесты лежат рядом с backend-кодом (`apps/server/src/**/*.test.ts`). Тесты, работающие с БД, используют изолированную SQLite test database, которую готовит Vitest global setup. E2E-тесты и page objects находятся в `apps/server/tests/e2e/`.
 
 ---
 
@@ -240,5 +239,5 @@ Unit-тесты лежат рядом с кодом (`src/**/*.test.ts`). Тес
 - Работайте в feature-ветках; не коммитьте напрямую в основную ветку.
 - **Коммиты** в формате Conventional Commits: `<type>(<scope>): <subject>` (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`).
 - Держите **роуты тонкими**, а логику — в **сервисах**.
-- Изменения схемы создавайте через `npx knex migrate:make <name>` и применяйте `npx knex migrate:latest --knexfile src/db/knexfile.ts`.
+- Изменения схемы создавайте через `npx knex migrate:make <name> --knexfile packages/db/src/knexfile.ts` и применяйте через `npm run migrate` или `npx knex migrate:latest --knexfile packages/db/src/knexfile.ts`.
 - Перед коммитом запускайте `npm run format` (Husky pre-commit hook также форматирует staged-файлы).

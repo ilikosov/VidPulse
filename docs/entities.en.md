@@ -4,7 +4,7 @@
 >
 > ⬅️ Back to [Project Overview](./overview.en.md)
 
-This document describes the VidPulse data model: every table, its columns, keys, and how the entities relate. The schema is defined by the Knex migrations in [`migrations/`](../migrations) and is the source of truth; this page is a curated, human-readable view of the **current** schema (after all migrations are applied).
+This document describes the VidPulse data model: every table, its columns, keys, and how the entities relate. The schema is defined by the Knex migrations in [`packages/db/migrations/`](../packages/db/migrations) and is the source of truth; this page is a curated, human-readable view of the **current** schema (after all migrations are applied).
 
 > **Notation:** 🔑 = primary key · 🔗 = foreign key · `*` = `NOT NULL` · _(unique)_ = unique constraint. SQLite types are simplified (TEXT/INTEGER/REAL/BOOLEAN/TIMESTAMP).
 

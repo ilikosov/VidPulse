@@ -2,6 +2,8 @@
 
 Full-stack приложение для архивации и управления метаданными K-pop видео / Full-stack app for archiving and managing K-pop video metadata.
 
+Monorepo layout: backend in [`apps/server`](./apps/server), frontend in [`apps/web`](./apps/web), shared database/source/type packages in [`packages/`](./packages).
+
 ## 📖 Documentation / Документация
 
 | Document                                                    | Документ                                            |
@@ -17,7 +19,7 @@ Implementation backlog derived from the docs: [`TODO.md`](./TODO.md).
 
 ```bash
 cp .env.example .env   # set YOUTUBE_API_KEY
-npm run dev:all        # install deps, run migrations, launch backend + frontend
+npm run dev:all        # install workspace deps, run migrations, launch backend + frontend
 ```
 
 Backend → http://localhost:3000 · Frontend → http://localhost:5173
