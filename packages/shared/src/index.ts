@@ -406,6 +406,8 @@ export interface FileRecord {
   size_bytes: number | null;
   youtube_id: string | null;
   video_id: number | null;
+  width: number | null;
+  height: number | null;
   /** Joined from the linked video, when present. */
   video_title?: string | null;
   scanned_at: string;
@@ -416,9 +418,20 @@ export interface FilesResponse {
   total: number;
 }
 
+/** `FileRecord` plus a preview of the name this file would get renamed to (returned only by
+ * the single-file GET endpoint — computing it for every row of the list would be wasteful). */
+export interface FileDetails extends FileRecord {
+  predicted_filename: string | null;
+}
+
+export interface FileThumbnailsResponse {
+  thumbnails: string[];
+}
+
 export interface ScanResult {
   scanned: number;
   linked: number;
+  probed: number;
   errors: string[];
 }
 

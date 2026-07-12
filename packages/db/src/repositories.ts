@@ -220,7 +220,15 @@ export class KnexVideoRepository implements IVideoRepository {
   }
 
   private applyFilters(query: ReturnType<typeof knex>, filters: IVideoFilters): void {
-    const { status, includeIgnored, channelId, playlistId, videoListId } = filters;
+    const { status, includeIgnored, channelId, playlistId, videoListId, search } = filters;
+    if (search) {
+      const term = `%${search.toLowerCase()}%`;
+      query.where((b) =>
+        b
+          .whereRaw('LOWER(videos.original_title) LIKE ?', [term])
+          .orWhere('videos.youtube_id', search),
+      );
+    }
     if (channelId)
       query.whereExists(
         knex('video_channels')
@@ -917,7 +925,7 @@ export class KnexFileRepository implements IFileRepository {
     return ((await this.withVideo().where('f.id', id).first()) as FileWithVideo) ?? null;
   }
 
-  async upsert(data: Omit<FileEntity, 'id' | 'scanned_at'>): Promise<void> {
+  async upsert(data: Omit<FileEntity, 'id' | 'scanned_at' | 'width' | 'height'>): Promise<void> {
     await knex('files')
       .insert({ ...data, scanned_at: knex.fn.now() })
       .onConflict(['directory', 'filename'])
@@ -964,6 +972,31 @@ export class KnexFileRepository implements IFileRepository {
 
   async deleteById(id: number): Promise<void> {
     await knex('files').where('id', id).del();
+  }
+
+  async updateDimensions(id: number, width: number | null, height: number | null): Promise<void> {
+    await knex('files').where('id', id).update({ width, height });
+  }
+
+  /** Files already linked to a video but never successfully probed. */
+  async getUnprobedLinked(): Promise<FileEntity[]> {
+    return knex('files').whereNotNull('video_id').whereNull('width');
+  }
+
+  /** First linked file's dimensions per video (lowest id) — one video can have several files. */
+  async getDimensionsByVideoIds(
+    videoIds: number[],
+  ): Promise<Map<number, { width: number | null; height: number | null }>> {
+    if (videoIds.length === 0) return new Map();
+    const rows = await knex('files')
+      .whereIn('video_id', videoIds)
+      .orderBy('id', 'asc')
+      .select('video_id', 'width', 'height');
+    const map = new Map<number, { width: number | null; height: number | null }>();
+    for (const row of rows) {
+      if (!map.has(row.video_id)) map.set(row.video_id, { width: row.width, height: row.height });
+    }
+    return map;
   }
 }
 

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Button, Popconfirm, Space, Table, Tag, Typography, message, notification } from 'antd';
+import { Button, Space, Table, Tag, Tooltip, Typography, message, notification } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { deleteFile, getFiles, scanFiles } from '../api/filesApi';
+import { LinkOutlined } from '@ant-design/icons';
+import { getFiles, scanFiles } from '../api/filesApi';
 import type { FileRecord } from '../api/filesApi';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
+import { useFileEditorDrawer } from '../components/FileEditorDrawerProvider';
 
 function formatBytes(bytes: number | null): string {
   if (bytes == null) return '—';
@@ -20,6 +22,7 @@ function formatBytes(bytes: number | null): string {
 
 export default function FilesPage() {
   const { openVideo } = useVideoDrawer();
+  const { openFileEditor } = useFileEditorDrawer();
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -61,16 +64,6 @@ export default function FilesPage() {
     }
   }
 
-  async function handleDelete(id: number) {
-    try {
-      await deleteFile(id);
-      message.success('File record removed');
-      await fetchFiles(page, limit);
-    } catch (err: any) {
-      message.error(err?.message || 'Failed to delete file');
-    }
-  }
-
   const columns: ColumnsType<FileRecord> = [
     { title: 'Filename', dataIndex: 'filename', key: 'filename', ellipsis: true },
     {
@@ -98,14 +91,24 @@ export default function FilesPage() {
       title: 'Video',
       dataIndex: 'video_id',
       key: 'video_id',
-      render: (videoId: number | null, record) =>
-        videoId != null ? (
-          <a onClick={() => openVideo(videoId, () => fetchFiles(page, limit))}>
-            {record.video_title || `#${videoId}`}
-          </a>
-        ) : (
-          <Typography.Text type="secondary">unlinked</Typography.Text>
-        ),
+      render: (videoId: number | null, record) => (
+        <Space size={6}>
+          <Tooltip
+            title={videoId != null ? 'Edit file / linked video' : 'Edit file / link a video'}
+          >
+            <a onClick={() => openFileEditor(record.id, () => fetchFiles(page, limit))}>
+              <LinkOutlined style={{ color: videoId != null ? '#52c41a' : '#bfbfbf' }} />
+            </a>
+          </Tooltip>
+          {videoId != null ? (
+            <a onClick={() => openVideo(videoId, () => fetchFiles(page, limit))}>
+              {record.video_title || `#${videoId}`}
+            </a>
+          ) : (
+            <Typography.Text type="secondary">unlinked</Typography.Text>
+          )}
+        </Space>
+      ),
     },
     {
       title: 'Scanned At',
@@ -113,18 +116,6 @@ export default function FilesPage() {
       key: 'scanned_at',
       width: 180,
       render: (value: string) => new Date(value).toLocaleString(),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 100,
-      render: (_: unknown, record) => (
-        <Popconfirm title="Remove this file record?" onConfirm={() => handleDelete(record.id)}>
-          <Button danger size="small">
-            Delete
-          </Button>
-        </Popconfirm>
-      ),
     },
   ];
 

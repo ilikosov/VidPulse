@@ -43,6 +43,10 @@ acceptance criteria.
   Songs/discography via MusicBrainz **done** (full track-lists, bridged by Wikidata P434; opt-in,
   1 req/s — [ADR 0005](./docs/adr/0005-musicbrainz-song-source.md)). Remaining: solo K-pop artists
   from Wikidata (humans with genre K-pop).
+- [ ] **TASK-22** (low) — Rotate a linked file from the file editor drawer — [details](./docs/tasks/task-22-file-rotate.md).
+      First mutating ffmpeg operation in the codebase (lossless `-c copy` re-tag + temp-file swap);
+      needs cumulative-rotation handling and keeping `files.width`/`height` (and
+      `{{video.orientation}}`) accurate after a rotate.
 
 ## Bugs / tech debt
 

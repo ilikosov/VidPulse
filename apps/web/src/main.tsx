@@ -5,6 +5,7 @@ import App from './App';
 import { SettingsProvider } from './settingsContext';
 import { VideoDrawerProvider } from './components/VideoDrawerProvider';
 import { FilesDrawerProvider } from './components/FilesDrawerProvider';
+import { FileEditorDrawerProvider } from './components/FileEditorDrawerProvider';
 import { MediaLibraryDrawerProvider } from './components/MediaLibraryDrawerProvider';
 import 'antd/dist/reset.css';
 import './index.css';
@@ -15,17 +16,26 @@ import './index.css';
 // the drawer's MemoryRouter is a sibling of the app router, not nested in it.
 // (FilesDrawerProvider has no router of its own, but lives alongside
 // VideoDrawerProvider here since Files can open a nested video drawer.)
+//
+// FileEditorDrawerProvider must wrap FilesDrawerProvider, not sit inside it:
+// FilesDrawerProvider renders <FilesPage/> as a sibling of `{children}` (inside
+// its own Drawer), not as a descendant of `{children}` — so a provider nested
+// inside FilesDrawerProvider's `{children}` never reaches FilesPage. Wrapping
+// it the other way round makes FilesDrawerProvider's entire subtree (Drawer
+// included) a descendant of FileEditorDrawerProvider instead.
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <SettingsProvider>
       <VideoDrawerProvider>
-        <FilesDrawerProvider>
-          <MediaLibraryDrawerProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
-          </MediaLibraryDrawerProvider>
-        </FilesDrawerProvider>
+        <FileEditorDrawerProvider>
+          <FilesDrawerProvider>
+            <MediaLibraryDrawerProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </MediaLibraryDrawerProvider>
+          </FilesDrawerProvider>
+        </FileEditorDrawerProvider>
       </VideoDrawerProvider>
     </SettingsProvider>
   </React.StrictMode>,

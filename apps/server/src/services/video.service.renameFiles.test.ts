@@ -33,7 +33,11 @@ async function seedVideo(youtubeId: string, groupName: string): Promise<number> 
   return typeof row === 'object' ? row.id : row;
 }
 
-async function seedFile(videoId: number, filename: string): Promise<void> {
+async function seedFile(
+  videoId: number,
+  filename: string,
+  dims?: { width: number; height: number },
+): Promise<void> {
   await fileRepository.upsert({
     filename,
     directory: srcDir,
@@ -42,6 +46,11 @@ async function seedFile(videoId: number, filename: string): Promise<void> {
     youtube_id: null,
     video_id: videoId,
   });
+  if (dims) {
+    const { files } = await fileRepository.getAll({ videoId });
+    const file = files.find((f) => f.filename === filename)!;
+    await fileRepository.updateDimensions(file.id, dims.width, dims.height);
+  }
 }
 
 describe('videoService.renameFiles', () => {
@@ -139,5 +148,22 @@ describe('videoService.renameFiles', () => {
     const second = await videoService.renameFiles([videoId]);
 
     expect(second).toEqual({ moved: 1, skipped: 0, errors: [] });
+  });
+
+  it('renders {{video.orientation}} from the linked file dimensions', async () => {
+    const videoId = await seedVideo(`${TAG}-6`, 'ORIENTATION GROUP');
+    makeSourceFile('src6.mp4');
+    await seedFile(videoId, 'src6.mp4', { width: 1080, height: 1920 });
+
+    const originalTemplate = process.env.RENAME_TEMPLATE_VIDEO;
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.orientation}}';
+    try {
+      const result = await videoService.renameFiles([videoId]);
+
+      expect(result).toEqual({ moved: 1, skipped: 0, errors: [] });
+      expect(fs.existsSync(path.join(outDir, 'vertical.mp4'))).toBe(true);
+    } finally {
+      process.env.RENAME_TEMPLATE_VIDEO = originalTemplate;
+    }
   });
 });

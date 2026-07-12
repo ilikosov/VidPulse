@@ -7,6 +7,8 @@ export type VideoForContext = VideoEntity & {
   playlist_title?: string | null;
   tags?: Array<{ name: string }>;
   songs?: Array<{ title: string }>;
+  file_width?: number | null;
+  file_height?: number | null;
 };
 
 /** Convert ISO date string (2026-05-21T00:00:00.000Z) → YYMMDD (260521). */
@@ -39,5 +41,11 @@ export function buildVideoContext(video: VideoForContext): EntityContext {
     tags: (video.tags ?? []).map((tag) => tag.name),
     duration_seconds: video.duration_seconds ?? null,
     status: video.status,
+    orientation:
+      video.file_width != null && video.file_height != null
+        ? video.file_width >= video.file_height
+          ? 'horizontal'
+          : 'vertical'
+        : null,
   };
 }

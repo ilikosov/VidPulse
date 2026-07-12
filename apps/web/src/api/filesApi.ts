@@ -1,7 +1,20 @@
 import { fetchApi } from './client';
-import type { FileRecord, FilesResponse, LinkFileRequest, ScanResult } from './types';
+import type {
+  FileDetails,
+  FileRecord,
+  FilesResponse,
+  FileThumbnailsResponse,
+  LinkFileRequest,
+  ScanResult,
+} from './types';
 
-export type { FileRecord, FilesResponse, ScanResult } from './types';
+export type {
+  FileDetails,
+  FileRecord,
+  FilesResponse,
+  FileThumbnailsResponse,
+  ScanResult,
+} from './types';
 
 export const getFiles = (params?: {
   page?: number;
@@ -15,6 +28,12 @@ export const getFiles = (params?: {
   const qs = query.toString();
   return fetchApi<FilesResponse>(`/files${qs ? `?${qs}` : ''}`);
 };
+
+export const getFile = (fileId: number): Promise<FileDetails> =>
+  fetchApi<FileDetails>(`/files/${fileId}`);
+
+export const getFileThumbnails = (fileId: number): Promise<FileThumbnailsResponse> =>
+  fetchApi<FileThumbnailsResponse>(`/files/${fileId}/thumbnails`);
 
 export const scanFiles = (): Promise<ScanResult> =>
   fetchApi<ScanResult>('/files/scan', { method: 'POST' });

@@ -1,6 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { knex } from '@vidpulse/db';
 import { fileRepository } from '@vidpulse/db';
+
+const { mockProbeDimensions } = vi.hoisted(() => ({ mockProbeDimensions: vi.fn() }));
+vi.mock('./file-probe.service', () => ({ probeDimensions: mockProbeDimensions }));
+
 import { fileService } from './file.service';
 
 // Integration test against the migrated test DB (see tests/vitest.global-setup.ts).
@@ -93,5 +97,196 @@ describe('fileService linking by youtube_id', () => {
     expect(mine).toHaveLength(1);
     expect(mine[0].size_bytes).toBe(999);
     expect(total).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// Dimension probing on link — probeDimensions itself (real ffprobe wrapper) is covered by
+// file-probe.service.test.ts; here it's mocked so no real ffprobe binary is ever invoked.
+describe('fileService dimension probing', () => {
+  beforeEach(async () => {
+    mockProbeDimensions.mockReset();
+    const [chan] = await knex('channels')
+      .insert({ youtube_id: 'file-test-channel', title: 'file test' })
+      .returning('id');
+    channelId = typeof chan === 'object' ? chan.id : chan;
+    const [vid] = await knex('videos')
+      .insert({ youtube_id: YT, channel_id: channelId, original_title: 'rick', status: 'new' })
+      .returning('id');
+    videoId = typeof vid === 'object' ? vid.id : vid;
+  });
+
+  afterEach(async () => {
+    await knex('files').where('directory', DIR).delete();
+    await knex('videos').where('youtube_id', YT).delete();
+    await knex('channels').where('youtube_id', 'file-test-channel').delete();
+  });
+
+  it('probes and persists dimensions when linking a previously-unprobed file', async () => {
+    mockProbeDimensions.mockResolvedValue({ width: 1080, height: 1920 });
+    await fileRepository.upsert({
+      filename: `${YT}_song.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: null,
+    });
+    const { files } = await fileRepository.getAll({});
+    const file = files.find((f) => f.directory === DIR)!;
+
+    await fileService.linkVideo(file.id, videoId);
+
+    expect(mockProbeDimensions).toHaveBeenCalledTimes(1);
+    const linked = await fileRepository.getById(file.id);
+    expect(linked).toMatchObject({ width: 1080, height: 1920 });
+  });
+
+  it('does not re-probe a file that already has dimensions', async () => {
+    await fileRepository.upsert({
+      filename: `${YT}_song.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: null,
+    });
+    const { files } = await fileRepository.getAll({});
+    const file = files.find((f) => f.directory === DIR)!;
+    await fileRepository.updateDimensions(file.id, 640, 480);
+
+    await fileService.linkVideo(file.id, videoId);
+
+    expect(mockProbeDimensions).not.toHaveBeenCalled();
+  });
+
+  it('does not probe when unlinking a file', async () => {
+    await fileRepository.upsert({
+      filename: `${YT}_song.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: videoId,
+    });
+    const { files } = await fileRepository.getAll({});
+    const file = files.find((f) => f.directory === DIR)!;
+
+    await fileService.linkVideo(file.id, null);
+
+    expect(mockProbeDimensions).not.toHaveBeenCalled();
+  });
+
+  it('probeUnprobedFiles probes every linked-but-unprobed file and skips failed probes', async () => {
+    await fileRepository.upsert({
+      filename: `${YT}_a.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: videoId,
+    });
+    await fileRepository.upsert({
+      filename: `${YT}_b.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: videoId,
+    });
+    mockProbeDimensions
+      .mockResolvedValueOnce({ width: 1920, height: 1080 })
+      .mockResolvedValueOnce(null);
+
+    const result = await fileService.probeUnprobedFiles();
+
+    expect(result.probed).toBe(1);
+    const { files } = await fileRepository.getAll({ videoId });
+    const probedFiles = files.filter((f) => f.width != null);
+    const unprobedFiles = files.filter((f) => f.width == null);
+    expect(probedFiles).toHaveLength(1);
+    expect(probedFiles[0]).toMatchObject({ width: 1920, height: 1080 });
+    expect(unprobedFiles).toHaveLength(1);
+  });
+});
+
+describe('fileService.getFileDetails', () => {
+  const originalTemplate = process.env.RENAME_TEMPLATE_VIDEO;
+
+  beforeEach(async () => {
+    const [chan] = await knex('channels')
+      .insert({ youtube_id: 'file-test-channel', title: 'file test' })
+      .returning('id');
+    channelId = typeof chan === 'object' ? chan.id : chan;
+    const [vid] = await knex('videos')
+      .insert({
+        youtube_id: YT,
+        channel_id: channelId,
+        original_title: 'rick',
+        group_name: 'RICKROLL',
+        status: 'new',
+      })
+      .returning('id');
+    videoId = typeof vid === 'object' ? vid.id : vid;
+  });
+
+  afterEach(async () => {
+    if (originalTemplate === undefined) delete process.env.RENAME_TEMPLATE_VIDEO;
+    else process.env.RENAME_TEMPLATE_VIDEO = originalTemplate;
+
+    await knex('files').where('directory', DIR).delete();
+    await knex('videos').where('youtube_id', YT).delete();
+    await knex('channels').where('youtube_id', 'file-test-channel').delete();
+  });
+
+  it('computes predicted_filename for a linked file when a rename template is configured', async () => {
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    await fileRepository.upsert({
+      filename: `${YT}_song.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: videoId,
+    });
+    const { files } = await fileRepository.getAll({ videoId });
+
+    const details = await fileService.getFileDetails(files[0].id);
+
+    expect(details.predicted_filename).toBe('RICKROLL.mp4');
+  });
+
+  it('leaves predicted_filename null when the file is not linked to a video', async () => {
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    await fileRepository.upsert({
+      filename: `${YT}_song.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: null,
+    });
+    const { files } = await fileRepository.getAll({});
+    const file = files.find((f) => f.directory === DIR)!;
+
+    const details = await fileService.getFileDetails(file.id);
+
+    expect(details.predicted_filename).toBeNull();
+  });
+
+  it('leaves predicted_filename null when no rename template is configured', async () => {
+    delete process.env.RENAME_TEMPLATE_VIDEO;
+    await fileRepository.upsert({
+      filename: `${YT}_song.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: videoId,
+    });
+    const { files } = await fileRepository.getAll({ videoId });
+
+    const details = await fileService.getFileDetails(files[0].id);
+
+    expect(details.predicted_filename).toBeNull();
   });
 });
