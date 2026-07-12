@@ -27,8 +27,16 @@ router.post(
 router.get(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
-    const file = await fileService.getFile(Number(req.params.id));
+    const file = await fileService.getFileDetails(Number(req.params.id));
     res.json(file);
+  }),
+);
+
+router.get(
+  '/:id/thumbnails',
+  asyncHandler(async (req: Request, res: Response) => {
+    const thumbnails = await fileService.getThumbnails(Number(req.params.id));
+    res.json({ thumbnails });
   }),
 );
 

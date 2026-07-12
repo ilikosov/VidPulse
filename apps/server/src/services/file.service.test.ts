@@ -208,3 +208,85 @@ describe('fileService dimension probing', () => {
     expect(unprobedFiles).toHaveLength(1);
   });
 });
+
+describe('fileService.getFileDetails', () => {
+  const originalTemplate = process.env.RENAME_TEMPLATE_VIDEO;
+
+  beforeEach(async () => {
+    const [chan] = await knex('channels')
+      .insert({ youtube_id: 'file-test-channel', title: 'file test' })
+      .returning('id');
+    channelId = typeof chan === 'object' ? chan.id : chan;
+    const [vid] = await knex('videos')
+      .insert({
+        youtube_id: YT,
+        channel_id: channelId,
+        original_title: 'rick',
+        group_name: 'RICKROLL',
+        status: 'new',
+      })
+      .returning('id');
+    videoId = typeof vid === 'object' ? vid.id : vid;
+  });
+
+  afterEach(async () => {
+    if (originalTemplate === undefined) delete process.env.RENAME_TEMPLATE_VIDEO;
+    else process.env.RENAME_TEMPLATE_VIDEO = originalTemplate;
+
+    await knex('files').where('directory', DIR).delete();
+    await knex('videos').where('youtube_id', YT).delete();
+    await knex('channels').where('youtube_id', 'file-test-channel').delete();
+  });
+
+  it('computes predicted_filename for a linked file when a rename template is configured', async () => {
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    await fileRepository.upsert({
+      filename: `${YT}_song.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: videoId,
+    });
+    const { files } = await fileRepository.getAll({ videoId });
+
+    const details = await fileService.getFileDetails(files[0].id);
+
+    expect(details.predicted_filename).toBe('RICKROLL.mp4');
+  });
+
+  it('leaves predicted_filename null when the file is not linked to a video', async () => {
+    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    await fileRepository.upsert({
+      filename: `${YT}_song.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: null,
+    });
+    const { files } = await fileRepository.getAll({});
+    const file = files.find((f) => f.directory === DIR)!;
+
+    const details = await fileService.getFileDetails(file.id);
+
+    expect(details.predicted_filename).toBeNull();
+  });
+
+  it('leaves predicted_filename null when no rename template is configured', async () => {
+    delete process.env.RENAME_TEMPLATE_VIDEO;
+    await fileRepository.upsert({
+      filename: `${YT}_song.mp4`,
+      directory: DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: videoId,
+    });
+    const { files } = await fileRepository.getAll({ videoId });
+
+    const details = await fileService.getFileDetails(files[0].id);
+
+    expect(details.predicted_filename).toBeNull();
+  });
+});

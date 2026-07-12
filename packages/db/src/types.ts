@@ -195,6 +195,8 @@ export interface IVideoFilters {
   channelId?: string;
   playlistId?: string;
   videoListId?: string;
+  /** Matches a substring of `original_title` (case-insensitive) or an exact `youtube_id`. */
+  search?: string;
 }
 
 export interface IVideoRepository {

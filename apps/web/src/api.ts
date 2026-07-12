@@ -59,6 +59,7 @@ export async function getVideos(filters?: {
   channel_id?: number;
   playlist_id?: number;
   video_list_id?: number;
+  search?: string;
 }): Promise<VideosResponse> {
   const params = new URLSearchParams();
   if (filters?.status) params.set('status', filters.status);
@@ -68,6 +69,7 @@ export async function getVideos(filters?: {
   if (filters?.channel_id) params.set('channel_id', String(filters.channel_id));
   if (filters?.playlist_id) params.set('playlist_id', String(filters.playlist_id));
   if (filters?.video_list_id) params.set('video_list_id', String(filters.video_list_id));
+  if (filters?.search) params.set('search', filters.search);
 
   const queryString = params.toString();
   return fetchApi<VideosResponse>(`/videos${queryString ? '?' + queryString : ''}`);

@@ -5,6 +5,10 @@ import { AppError } from '../middleware/AppError';
 import { fileRepository, videoRepository } from '@vidpulse/db';
 import type { FileEntity, FileWithVideo } from '@vidpulse/db';
 import { probeDimensions } from './file-probe.service';
+import { generateThumbnails } from './file-thumbnail.service';
+import { videoService } from './video.service';
+import { renderTemplate } from './template/template.engine';
+import { buildVideoContext } from './template/videoContext';
 
 /**
  * A YouTube video id is exactly 11 chars of [A-Za-z0-9_-]. Files are named
@@ -89,6 +93,22 @@ export class FileService {
     return file;
   }
 
+  /** `getFile` plus a preview of the name this file would get renamed to (null when the file
+   * isn't linked to a video, or no RENAME_TEMPLATE_VIDEO is configured). Mirrors the exact
+   * base-name computation `video.service.ts::renameFiles` uses for the real rename. */
+  async getFileDetails(id: number): Promise<FileWithVideo & { predicted_filename: string | null }> {
+    const file = await this.getFile(id);
+    const template = config.files.renameTemplate;
+    if (file.video_id == null || !template) {
+      return { ...file, predicted_filename: null };
+    }
+    const video = await videoService.getVideoById(file.video_id);
+    const baseName = renderTemplate(template, { video: [buildVideoContext(video)] })
+      .replace(/\//g, '-')
+      .trim();
+    return { ...file, predicted_filename: baseName ? baseName + (file.extension ?? '') : null };
+  }
+
   /** Manually link (or unlink) a file to a video. */
   async linkVideo(fileId: number, videoId: number | null): Promise<FileWithVideo> {
     const file = await this.getFile(fileId);
@@ -118,6 +138,15 @@ export class FileService {
       if (await this.probeAndPersist(file)) probed++;
     }
     return { probed };
+  }
+
+  /** A few evenly-spaced preview frames as base64 data URIs. `[]` if the file is missing from
+   * disk or ffmpeg can't read it — never throws, so a bad file just shows no previews. */
+  async getThumbnails(id: number): Promise<string[]> {
+    const file = await this.getFile(id);
+    const fullPath = path.join(file.directory, file.filename);
+    if (!fs.existsSync(fullPath)) return [];
+    return generateThumbnails(fullPath);
   }
 
   /** Removes the file record (not the file on disk). */

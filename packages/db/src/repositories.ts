@@ -220,7 +220,15 @@ export class KnexVideoRepository implements IVideoRepository {
   }
 
   private applyFilters(query: ReturnType<typeof knex>, filters: IVideoFilters): void {
-    const { status, includeIgnored, channelId, playlistId, videoListId } = filters;
+    const { status, includeIgnored, channelId, playlistId, videoListId, search } = filters;
+    if (search) {
+      const term = `%${search.toLowerCase()}%`;
+      query.where((b) =>
+        b
+          .whereRaw('LOWER(videos.original_title) LIKE ?', [term])
+          .orWhere('videos.youtube_id', search),
+      );
+    }
     if (channelId)
       query.whereExists(
         knex('video_channels')

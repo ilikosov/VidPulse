@@ -418,6 +418,16 @@ export interface FilesResponse {
   total: number;
 }
 
+/** `FileRecord` plus a preview of the name this file would get renamed to (returned only by
+ * the single-file GET endpoint — computing it for every row of the list would be wasteful). */
+export interface FileDetails extends FileRecord {
+  predicted_filename: string | null;
+}
+
+export interface FileThumbnailsResponse {
+  thumbnails: string[];
+}
+
 export interface ScanResult {
   scanned: number;
   linked: number;
