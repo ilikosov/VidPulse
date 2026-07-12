@@ -4,6 +4,10 @@ import { checkYouTubeApiConnectivity } from '../services/youtube.service';
 
 const router = Router();
 
+router.get('/', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 router.get(
   '/youtube',
   asyncHandler(async (_req, res) => {
