@@ -49,7 +49,7 @@ type ParserStrategy = 'pipeline'; // расширяется: | 'llm' | ...
    `sync/metadata.utils.ts:parseVideoMetadata`). Это гарантия: смена парсера **не** обходит словарь;
    evidence-модель (сырое имя + id, [ADR 0002](0002-raw-parse-vs-canonical-display.md)) сохраняется.
 
-**Выбор через env.** `PARSER_STRATEGY` (default `pipeline`) → `config.parser.strategy`. Реестр
+**Выбор через env.** `PARSER_STRATEGY` (default `pipeline`) → `config.parser.strategy`. `pipeline` — стабильный alias текущего production-парсера; для закреплённого сравнения версий можно указывать immutable ключ `pipeline-v1`. Реестр
 `services/parser/registry.ts` мапит стратегию → реализацию `IParser`; `getActiveParser()`
 возвращает активную, неизвестное значение падает с внятной ошибкой (fail-fast на старте в
 `index.ts`). Враппер `parseTitle()` делегирует `getActiveParser()`, поэтому **все** точки разбора
@@ -57,16 +57,18 @@ type ParserStrategy = 'pipeline'; // расширяется: | 'llm' | ...
 
 ## 3) Scope сейчас
 
-Реализована одна стратегия — `pipeline` (текущий regex + dictionary). Механизм выбора и контракт
-закреплены так, что добавление нового парсера = реализовать `IParser` + одна запись в реестре +
-значение в `ParserStrategy`/`.env.example`.
+Реализована одна фактическая реализация — текущий regex + dictionary pipeline. Она доступна как
+`pipeline` (production alias), `pipeline-v1` (закреплённая версия для сравнения/отката) и
+`empty` (детерминированный no-op parser для smoke-тестов и проверки переключения). Механизм
+выбора и контракт закреплены так, что добавление нового парсера = реализовать `IParser` + одна
+запись в реестре + значение в `ParserStrategy`/`.env.example`.
 
 ## 4) Consequences
 
-- (+) Парсер подключаемый; выбор — через env, без изменения кода вызывающих.
+- (+) Парсер подключаемый; выбор — через env, без изменения кода вызывающих. Текущие ключи: `pipeline` (production alias), `pipeline-v1` (закреплённая версия текущего regex+dictionary pipeline) и `empty` (одинаковый placeholder-результат для каждого title).
 - (+) Взаимодействие со словарём одинаково для всех парсеров (нормализация + резолв ID).
 - (+) `trace` теперь часть контракта (был потерян в старом `IParser`).
-- (−) Пока одна стратегия — «выбор» вырожденный до появления второй (LLM).
+- (−) Пока одна production-реализация — `pipeline` и `pipeline-v1` указывают на один regex+dictionary pipeline; `empty` нужен только для smoke-тестов/проверки переключения, а полноценное A/B между разными алгоритмами появится после регистрации второй production-реализации (например, LLM).
 
 ## 5) Future work
 
