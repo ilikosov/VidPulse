@@ -48,7 +48,7 @@ export async function ingestVideo(
   }
 
   const details = await deps.youtube.getVideoDetails(item.videoId);
-  const { metadata, songTitle, songTitles } = await parseVideoMetadata(
+  const { metadata, status, songTitle, songTitles } = await parseVideoMetadata(
     deps.parser,
     details.title || item.title,
     details.publishedAt || item.publishedAt,
@@ -65,7 +65,9 @@ export async function ingestVideo(
     published_at: details.publishedAt || item.publishedAt,
     duration_seconds: details.durationSeconds ?? null,
     description: details.description ?? null,
-    status: 'needs_review',
+    // Use the parser-computed status (needs_review vs new) — hardcoding needs_review here made
+    // channel sync disagree with the playlist ingestion path for cleanly-parsed videos.
+    status,
     ...metadata,
     created_at: now,
     updated_at: now,
