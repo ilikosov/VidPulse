@@ -23,30 +23,40 @@ async function findOrCreateTagId(
   return typeof value === 'object' ? value.id : value;
 }
 
-export async function addTagToVideo(videoId: number, tagName: string): Promise<void> {
-  const tagId = await findOrCreateTagId(tagName);
-  await knex('video_tags')
+export async function addTagToVideo(
+  videoId: number,
+  tagName: string,
+  db: Knex | Knex.Transaction = knex,
+): Promise<void> {
+  const tagId = await findOrCreateTagId(tagName, db);
+  await db('video_tags')
     .insert({ video_id: videoId, tag_id: tagId })
     .onConflict(['video_id', 'tag_id'])
     .ignore();
 }
 
+/**
+ * Callers running inside a transaction MUST pass it as `db`: SQLite has a single write
+ * connection, so writing through the global pool while a transaction holds the lock
+ * deadlocks until knex's acquireConnectionTimeout.
+ */
 export async function assignAutoTags(
   videoId: number,
   durationSeconds?: number,
   privacyStatus?: string,
+  db: Knex | Knex.Transaction = knex,
 ): Promise<void> {
   if (typeof durationSeconds === 'number' && durationSeconds > 0) {
     if (durationSeconds < SHORTS_MAX_DURATION_SECONDS) {
-      await addTagToVideo(videoId, SHORTS_TAG);
+      await addTagToVideo(videoId, SHORTS_TAG, db);
     }
     if (durationSeconds > LONG_VIDEO_MIN_DURATION_SECONDS) {
-      await addTagToVideo(videoId, LONG_VIDEO_TAG);
+      await addTagToVideo(videoId, LONG_VIDEO_TAG, db);
     }
   }
 
   if (privacyStatus === 'private') {
-    await addTagToVideo(videoId, 'private');
+    await addTagToVideo(videoId, 'private', db);
   }
 }
 

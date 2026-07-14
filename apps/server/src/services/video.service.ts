@@ -13,7 +13,7 @@ import { videoRepository, tagRepository, channelRepository, fileRepository } fro
 import type { IVideoFilters, VideoEntity } from '@vidpulse/db';
 import { VALID_STATUSES, isValidStatus } from '../models/videoStatus';
 import { config } from '../config';
-import { renderTemplate } from './template/template.engine';
+import { escapeShellValueForDoubleQuotes, renderTemplate } from './template/template.engine';
 import { buildVideoContext } from './template/videoContext';
 
 export interface VideoListItem {
@@ -266,7 +266,9 @@ class VideoService {
 
     if (body.camera_type !== undefined) updateData.camera_type = body.camera_type || null;
 
-    if (Object.keys(updateData).length === 0) return video;
+    // Song edits live in video_songs (synced inside the transaction below), not in updateData —
+    // a songs-only request must not take the "nothing changed" early return.
+    if (Object.keys(updateData).length === 0 && songSet === undefined) return video;
 
     let newStatus = video.status;
     if (video.status === 'needs_review') {
@@ -673,7 +675,7 @@ class VideoService {
           )
           .del();
       }
-      await assignAutoTags(videoId, details.durationSeconds, details.privacyStatus);
+      await assignAutoTags(videoId, details.durationSeconds, details.privacyStatus, trx);
 
       if (existingVideo.status !== updateData.status) {
         await trx('status_history').insert({
@@ -756,7 +758,15 @@ class VideoService {
       videoContexts.push(buildVideoContext(video));
     }
 
-    return { command: renderTemplate(template, { video: videoContexts }) };
+    // Substituted values are YouTube-controlled (titles, events, song names) — escape them for
+    // a double-quoted shell context so a crafted title can't inject into the generated command.
+    return {
+      command: renderTemplate(
+        template,
+        { video: videoContexts },
+        { transformValue: escapeShellValueForDoubleQuotes },
+      ),
+    };
   }
 
   /**
