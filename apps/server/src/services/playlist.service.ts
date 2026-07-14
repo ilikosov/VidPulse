@@ -249,13 +249,18 @@ class PlaylistService {
     if (!playlist) throw AppError.notFound('Playlist not found');
 
     if (removeVideos) {
-      // Delete only videos whose sole playlist association is this one.
+      // Delete only videos whose sole association is this playlist: not in another playlist,
+      // not attached to any channel via the legacy column OR the video_channels junction
+      // (ingestVideo writes channel links only into the junction, leaving channel_id null).
       await knex('videos')
         .whereIn('id', function () {
           this.select('video_id').from('video_playlists').where('playlist_id', id);
         })
         .whereNotIn('id', function () {
           this.select('video_id').from('video_playlists').whereNot('playlist_id', id);
+        })
+        .whereNotIn('id', function () {
+          this.select('video_id').from('video_channels');
         })
         .where('channel_id', null)
         .delete();
