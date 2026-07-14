@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderTemplate } from './template.engine';
+import { escapeShellValueForDoubleQuotes, renderTemplate } from './template.engine';
 
 describe('renderTemplate', () => {
   it('substitutes a scalar token', () => {
@@ -70,5 +70,42 @@ describe('renderTemplate', () => {
       video: [],
     });
     expect(result).toBe('mv /dest/');
+  });
+
+  describe('transformValue / shell escaping', () => {
+    it('neutralizes a quote-breakout injection inside a double-quoted argument', () => {
+      const malicious = '"; rm -rf ~/videos; echo "';
+      const result = renderTemplate(
+        'mv "{{video.title}}.mp4" /dest/',
+        { video: [{ title: malicious }] },
+        { transformValue: escapeShellValueForDoubleQuotes },
+      );
+      // Every quote in the substituted value is backslash-escaped, so the payload
+      // stays inside the argument instead of terminating it.
+      expect(result).toBe('mv "\\"; rm -rf ~/videos; echo \\".mp4" /dest/');
+    });
+
+    it('escapes $, backtick, and backslash, and flattens newlines', () => {
+      const result = renderTemplate(
+        '"{{video.title}}"',
+        { video: [{ title: 'a$(whoami) `id` b\\c\nnext' }] },
+        { transformValue: escapeShellValueForDoubleQuotes },
+      );
+      expect(result).toBe('"a\\$(whoami) \\`id\\` b\\\\c next"');
+    });
+
+    it('applies the transform to each array item before joining', () => {
+      const result = renderTemplate(
+        '{{video.songs}}',
+        { video: [{ songs: ['a"b', 'c$d'] }] },
+        { transformValue: escapeShellValueForDoubleQuotes },
+      );
+      expect(result).toBe('a\\"b, c\\$d');
+    });
+
+    it('leaves rendering unchanged when no transform is given', () => {
+      const result = renderTemplate('"{{video.title}}"', { video: [{ title: 'a"b$c' }] });
+      expect(result).toBe('"a"b$c"');
+    });
   });
 });
