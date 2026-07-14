@@ -31,7 +31,9 @@ export const SUPPORTED_PARSER_STRATEGIES = Object.keys(registry);
  * value so a typo fails loudly instead of silently falling back.
  */
 export function getActiveParser(): IParser {
-  const factory = registry[config.parser.strategy];
+  // The env-provided strategy is a plain string; the cast is safe because an unknown
+  // value yields no factory and hits the loud throw below.
+  const factory = registry[config.parser.strategy as ParserStrategy];
   if (!factory) {
     throw new Error(
       `Unknown PARSER_STRATEGY "${config.parser.strategy}". ` +
