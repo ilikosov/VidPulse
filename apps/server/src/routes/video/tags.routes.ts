@@ -9,6 +9,33 @@ import paramsIdSchema from '../../../schemas/request/params-id.schema.json';
 
 const router = Router();
 
+// Static /batch/tags routes MUST be registered before the parameterized /:id/tags ones:
+// Express matches in registration order, so '/:id/tags' would otherwise capture
+// 'batch' as :id and validateParams would reject every batch request with a 400.
+router.post(
+  '/batch/tags',
+  validateBody(batchTagsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { videoIds, tagName, confirm } = req.body as {
+      videoIds: number[];
+      tagName: string;
+      confirm?: boolean;
+    };
+    const result = await videoService.batchAddTags(videoIds, tagName, confirm);
+    res.json(result);
+  }),
+);
+
+router.delete(
+  '/batch/tags',
+  validateBody(batchTagsSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { videoIds, tagName } = req.body as { videoIds: number[]; tagName: string };
+    const result = await videoService.batchRemoveTags(videoIds, tagName);
+    res.json(result);
+  }),
+);
+
 router.get(
   '/:id/tags',
   asyncHandler(async (req: Request, res: Response) => {
@@ -40,30 +67,6 @@ router.delete(
     if (!Number.isInteger(tagId) || tagId <= 0) throw AppError.badRequest('Invalid tag id');
     await videoService.removeVideoTag(videoId, tagId);
     res.status(204).send();
-  }),
-);
-
-router.post(
-  '/batch/tags',
-  validateBody(batchTagsSchema),
-  asyncHandler(async (req: Request, res: Response) => {
-    const { videoIds, tagName, confirm } = req.body as {
-      videoIds: number[];
-      tagName: string;
-      confirm?: boolean;
-    };
-    const result = await videoService.batchAddTags(videoIds, tagName, confirm);
-    res.json(result);
-  }),
-);
-
-router.delete(
-  '/batch/tags',
-  validateBody(batchTagsSchema),
-  asyncHandler(async (req: Request, res: Response) => {
-    const { videoIds, tagName } = req.body as { videoIds: number[]; tagName: string };
-    const result = await videoService.batchRemoveTags(videoIds, tagName);
-    res.json(result);
   }),
 );
 
