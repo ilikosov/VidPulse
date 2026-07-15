@@ -10,7 +10,7 @@ const { mockParseVideoMetadata } = vi.hoisted(() => ({ mockParseVideoMetadata: v
 vi.mock('./metadata.utils', () => ({ parseVideoMetadata: mockParseVideoMetadata }));
 
 const { mockSyncVideoSongs } = vi.hoisted(() => ({ mockSyncVideoSongs: vi.fn() }));
-vi.mock('../parser/videoSongs.service', () => ({ syncVideoSongs: mockSyncVideoSongs }));
+vi.mock('../videoSongs.service', () => ({ syncVideoSongs: mockSyncVideoSongs }));
 
 function makeDeps(insert: ReturnType<typeof vi.fn>): IngestDeps {
   return {

@@ -1,13 +1,16 @@
 import { ParsedMetadata, ParserModule } from './parser.types';
 import type { ParserTraceStep } from '@vidpulse/shared';
-import type { IParser } from '../../interfaces/services';
+import type { IParser } from './parser.types';
 import { RegexModule, SOLO_GROUP } from './regex.module';
 import { DictionaryModule } from './dictionary.module';
-import { logger } from '../../lib/logger';
 import { splitSongTitles } from './songTitles.util';
-import { getActiveParser } from './registry';
 
 const MIN_CONFIDENCE_THRESHOLD = 0.5;
+
+/** Minimal logger the pipeline needs; defaults to console so the package stays server-agnostic. */
+export interface ParserLogger {
+  warn(...args: unknown[]): void;
+}
 
 /** Fields a trace step changed (key → new value), comparing metadata before/after a stage. */
 function diffMetadata(
@@ -82,6 +85,7 @@ export class ParserService implements IParser {
   constructor(
     private modules: ParserModule[],
     private dictionaryModule?: DictionaryModule,
+    private logger: ParserLogger = console,
   ) {}
 
   async parseTitle(title: string, publishedAt?: string, tags?: string[], description?: string) {
@@ -121,7 +125,7 @@ export class ParserService implements IParser {
           confidence: result.confidence,
         });
       } catch (error) {
-        logger.warn('Parser module failed:', error);
+        this.logger.warn('Parser module failed:', error);
         trace.push({
           stage: module.constructor.name,
           detail: `failed: ${error instanceof Error ? error.message : 'unknown error'}`,
@@ -314,26 +318,13 @@ const defaultDictionaryModule = new DictionaryModule();
 
 /**
  * The default regex + dictionary pipeline parser. Registered as the 'pipeline' strategy in
- * services/parser/registry.ts. Exported so the registry can select it without rebuilding modules.
+ * registry.ts. Exported so the registry can select it without rebuilding modules. The server
+ * selects it via getParser(PARSER_STRATEGY) and wraps it in its own parseTitle().
  */
 export const pipelineParser = new ParserService(
   [new RegexModule(), defaultDictionaryModule],
   defaultDictionaryModule,
 );
-
-/**
- * Parse a title with the ACTIVE parser (selected via PARSER_STRATEGY, see the parser registry).
- * All parse entry points funnel through here, so switching PARSER_STRATEGY changes the parser
- * everywhere without touching callers.
- */
-export async function parseTitle(
-  title: string,
-  publishedAt?: string,
-  tags?: string[],
-  description?: string,
-) {
-  return getActiveParser().parseTitle(title, publishedAt, tags, description);
-}
 
 export function validateField(
   field: keyof ParsedMetadata,

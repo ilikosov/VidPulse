@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { knex } from '@vidpulse/db';
-import { parseTitle } from './parser.service';
+import { parseTitle } from './parseTitle';
 
 // MPD-style titles romanize artist names with spaces ("SE JEONG"), which broke the
 // positional fancam-credit split: group="I.O.I SE", artist="JEONG". The dictionary

@@ -11,10 +11,9 @@ const { testKnex } = vi.hoisted(() => {
   return { testKnex };
 });
 
-vi.mock('@vidpulse/db', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@vidpulse/db')>()),
-  knex: testKnex,
-}));
+// Mock the whole module (no importOriginal): loading the real @vidpulse/db eagerly opens its
+// knex connection and throws on the missing DATABASE_PATH env. The package only uses `knex`.
+vi.mock('@vidpulse/db', () => ({ knex: testKnex }));
 
 import { ParserService } from './parser.service';
 import { DictionaryModule } from './dictionary.module';

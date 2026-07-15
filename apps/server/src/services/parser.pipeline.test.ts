@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTitle } from './parser.service';
+import { parseTitle } from './parseTitle';
 
 function toResultString(result: Awaited<ReturnType<typeof parseTitle>>): string {
   const { metadata, needsReview } = result;

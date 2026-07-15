@@ -1,6 +1,6 @@
 import type { Knex } from 'knex';
 import { knex } from '@vidpulse/db';
-import { dedupeTitlesCaseInsensitive, splitSongTitles } from './songTitles.util';
+import { dedupeTitlesCaseInsensitive, splitSongTitles } from '@vidpulse/parser';
 
 /**
  * Resolve a raw song title to a canonical `dictionary_songs.id`, matching by

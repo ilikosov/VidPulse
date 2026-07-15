@@ -1,6 +1,6 @@
 import { knex } from '@vidpulse/db';
 import type Knex from 'knex';
-import { getVideoSongsMap } from '../parser/videoSongs.service';
+import { getVideoSongsMap } from '../videoSongs.service';
 
 export type AliasEntityType = 'group' | 'artist' | 'song' | 'event';
 export type MembershipActivityType = 'group' | 'solo';

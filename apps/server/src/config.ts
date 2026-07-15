@@ -83,7 +83,7 @@ export const config = {
 
   parser: {
     /**
-     * Which parser implementation processes video titles. Resolved by services/parser/registry.ts;
+     * Which parser implementation processes video titles. Resolved by the @vidpulse/parser registry;
      * an unknown value fails fast at startup. Default 'pipeline' (regex + dictionary). Applies to
      * every parse entry point (add / sync / reparse). Read dynamically (like dangerousActionsEnabled)
      * so tests can set process.env after module load.

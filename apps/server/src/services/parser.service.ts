@@ -1,11 +1,11 @@
 import { knex } from '@vidpulse/db';
 import { logger } from '../lib/logger';
-import { parseTitle } from './parser/parser.service';
+import { parseTitle } from './parseTitle';
 import { parseTitleWithLLM } from './ai.service';
 import { youtubeService } from './youtube.service';
 import type { VideoDetails } from '../models/youtube.types';
-import { hasUnresolvedEntity, resolveParsedMetadata } from './parser/metadataResolver.service';
-import { syncVideoSongs } from './parser/videoSongs.service';
+import { hasUnresolvedEntity, resolveParsedMetadata } from './metadataResolver.service';
+import { syncVideoSongs } from './videoSongs.service';
 import { AppError } from '../middleware/AppError';
 
 function normalizePerfDate(perfDate?: string): string | null {

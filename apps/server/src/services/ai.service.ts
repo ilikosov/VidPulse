@@ -1,4 +1,4 @@
-import type { ParsedMetadata } from './parser/parser.types';
+import type { ParsedMetadata } from '@vidpulse/parser';
 import { logger } from '../lib/logger';
 import { config } from '../config';
 

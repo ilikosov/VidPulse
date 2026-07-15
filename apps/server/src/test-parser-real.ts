@@ -1,4 +1,4 @@
-import { parseTitle } from './services/parser/parser.service';
+import { parseTitle } from './services/parseTitle';
 
 interface TestCase {
   title: string;

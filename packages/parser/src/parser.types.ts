@@ -37,6 +37,22 @@ export interface ParseResult {
 }
 
 /**
+ * The pinned parser contract. Any parser implementation (regex+dictionary pipeline, empty, LLM, …)
+ * must satisfy this. The selected implementation is resolved by the registry from the strategy the
+ * server passes in (PARSER_STRATEGY). Callers always follow parseTitle with the parser-agnostic
+ * resolveParsedMetadata step (server-side), so entity linking to the dictionary is unaffected by
+ * which parser is selected.
+ */
+export interface IParser {
+  parseTitle(
+    title: string,
+    publishedAt?: string,
+    tags?: string[],
+    description?: string,
+  ): Promise<ParseResult>;
+}
+
+/**
  * Identifiers of the selectable parser implementations (see the parser registry). Extend this union
  * when adding a strategy (e.g. 'llm') and register it in services/parser/registry.ts.
  */
