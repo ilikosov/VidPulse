@@ -34,6 +34,9 @@ jobs:
       - name: Build @vidpulse/kpop-sources
         run: npm run build -w @vidpulse/kpop-sources
 
+      - name: Build @vidpulse/parser
+        run: npm run build -w @vidpulse/parser
+
       - name: Type check server
         run: npm run build -w apps/server
 
@@ -58,6 +61,9 @@ jobs:
 
       - name: Build @vidpulse/kpop-sources
         run: npm run build -w @vidpulse/kpop-sources
+
+      - name: Build @vidpulse/parser
+        run: npm run build -w @vidpulse/parser
 
       - name: Create .env.test
         run: printf 'DATABASE_PATH=/tmp/ci-dev.sqlite3\nTEST_DATABASE_PATH=/tmp/ci-test.sqlite3\n' > .env.test
