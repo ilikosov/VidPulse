@@ -7,7 +7,7 @@ import { config } from '../config';
 import { buildPaginationMeta } from '../routes/pagination';
 import { renderTemplate } from './template/template.engine';
 import { buildVideoContext } from './template/videoContext';
-import { getVideoSongsMap } from './parser/videoSongs.service';
+import { getVideoSongsMap } from './videoSongs.service';
 
 const COLORS = [
   'magenta',

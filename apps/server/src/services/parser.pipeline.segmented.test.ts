@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTitle } from './parser.service';
+import { parseTitle } from './parseTitle';
 
 // Show-channel titles segment the credit / song list / show name with pipes instead of the
 // usual quote + "@event" layout, e.g.

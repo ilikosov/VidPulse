@@ -1,5 +1,5 @@
 import type { IParser } from '../../interfaces/services';
-import { hasUnresolvedEntity, resolveParsedMetadata } from '../parser/metadataResolver.service';
+import { hasUnresolvedEntity, resolveParsedMetadata } from '../metadataResolver.service';
 
 export async function parseVideoMetadata(
   parser: IParser,

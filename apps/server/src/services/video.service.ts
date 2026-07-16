@@ -1,11 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { youtubeService } from './youtube.service';
-import { parseTitle } from './parser/parser.service';
-import { resolveParsedMetadata, hasUnresolvedEntity } from './parser/metadataResolver.service';
+import { parseTitle } from './parseTitle';
+import { resolveParsedMetadata, hasUnresolvedEntity } from './metadataResolver.service';
 import { parseTitleWithLLM } from './ai.service';
-import { syncVideoSongs, getVideoSongsMap } from './parser/videoSongs.service';
-import { splitSongTitles } from './parser/songTitles.util';
+import { syncVideoSongs, getVideoSongsMap } from './videoSongs.service';
+import { splitSongTitles } from '@vidpulse/parser';
 import { assignAutoTags } from './tag.service';
 import { logEvent } from './eventLog.service';
 import { AppError } from '../middleware/AppError';

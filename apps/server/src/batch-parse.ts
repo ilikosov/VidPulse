@@ -1,10 +1,7 @@
 import { knex } from '@vidpulse/db';
-import { parseTitle } from './services/parser/parser.service';
-import {
-  hasUnresolvedEntity,
-  resolveParsedMetadata,
-} from './services/parser/metadataResolver.service';
-import { syncVideoSongs } from './services/parser/videoSongs.service';
+import { parseTitle } from './services/parseTitle';
+import { hasUnresolvedEntity, resolveParsedMetadata } from './services/metadataResolver.service';
+import { syncVideoSongs } from './services/videoSongs.service';
 
 async function batchParse() {
   const videos = await knex('videos').where('status', 'new').whereNull('group_name');

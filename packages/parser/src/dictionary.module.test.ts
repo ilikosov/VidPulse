@@ -1,67 +1,93 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+// The DictionaryModule reads the dictionary_* tables directly through @vidpulse/db's knex (it no
+// longer depends on the server's dictionary services). We mock knex with a tiny query-builder stub
+// backed by a mutable in-memory dataset: each test seeds `data.*` and constructs a fresh module,
+// which loads that snapshot. Only loadDictionary's queries are exercised here (module.parse()).
+const { data, knexMock } = vi.hoisted(() => {
+  type Row = Record<string, unknown>;
+  const data = {
+    groups: [] as Row[],
+    artists: [] as Row[],
+    songs: [] as Row[],
+    events: [] as Row[],
+    aliases: {
+      group: [] as Row[],
+      artist: [] as Row[],
+      song: [] as Row[],
+      event: [] as Row[],
+    } as Record<string, Row[]>,
+  };
+
+  const knexMock: any = (tableExpr: string) => {
+    const table = String(tableExpr).split(' ')[0];
+    let entityType: string | null = null;
+    const builder: any = {};
+    const chain = () => builder;
+    for (const m of [
+      'select',
+      'leftJoin',
+      'join',
+      'groupBy',
+      'orderBy',
+      'first',
+      'pluck',
+      'returning',
+      'andWhere',
+      'andWhereRaw',
+      'whereRaw',
+    ]) {
+      builder[m] = chain;
+    }
+    builder.where = (col: unknown, val?: unknown) => {
+      if (col === 'al.entity_type') entityType = String(val);
+      return builder;
+    };
+    builder.then = (
+      onFulfilled: (rows: Row[]) => unknown,
+      onRejected?: (e: unknown) => unknown,
+    ) => {
+      let rows: Row[] = [];
+      if (table === 'dictionary_groups') rows = data.groups;
+      else if (table === 'dictionary_artists') rows = data.artists;
+      else if (table === 'dictionary_songs') rows = data.songs;
+      else if (table === 'dictionary_events') rows = data.events;
+      else if (table === 'dictionary_aliases') rows = entityType ? data.aliases[entityType] : [];
+      return Promise.resolve(rows).then(onFulfilled, onRejected);
+    };
+    return builder;
+  };
+  knexMock.raw = (sql: string) => sql;
+
+  return { data, knexMock };
+});
+
+vi.mock('@vidpulse/db', () => ({ knex: knexMock }));
+
 import { DictionaryModule } from './dictionary.module';
-
-const { mockGroupService, mockArtistService, mockSongService, mockEventService, mockAliasService } =
-  vi.hoisted(() => ({
-    mockGroupService: { getAllGroups: vi.fn() },
-    mockArtistService: { getAllArtists: vi.fn() },
-    mockSongService: { getAllSongs: vi.fn() },
-    mockEventService: { getAllEvents: vi.fn() },
-    mockAliasService: { getAllAliases: vi.fn(), resolveAlias: vi.fn() },
-  }));
-
-vi.mock('../dictionary', () => ({
-  groupService: mockGroupService,
-  artistService: mockArtistService,
-  songService: mockSongService,
-  eventService: mockEventService,
-  aliasService: mockAliasService,
-}));
-
-import {
-  groupService,
-  artistService,
-  songService,
-  eventService,
-  aliasService,
-} from '../dictionary';
 
 describe('DictionaryModule aliases normalization', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    vi.mocked(groupService.getAllGroups).mockResolvedValue([
-      { id: 1, name: 'LE SSERAFIM' },
-      { id: 2, name: 'ITZY' },
-    ] as any);
-    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+    data.groups = [{ name: 'LE SSERAFIM' }, { name: 'ITZY' }];
+    data.artists = [
       { name: 'YUNJIN', group_name: 'LE SSERAFIM' },
       { name: 'YUNA', group_name: 'ITZY' },
-    ] as any);
-    vi.mocked(songService.getAllSongs).mockResolvedValue([{ title: 'DALLA DALLA' }] as any);
-    vi.mocked(eventService.getAllEvents).mockResolvedValue([{ name: 'INKIGAYO' }] as any);
-    vi.mocked(aliasService.getAllAliases).mockResolvedValue([
-      { entity_type: 'group', alias: '르세라핌' },
-      { entity_type: 'group', alias: '있지' },
-      { entity_type: 'artist', alias: '허윤진' },
-      { entity_type: 'artist', alias: '유나' },
-      { entity_type: 'song', alias: '달라달라' },
-      { entity_type: 'song', alias: '유나' },
-      { entity_type: 'event', alias: '인기가요' },
-    ] as any);
-    vi.mocked(aliasService.resolveAlias).mockImplementation(async (entityType: any, alias: any) => {
-      const key = `${entityType}:${alias}`;
-      const map: Record<string, { id: number; name: string }> = {
-        'group:르세라핌': { id: 1, name: 'LE SSERAFIM' },
-        'group:있지': { id: 2, name: 'ITZY' },
-        'artist:허윤진': { id: 3, name: 'YUNJIN' },
-        'artist:유나': { id: 4, name: 'YUNA' },
-        'song:달라달라': { id: 5, name: 'DALLA DALLA' },
-        'song:유나': { id: 6, name: 'YUNA SONG' },
-        'event:인기가요': { id: 7, name: 'INKIGAYO' },
-      };
-      return map[key] ?? null;
-    });
+    ];
+    data.songs = [{ title: 'DALLA DALLA', group_name: null }];
+    data.events = [{ name: 'INKIGAYO' }];
+    data.aliases.group = [
+      { alias: '르세라핌', canonical: 'LE SSERAFIM' },
+      { alias: '있지', canonical: 'ITZY' },
+    ];
+    data.aliases.artist = [
+      { alias: '허윤진', canonical: 'YUNJIN' },
+      { alias: '유나', canonical: 'YUNA' },
+    ];
+    data.aliases.song = [
+      { alias: '달라달라', canonical: 'DALLA DALLA' },
+      { alias: '유나', canonical: 'YUNA SONG' },
+    ];
+    data.aliases.event = [{ alias: '인기가요', canonical: 'INKIGAYO' }];
   });
 
   it('normalizes korean group and artist aliases from metadata fields', async () => {
@@ -102,9 +128,7 @@ describe('DictionaryModule aliases normalization', () => {
   it('does not fuzzy-snap a new member onto a similar existing artist (GAWON ≠ Dawon)', async () => {
     // MEOVV's GAWON is not in the dictionary; the closest artist is "Dawon" (1 substitution,
     // similarity 0.8). A differing first letter must block the fuzzy match so the raw name stays.
-    vi.mocked(artistService.getAllArtists).mockResolvedValue([
-      { name: 'Dawon', group_name: 'SECRET NUMBER' },
-    ] as any);
+    data.artists = [{ name: 'Dawon', group_name: 'SECRET NUMBER' }];
 
     const module = new DictionaryModule();
     const result = await module.parse("미야오 가원 'MEOW' (MEOVV GAWON FanCam)", {
@@ -117,9 +141,7 @@ describe('DictionaryModule aliases normalization', () => {
 
   it('still fuzzy-resolves a typo that keeps the first letter', async () => {
     // Guard only blocks differing first letters; a same-initial typo must still resolve.
-    vi.mocked(artistService.getAllArtists).mockResolvedValue([
-      { name: 'YUNA', group_name: 'ITZY' },
-    ] as any);
+    data.artists = [{ name: 'YUNA', group_name: 'ITZY' }];
 
     const module = new DictionaryModule();
     const result = await module.parse('stage', {
@@ -130,10 +152,8 @@ describe('DictionaryModule aliases normalization', () => {
   });
 
   it('matches a spaced dictionary name against a glued title token (MOONSUA → Moon Sua)', async () => {
-    vi.mocked(groupService.getAllGroups).mockResolvedValue([{ id: 1, name: 'Billlie' }] as any);
-    vi.mocked(artistService.getAllArtists).mockResolvedValue([
-      { name: 'Moon Sua', group_name: 'Billlie' },
-    ] as any);
+    data.groups = [{ name: 'Billlie' }];
+    data.artists = [{ name: 'Moon Sua', group_name: 'Billlie' }];
 
     const module = new DictionaryModule();
     // No group/artist pre-set: the dictionary must find them in the title. The credit has
@@ -147,13 +167,8 @@ describe('DictionaryModule aliases normalization', () => {
   it('picks the group credited at the start over one matched inside the trailing show name', async () => {
     // "Billlie" is the real group (early); "K-Pop" only matches inside the show "Simply K-Pop".
     // Ordered so the spurious group iterates first — only position awareness picks Billlie.
-    vi.mocked(groupService.getAllGroups).mockResolvedValue([
-      { id: 1, name: 'K-Pop' },
-      { id: 2, name: 'Billlie' },
-    ] as any);
-    vi.mocked(artistService.getAllArtists).mockResolvedValue([
-      { name: 'Moon', group_name: 'Billlie' },
-    ] as any);
+    data.groups = [{ name: 'K-Pop' }, { name: 'Billlie' }];
+    data.artists = [{ name: 'Moon', group_name: 'Billlie' }];
 
     const module = new DictionaryModule();
     const result = await module.parse(
@@ -174,7 +189,7 @@ describe('DictionaryModule aliases normalization', () => {
   });
 
   it('corrects an event with a doubled "@@" prefix via the hardcoded alias fallback', async () => {
-    // Dictionary has no matching event (default mock only has 'INKIGAYO') — the hardcoded
+    // Dictionary has no matching event (default seed only has 'INKIGAYO') — the hardcoded
     // eventAliasMap is the only path that can resolve "MUSIC CORE". A doubled "@@" prefix
     // (regex.module's raw output for a literal "@@EVENT" in the title) must not block it.
     const module = new DictionaryModule();
@@ -186,7 +201,7 @@ describe('DictionaryModule aliases normalization', () => {
   });
 
   it('resolves a doubled "@@" event exactly against the dictionary', async () => {
-    vi.mocked(eventService.getAllEvents).mockResolvedValue([{ name: 'MUSICBANK' }] as any);
+    data.events = [{ name: 'MUSICBANK' }];
 
     const module = new DictionaryModule();
     const result = await module.parse('260522 Itzy Hwang Ye-ji - Motto @@MUSICBANK', {
@@ -208,10 +223,10 @@ describe('DictionaryModule aliases normalization', () => {
   it('resolves the artist within the identified group, not a look-alike elsewhere', async () => {
     // GAWON belongs to MEOVV; Dawon (SECRET NUMBER) is one substitution away. With the group
     // known, resolution is scoped to MEOVV's members so the look-alike is never considered.
-    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+    data.artists = [
       { name: 'Gawon', group_name: 'MEOVV' },
       { name: 'Dawon', group_name: 'SECRET NUMBER' },
-    ] as any);
+    ];
 
     const module = new DictionaryModule();
     const result = await module.parse("미야오 가원 'MEOW' (MEOVV GAWON FanCam)", {
@@ -224,17 +239,12 @@ describe('DictionaryModule aliases normalization', () => {
 
   it('resolves a song within the identified group before the global catalogue', async () => {
     // Two same-spelled songs in different groups; the group context picks the right one.
-    vi.mocked(songService.getAllSongs).mockResolvedValue([
+    data.songs = [
       { title: 'TOUCH', group_name: 'MEOVV' },
       { title: 'TOUCH', group_name: 'STAYC' },
-    ] as any);
-    vi.mocked(groupService.getAllGroups).mockResolvedValue([
-      { id: 1, name: 'MEOVV' },
-      { id: 2, name: 'STAYC' },
-    ] as any);
-    vi.mocked(artistService.getAllArtists).mockResolvedValue([
-      { name: 'Gawon', group_name: 'MEOVV' },
-    ] as any);
+    ];
+    data.groups = [{ name: 'MEOVV' }, { name: 'STAYC' }];
+    data.artists = [{ name: 'Gawon', group_name: 'MEOVV' }];
 
     const module = new DictionaryModule();
     const result = await module.parse("미야오 'touch'", {
@@ -249,25 +259,13 @@ describe('DictionaryModule aliases normalization', () => {
     // 예지 is the Korean alias of both ITZY's "Yeji" and the soloist "Yezi". The alias resolves
     // to "Yezi", and it appears before the English "YEJI" — so the earliest-position scan would
     // pick the look-alike. With ITZY identified, the in-group member must win.
-    vi.mocked(groupService.getAllGroups).mockResolvedValue([
-      { id: 1, name: 'ITZY' },
-      { id: 2, name: 'FIESTAR' },
-    ] as any);
-    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+    data.groups = [{ name: 'ITZY' }, { name: 'FIESTAR' }];
+    data.artists = [
       { name: 'Yeji', group_name: 'ITZY' },
       { name: 'Yezi', group_name: 'FIESTAR' },
-    ] as any);
-    vi.mocked(aliasService.getAllAliases).mockResolvedValue([
-      { entity_type: 'group', alias: '있지' },
-      { entity_type: 'artist', alias: '예지' },
-    ] as any);
-    vi.mocked(aliasService.resolveAlias).mockImplementation(async (entityType: any, alias: any) => {
-      const map: Record<string, { id: number; name: string }> = {
-        'group:있지': { id: 2, name: 'ITZY' },
-        'artist:예지': { id: 99, name: 'Yezi' }, // alias points at the look-alike
-      };
-      return map[`${entityType}:${alias}`] ?? null;
-    });
+    ];
+    data.aliases.group = [{ alias: '있지', canonical: 'ITZY' }];
+    data.aliases.artist = [{ alias: '예지', canonical: 'Yezi' }]; // alias points at the look-alike
 
     const module = new DictionaryModule();
     const result = await module.parse("260213 예지 YEJI 있지 ITZY 'In My Pocket'", {});
@@ -280,24 +278,10 @@ describe('DictionaryModule aliases normalization', () => {
     // ITZY's "Yeji" is NOT in the dictionary; only the soloist "Yezi" (another group) carries the
     // shared Korean alias 예지. With ITZY identified, we must not snap onto the cross-group
     // look-alike — leave artist_name empty and flag the video for review instead.
-    vi.mocked(groupService.getAllGroups).mockResolvedValue([
-      { id: 1, name: 'ITZY' },
-      { id: 2, name: 'FIESTAR' },
-    ] as any);
-    vi.mocked(artistService.getAllArtists).mockResolvedValue([
-      { name: 'Yezi', group_name: 'FIESTAR' }, // no ITZY "Yeji" in the dictionary
-    ] as any);
-    vi.mocked(aliasService.getAllAliases).mockResolvedValue([
-      { entity_type: 'group', alias: '있지' },
-      { entity_type: 'artist', alias: '예지' },
-    ] as any);
-    vi.mocked(aliasService.resolveAlias).mockImplementation(async (entityType: any, alias: any) => {
-      const map: Record<string, { id: number; name: string }> = {
-        'group:있지': { id: 1, name: 'ITZY' },
-        'artist:예지': { id: 99, name: 'Yezi' },
-      };
-      return map[`${entityType}:${alias}`] ?? null;
-    });
+    data.groups = [{ name: 'ITZY' }, { name: 'FIESTAR' }];
+    data.artists = [{ name: 'Yezi', group_name: 'FIESTAR' }]; // no ITZY "Yeji" in the dictionary
+    data.aliases.group = [{ alias: '있지', canonical: 'ITZY' }];
+    data.aliases.artist = [{ alias: '예지', canonical: 'Yezi' }];
 
     const module = new DictionaryModule();
     const result = await module.parse("260215 있지 예지 ITZY YEJI 'In My Pocket'", {});
@@ -309,10 +293,10 @@ describe('DictionaryModule aliases normalization', () => {
 
   it('falls back to the global artist list when the group lacks a match', async () => {
     // A guest/cover whose name is not a member of the identified group still resolves globally.
-    vi.mocked(artistService.getAllArtists).mockResolvedValue([
+    data.artists = [
       { name: 'YUNA', group_name: 'ITZY' },
       { name: 'Gawon', group_name: 'MEOVV' },
-    ] as any);
+    ];
 
     const module = new DictionaryModule();
     const result = await module.parse('stage', {

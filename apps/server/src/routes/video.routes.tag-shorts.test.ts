@@ -7,8 +7,8 @@ vi.mock('@vidpulse/db', async (importOriginal) => ({
   knex: vi.fn(() => ({})),
 }));
 vi.mock('../models/videoStatus', () => ({ VALID_STATUSES: ['new'], isValidStatus: () => true }));
-vi.mock('../services/parser/parser.service', () => ({ parseTitle: vi.fn() }));
-vi.mock('../services/parser/metadataResolver.service', () => ({
+vi.mock('../services/parseTitle', () => ({ parseTitle: vi.fn() }));
+vi.mock('../services/metadataResolver.service', () => ({
   hasUnresolvedEntity: vi.fn(() => false),
   resolveParsedMetadata: vi.fn(),
 }));

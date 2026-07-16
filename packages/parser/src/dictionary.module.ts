@@ -1,12 +1,30 @@
 import { knex } from '@vidpulse/db';
-import {
-  groupService,
-  artistService,
-  songService,
-  eventService,
-  aliasService,
-} from '../dictionary';
 import { ParsedMetadata, ParserModule } from './parser.types';
+
+type DictionaryAliasType = 'group' | 'artist' | 'song' | 'event';
+
+/**
+ * All aliases of `type` joined to their canonical entity name/title (inner join drops aliases
+ * whose entity was deleted). Replaces the server dictionary services' per-alias resolveAlias:
+ * the parser package reads the dictionary_* tables directly via @vidpulse/db so it doesn't
+ * depend on the server's dictionary service layer.
+ */
+function aliasCanonicalRows(
+  type: DictionaryAliasType,
+  table: string,
+  nameCol: string,
+): Promise<Array<{ alias: string; canonical: string }>> {
+  // orderBy('al.id') + first-write-wins (see fillAliases) mirrors the dictionary service's
+  // resolveAlias(): it looks an alias up by TEXT and takes .first(), so when two entities share an
+  // alias (e.g. ITZY's "YUNA" and AOA's "Yuna" both aliased "유나"), the smallest-id row wins
+  // regardless of which entity it belongs to. Resolving each row to its own entity and letting the
+  // last write win would instead pick the wrong entity.
+  return knex('dictionary_aliases as al')
+    .join(`${table} as e`, 'e.id', 'al.entity_id')
+    .where('al.entity_type', type)
+    .orderBy('al.id')
+    .select('al.alias as alias', `e.${nameCol} as canonical`);
+}
 
 function levenshteinDistance(str1: string, str2: string): number {
   const m = str1.length;
@@ -139,23 +157,40 @@ export class DictionaryModule implements ParserModule {
   private async loadDictionary(): Promise<KpopDictionary> {
     if (this.dictionary) return this.dictionary;
 
-    const [groups, artists, songs, events, aliases] = await Promise.all([
-      groupService.getAllGroups(),
-      artistService.getAllArtists(),
-      songService.getAllSongs(),
-      eventService.getAllEvents(),
-      aliasService.getAllAliases(),
-    ]);
+    // Read the dictionary snapshot straight from the dictionary_* tables (focused columns only:
+    // names/titles + the derived group_name join — the parser doesn't need counts or primary
+    // aliases). Keeps the package independent of the server's dictionary service layer.
+    const [groups, artists, songs, events, groupAliases, artistAliases, songAliases, eventAliases] =
+      await Promise.all([
+        // orderBy mirrors the dictionary services (getAllGroups/Artists/Songs/Events): the parser's
+        // exact-match resolution picks the first candidate that normalizes equal, so a stable,
+        // name-sorted order keeps canonical casing deterministic (e.g. "YUNA" before "Yuna").
+        knex('dictionary_groups').orderBy('name').select('name'),
+        knex('dictionary_artists as a')
+          .leftJoin('dictionary_groups as g', 'g.id', 'a.group_id')
+          .orderBy('a.name')
+          .select('a.name as name', 'g.name as group_name'),
+        // group_name = MIN(g.name) over dictionary_song_groups, mirroring the dictionary service.
+        knex('dictionary_songs as s')
+          .leftJoin('dictionary_song_groups as sg', 'sg.song_id', 's.id')
+          .leftJoin('dictionary_groups as g', 'g.id', 'sg.group_id')
+          .groupBy('s.id')
+          .orderBy('s.title')
+          .select('s.title as title', knex.raw('MIN(g.name) as group_name')),
+        knex('dictionary_events').orderBy('name').select('name'),
+        aliasCanonicalRows('group', 'dictionary_groups', 'name'),
+        aliasCanonicalRows('artist', 'dictionary_artists', 'name'),
+        aliasCanonicalRows('song', 'dictionary_songs', 'title'),
+        aliasCanonicalRows('event', 'dictionary_events', 'name'),
+      ]);
 
     const artistMap: Record<string, string[]> = {};
-    for (const a of artists) {
+    for (const a of artists as any[]) {
       const groupName = String(a.group_name || 'SOLO');
       if (!artistMap[groupName]) artistMap[groupName] = [];
       artistMap[groupName].push(String(a.name));
     }
 
-    // group name → its song titles. getAllSongs() already carries the linked group
-    // (MIN over dictionary_song_groups), so no extra query is needed.
     const songsByGroup: Record<string, string[]> = {};
     for (const s of songs as any[]) {
       if (!s.group_name) continue;
@@ -165,33 +200,30 @@ export class DictionaryModule implements ParserModule {
     }
 
     const aliasMap: KpopDictionary['aliases'] = { group: {}, artist: {}, song: {}, event: {} };
-    for (const alias of aliases) {
-      const normalized = this.normalizeLookup(String(alias.alias));
-      if (!normalized) {
-        continue;
+    const fillAliases = (
+      rows: Array<{ alias: string; canonical: string }>,
+      target: Record<string, string>,
+    ) => {
+      for (const row of rows) {
+        const normalized = this.normalizeLookup(String(row.alias));
+        if (!normalized || !row.canonical) continue;
+        // First write wins: rows arrive ordered by al.id, so the smallest-id entity claims a
+        // shared alias — matching resolveAlias()'s text-lookup .first() (see aliasCanonicalRows).
+        if (target[normalized] !== undefined) continue;
+        target[normalized] = String(row.canonical);
       }
-      const resolved = await aliasService.resolveAlias(alias.entity_type, alias.alias);
-      if (!resolved?.name) {
-        continue;
-      }
-
-      if (alias.entity_type === 'group') {
-        aliasMap.group[normalized] = resolved.name;
-      } else if (alias.entity_type === 'artist') {
-        aliasMap.artist[normalized] = resolved.name;
-      } else if (alias.entity_type === 'song') {
-        aliasMap.song[normalized] = resolved.name;
-      } else if (alias.entity_type === 'event') {
-        aliasMap.event[normalized] = resolved.name;
-      }
-    }
+    };
+    fillAliases(groupAliases, aliasMap.group);
+    fillAliases(artistAliases, aliasMap.artist);
+    fillAliases(songAliases, aliasMap.song);
+    fillAliases(eventAliases, aliasMap.event);
 
     const dictionary: KpopDictionary = {
-      groups: groups.map((g: any) => String(g.name)),
+      groups: (groups as any[]).map((g) => String(g.name)),
       artists: artistMap,
-      songs: songs.map((s: any) => String(s.title)),
+      songs: (songs as any[]).map((s) => String(s.title)),
       songsByGroup,
-      events: events.map((e: any) => String(e.name)),
+      events: (events as any[]).map((e) => String(e.name)),
       aliases: aliasMap,
       cameraTypes: this.cameraTypeMap,
     };

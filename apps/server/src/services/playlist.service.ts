@@ -1,9 +1,9 @@
 import { knex } from '@vidpulse/db';
 import { youtubeService } from './youtube.service';
 import { logEvent } from './eventLog.service';
-import { parseTitle } from './parser/parser.service';
-import { resolveParsedMetadata, hasUnresolvedEntity } from './parser/metadataResolver.service';
-import { syncVideoSongs } from './parser/videoSongs.service';
+import { parseTitle } from './parseTitle';
+import { resolveParsedMetadata, hasUnresolvedEntity } from './metadataResolver.service';
+import { syncVideoSongs } from './videoSongs.service';
 import { playlistRepository } from '@vidpulse/db';
 import { AppError } from '../middleware/AppError';
 import type { VideoInfo } from '../models/youtube.types';

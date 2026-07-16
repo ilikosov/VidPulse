@@ -1,6 +1,5 @@
 import type { ParserTraceStep } from '@vidpulse/shared';
-import type { IParser } from '../../interfaces/services';
-import type { ParseResult } from './parser.types';
+import type { IParser, ParseResult } from './parser.types';
 
 const EMPTY_PARSER_TRACE: ParserTraceStep[] = [
   {

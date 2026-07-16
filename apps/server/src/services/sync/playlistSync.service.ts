@@ -1,6 +1,6 @@
 import { KnexPlaylistRepository, KnexVideoRepository } from '@vidpulse/db';
 import { youtubeService } from '../youtube.service';
-import { parseTitle } from '../parser/parser.service';
+import { parseTitle } from '../parseTitle';
 import { assignAutoTags } from '../tag.service';
 import { logEvent } from '../eventLog.service';
 import { IPlaylistRepository, IVideoRepository } from '@vidpulse/db';

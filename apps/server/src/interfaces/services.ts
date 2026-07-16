@@ -1,4 +1,4 @@
-import type { ParseResult } from '../services/parser/parser.types';
+import type { ParseResult } from '@vidpulse/parser';
 import type { VideoDetails, VideoInfo } from '../models/youtube.types';
 
 export interface IYouTubeService {

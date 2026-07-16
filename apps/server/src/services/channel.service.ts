@@ -2,7 +2,7 @@ import { knex } from '@vidpulse/db';
 import { logger } from '../lib/logger';
 import { youtubeService } from './youtube.service';
 import { logEvent } from './eventLog.service';
-import { parseTitle } from './parser/parser.service';
+import { parseTitle } from './parseTitle';
 import { assignAutoTags } from './tag.service';
 import { ingestVideo, type IngestDeps } from './sync/ingestVideo';
 import { channelRepository, videoRepository } from '@vidpulse/db';
