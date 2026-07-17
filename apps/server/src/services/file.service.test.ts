@@ -1,9 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { knex } from '@vidpulse/db';
 import { fileRepository } from '@vidpulse/db';
 
 const { mockProbeDimensions } = vi.hoisted(() => ({ mockProbeDimensions: vi.fn() }));
 vi.mock('./file-probe.service', () => ({ probeDimensions: mockProbeDimensions }));
+
+// Mock only frame extraction (no real ffmpeg); bufferToDataUri stays real via importOriginal.
+const { mockGenerateThumbnailBuffers } = vi.hoisted(() => ({
+  mockGenerateThumbnailBuffers: vi.fn(),
+}));
+vi.mock('./file-thumbnail.service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./file-thumbnail.service')>()),
+  generateThumbnailBuffers: mockGenerateThumbnailBuffers,
+}));
 
 import { fileService } from './file.service';
 
@@ -288,5 +299,76 @@ describe('fileService.getFileDetails', () => {
     const details = await fileService.getFileDetails(files[0].id);
 
     expect(details.predicted_filename).toBeNull();
+  });
+});
+
+describe('fileService preview storage', () => {
+  const onDiskDir = fs.mkdtempSync(path.join('/tmp', 'vidpulse-prev-'));
+  const filename = 'clip.mp4';
+  let fileId: number;
+
+  beforeEach(async () => {
+    mockGenerateThumbnailBuffers.mockReset();
+    fs.writeFileSync(path.join(onDiskDir, filename), Buffer.from('video-bytes'));
+    await fileRepository.upsert({
+      filename,
+      directory: onDiskDir,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: null,
+    });
+    const { files } = await fileRepository.getAll({});
+    fileId = files.find((f) => f.directory === onDiskDir)!.id;
+  });
+
+  afterEach(async () => {
+    await knex('files').where('directory', onDiskDir).delete();
+  });
+
+  it('generates, stores, and reads back previews as data URIs', async () => {
+    mockGenerateThumbnailBuffers.mockResolvedValue([
+      Buffer.from('frame-a'),
+      Buffer.from('frame-b'),
+    ]);
+
+    const generated = await fileService.generatePreviews(fileId);
+    expect(generated).toEqual([
+      `data:image/jpeg;base64,${Buffer.from('frame-a').toString('base64')}`,
+      `data:image/jpeg;base64,${Buffer.from('frame-b').toString('base64')}`,
+    ]);
+
+    // getThumbnails reads from storage without touching ffmpeg.
+    const stored = await fileService.getThumbnails(fileId);
+    expect(stored).toEqual(generated);
+  });
+
+  it('replaces the previous set on regeneration instead of appending', async () => {
+    mockGenerateThumbnailBuffers.mockResolvedValueOnce([Buffer.from('a'), Buffer.from('b')]);
+    await fileService.generatePreviews(fileId);
+    mockGenerateThumbnailBuffers.mockResolvedValueOnce([Buffer.from('c')]);
+    await fileService.generatePreviews(fileId);
+
+    const stored = await fileRepository.getPreviews(fileId);
+    expect(stored.map((b) => b.toString())).toEqual(['c']);
+  });
+
+  it('returns [] from getThumbnails until previews are generated', async () => {
+    expect(await fileService.getThumbnails(fileId)).toEqual([]);
+  });
+
+  it('rejects generation when the file is not on disk', async () => {
+    fs.rmSync(path.join(onDiskDir, filename));
+    await expect(fileService.generatePreviews(fileId)).rejects.toMatchObject({ statusCode: 400 });
+    expect(mockGenerateThumbnailBuffers).not.toHaveBeenCalled();
+  });
+
+  it('cascade-deletes stored previews when the file row is removed', async () => {
+    mockGenerateThumbnailBuffers.mockResolvedValue([Buffer.from('x')]);
+    await fileService.generatePreviews(fileId);
+    expect(await knex('file_previews').where('file_id', fileId)).toHaveLength(1);
+
+    await fileService.deleteFile(fileId);
+    expect(await knex('file_previews').where('file_id', fileId)).toHaveLength(0);
   });
 });

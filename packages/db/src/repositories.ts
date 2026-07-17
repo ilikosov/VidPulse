@@ -998,6 +998,25 @@ export class KnexFileRepository implements IFileRepository {
     }
     return map;
   }
+
+  async getPreviews(fileId: number): Promise<Buffer[]> {
+    const rows = await knex('file_previews')
+      .where('file_id', fileId)
+      .orderBy('position', 'asc')
+      .select('image');
+    return rows.map((r) => r.image as Buffer);
+  }
+
+  async replacePreviews(fileId: number, images: Buffer[]): Promise<void> {
+    // Wholesale replace so a regeneration never mixes old and new frames or leaves stale rows.
+    await knex.transaction(async (trx) => {
+      await trx('file_previews').where('file_id', fileId).del();
+      if (images.length === 0) return;
+      await trx('file_previews').insert(
+        images.map((image, position) => ({ file_id: fileId, position, image })),
+      );
+    });
+  }
 }
 
 // ── Singletons ────────────────────────────────────────────
