@@ -12,7 +12,13 @@ import {
   Typography,
   message,
 } from 'antd';
-import { deleteFile, getFile, getFileThumbnails, linkFileToVideo } from '../api/filesApi';
+import {
+  deleteFile,
+  generateFileThumbnails,
+  getFile,
+  getFileThumbnails,
+  linkFileToVideo,
+} from '../api/filesApi';
 import type { FileDetails } from '../api/filesApi';
 import VideoSearchSelect from './VideoSearchSelect';
 
@@ -52,6 +58,7 @@ export default function FileEditorCard({ fileId, onChanged, onDeleted }: FileEdi
   const [deleting, setDeleting] = useState(false);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [thumbnailsLoading, setThumbnailsLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
 
   const fetchFile = useCallback(async () => {
     setLoading(true);
@@ -69,8 +76,8 @@ export default function FileEditorCard({ fileId, onChanged, onDeleted }: FileEdi
     void fetchFile();
   }, [fetchFile]);
 
-  // Independent from the details fetch — frame extraction can take a moment and shouldn't
-  // block the rest of the drawer from rendering.
+  // Load previews from storage on open — independent from the details fetch. Generation is an
+  // explicit action (the "Generate previews" button below), so this read never runs ffmpeg.
   useEffect(() => {
     setThumbnailsLoading(true);
     getFileThumbnails(fileId)
@@ -78,6 +85,21 @@ export default function FileEditorCard({ fileId, onChanged, onDeleted }: FileEdi
       .catch(() => setThumbnails([]))
       .finally(() => setThumbnailsLoading(false));
   }, [fileId]);
+
+  async function handleGenerate() {
+    setGenerating(true);
+    try {
+      const res = await generateFileThumbnails(fileId);
+      setThumbnails(res.thumbnails);
+      message.success(
+        res.thumbnails.length ? 'Previews generated' : 'No frames could be extracted',
+      );
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Failed to generate previews');
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   async function handleLink(videoId: number | null) {
     setLinking(true);
@@ -129,20 +151,29 @@ export default function FileEditorCard({ fileId, onChanged, onDeleted }: FileEdi
 
       <Divider />
 
-      <Title level={5}>Previews</Title>
-      {thumbnailsLoading ? (
-        <Spin />
-      ) : thumbnails.length ? (
-        <Image.PreviewGroup>
-          <Space wrap>
-            {thumbnails.map((src, i) => (
-              <Image key={i} src={src} width={120} />
-            ))}
-          </Space>
-        </Image.PreviewGroup>
-      ) : (
-        <Text type="secondary">No previews available</Text>
-      )}
+      <Space style={{ width: '100%', justifyContent: 'space-between' }} align="center">
+        <Title level={5} style={{ margin: 0 }}>
+          Previews
+        </Title>
+        <Button size="small" loading={generating} onClick={() => void handleGenerate()}>
+          Generate previews
+        </Button>
+      </Space>
+      <div style={{ marginTop: 12 }}>
+        {thumbnailsLoading ? (
+          <Spin />
+        ) : thumbnails.length ? (
+          <Image.PreviewGroup>
+            <Space wrap>
+              {thumbnails.map((src, i) => (
+                <Image key={i} src={src} width={120} />
+              ))}
+            </Space>
+          </Image.PreviewGroup>
+        ) : (
+          <Text type="secondary">No previews yet</Text>
+        )}
+      </div>
 
       <Divider />
 

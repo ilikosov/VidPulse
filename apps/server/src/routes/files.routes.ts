@@ -40,6 +40,15 @@ router.get(
   }),
 );
 
+// Generate preview frames from the file on disk and persist them, replacing any earlier set.
+router.post(
+  '/:id/thumbnails',
+  asyncHandler(async (req: Request, res: Response) => {
+    const thumbnails = await fileService.generatePreviews(Number(req.params.id));
+    res.json({ thumbnails });
+  }),
+);
+
 router.put(
   '/:id/link',
   asyncHandler(async (req: Request, res: Response) => {

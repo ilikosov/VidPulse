@@ -5,7 +5,7 @@ import { AppError } from '../middleware/AppError';
 import { fileRepository, videoRepository } from '@vidpulse/db';
 import type { FileEntity, FileWithVideo } from '@vidpulse/db';
 import { probeDimensions } from './file-probe.service';
-import { generateThumbnails } from './file-thumbnail.service';
+import { bufferToDataUri, generateThumbnailBuffers } from './file-thumbnail.service';
 import { videoService } from './video.service';
 import { renderTemplate } from './template/template.engine';
 import { buildVideoContext } from './template/videoContext';
@@ -140,13 +140,27 @@ export class FileService {
     return { probed };
   }
 
-  /** A few evenly-spaced preview frames as base64 data URIs. `[]` if the file is missing from
-   * disk or ffmpeg can't read it — never throws, so a bad file just shows no previews. */
+  /** Previously-generated preview frames from storage as base64 data URIs. `[]` until previews
+   * have been generated for this file (via `generatePreviews`) — reading never touches ffmpeg. */
   async getThumbnails(id: number): Promise<string[]> {
+    const images = await fileRepository.getPreviews(id);
+    return images.map(bufferToDataUri);
+  }
+
+  /**
+   * Generate preview frames from the video on disk and store them (replacing any earlier set),
+   * then return them as base64 data URIs. Throws 404 if the file record is unknown and 400 if the
+   * file is not present on disk. Stores nothing when ffmpeg yields no frames (bad/unreadable file).
+   */
+  async generatePreviews(id: number): Promise<string[]> {
     const file = await this.getFile(id);
     const fullPath = path.join(file.directory, file.filename);
-    if (!fs.existsSync(fullPath)) return [];
-    return generateThumbnails(fullPath);
+    if (!fs.existsSync(fullPath)) {
+      throw AppError.badRequest('File is not available on disk');
+    }
+    const images = await generateThumbnailBuffers(fullPath);
+    await fileRepository.replacePreviews(id, images);
+    return images.map(bufferToDataUri);
   }
 
   /** Removes the file record (not the file on disk). */

@@ -32,8 +32,13 @@ export const getFiles = (params?: {
 export const getFile = (fileId: number): Promise<FileDetails> =>
   fetchApi<FileDetails>(`/files/${fileId}`);
 
+/** Read previously-generated previews from storage (empty until they're generated). */
 export const getFileThumbnails = (fileId: number): Promise<FileThumbnailsResponse> =>
   fetchApi<FileThumbnailsResponse>(`/files/${fileId}/thumbnails`);
+
+/** Generate previews from the file on disk, store them, and return the fresh set. */
+export const generateFileThumbnails = (fileId: number): Promise<FileThumbnailsResponse> =>
+  fetchApi<FileThumbnailsResponse>(`/files/${fileId}/thumbnails`, { method: 'POST' });
 
 export const scanFiles = (): Promise<ScanResult> =>
   fetchApi<ScanResult>('/files/scan', { method: 'POST' });

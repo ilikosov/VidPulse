@@ -5,7 +5,7 @@ import path from 'path';
 const { mockFfmpegFactory } = vi.hoisted(() => ({ mockFfmpegFactory: vi.fn() }));
 vi.mock('fluent-ffmpeg', () => ({ default: mockFfmpegFactory }));
 
-import { generateThumbnails } from './file-thumbnail.service';
+import { bufferToDataUri, generateThumbnailBuffers } from './file-thumbnail.service';
 
 /** Builds a fake chainable FfmpegCommand: `.on(event, cb)` registers a handler, and
  * `.screenshots(config)` invokes `onScreenshots` with the target folder + registered handlers
@@ -27,8 +27,8 @@ function makeChain(
   return chain;
 }
 
-describe('generateThumbnails', () => {
-  it('resolves base64 JPEG data URIs for the generated screenshots', async () => {
+describe('generateThumbnailBuffers', () => {
+  it('resolves the generated screenshots as raw JPEG buffers, ordered by filename', async () => {
     mockFfmpegFactory.mockImplementation(() =>
       makeChain((folder, handlers) => {
         fs.writeFileSync(path.join(folder, 'thumb-1.jpg'), Buffer.from('fake-a'));
@@ -37,12 +37,12 @@ describe('generateThumbnails', () => {
       }),
     );
 
-    const result = await generateThumbnails('/tmp/video.mp4');
+    const result = await generateThumbnailBuffers('/tmp/video.mp4');
 
     expect(result).toHaveLength(2);
-    for (const uri of result) {
-      expect(uri).toMatch(/^data:image\/jpeg;base64,/);
-    }
+    expect(result.every((b) => Buffer.isBuffer(b))).toBe(true);
+    expect(result[0].toString()).toBe('fake-a');
+    expect(result[1].toString()).toBe('fake-b');
   });
 
   it('resolves an empty array on an ffmpeg error (e.g. missing binary)', async () => {
@@ -52,8 +52,16 @@ describe('generateThumbnails', () => {
       }),
     );
 
-    const result = await generateThumbnails('/tmp/video.mp4');
+    const result = await generateThumbnailBuffers('/tmp/video.mp4');
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('bufferToDataUri', () => {
+  it('encodes JPEG bytes as a base64 data URI', () => {
+    expect(bufferToDataUri(Buffer.from('hello'))).toBe(
+      `data:image/jpeg;base64,${Buffer.from('hello').toString('base64')}`,
+    );
   });
 });

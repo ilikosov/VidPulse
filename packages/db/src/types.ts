@@ -169,6 +169,15 @@ export interface FileWithVideo extends FileEntity {
   video_title: string | null;
 }
 
+/** One stored preview frame (raw JPEG bytes) for a file, ordered by `position`. */
+export interface FilePreviewEntity {
+  id: number;
+  file_id: number;
+  position: number;
+  image: Buffer;
+  created_at: string;
+}
+
 export interface StatusHistoryEntity {
   id: number;
   video_id: number;
@@ -353,6 +362,10 @@ export interface IFileRepository {
   getDimensionsByVideoIds(
     videoIds: number[],
   ): Promise<Map<number, { width: number | null; height: number | null }>>;
+  /** Stored preview frames for a file, ordered by position (empty if none generated yet). */
+  getPreviews(fileId: number): Promise<Buffer[]>;
+  /** Replace all of a file's stored previews with `images` (positions 0..n-1), atomically. */
+  replacePreviews(fileId: number, images: Buffer[]): Promise<void>;
 }
 
 export interface VideoListVideoRow {
