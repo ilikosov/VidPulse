@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { knex } from '@vidpulse/db';
 import { videoListRepository, fileRepository } from '@vidpulse/db';
 import { videoService } from './video.service';
@@ -142,9 +144,20 @@ class VideoListService {
     const page = Math.max(1, options?.page ?? 1);
     const limit = Math.max(1, options?.limit ?? 20);
     const offset = (page - 1) * limit;
+    // has_file only says a file row is linked; check the actual disk to distinguish a linked file
+    // that is genuinely present from a stale row whose file was moved/deleted.
+    const pageVideos = filtered.slice(offset, offset + limit);
+    const filePaths = await fileRepository.getPathsByVideoIds(pageVideos.map((v) => v.id));
+    const onDisk = new Set<number>();
+    for (const f of filePaths) {
+      if (!onDisk.has(f.video_id) && fs.existsSync(path.join(f.directory, f.filename))) {
+        onDisk.add(f.video_id);
+      }
+    }
+
     // Project to the public VideoListVideo shape — drop the template-only fields
     // (perf_date/event/camera_type/channel_title/playlist_title) that predicted_filename needed.
-    const pageSlice = filtered.slice(offset, offset + limit).map((v) => ({
+    const pageSlice = pageVideos.map((v) => ({
       id: v.id,
       youtube_id: v.youtube_id,
       title: v.title,
@@ -153,6 +166,7 @@ class VideoListService {
       duration: v.duration,
       status: v.status,
       has_file: v.has_file,
+      file_on_disk: onDisk.has(v.id),
       tags: v.tags,
       predicted_filename: v.predicted_filename,
       has_duplicate_name: v.has_duplicate_name,

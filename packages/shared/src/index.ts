@@ -362,6 +362,8 @@ export interface VideoListVideo {
   duration: number | null;
   status?: string | null;
   has_file: boolean;
+  /** True only when a linked file is actually present on disk (has_file may be true without it). */
+  file_on_disk: boolean;
   tags: string[];
   /** Base filename RENAME_TEMPLATE_VIDEO would produce for this video (no extension); null if
    *  the template isn't configured. */
