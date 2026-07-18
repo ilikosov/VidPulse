@@ -79,6 +79,7 @@ export default function VideoListOperations({
         <Button onClick={() => handleStatusOp('complete')}>Complete</Button>
         <Button onClick={() => handleStatusOp('ignore')}>Ignore</Button>
         <Button onClick={() => handleStatusOp('reparse')}>Reparse</Button>
+        <Button onClick={() => handleStatusOp('relinkFiles')}>Обновить линковку файлов</Button>
         <Button onClick={() => setTagModal('addTag')}>Add Tag</Button>
         <Button onClick={() => setTagModal('removeTag')}>Remove Tag</Button>
         <Button

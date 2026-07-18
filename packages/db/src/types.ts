@@ -356,6 +356,7 @@ export interface IFileRepository {
   linkVideo(id: number, videoId: number | null): Promise<void>;
   updatePath(id: number, directory: string, filename: string): Promise<void>;
   linkAllByYoutubeId(): Promise<number>;
+  linkByYoutubeIds(youtubeIds: string[]): Promise<number>;
   deleteById(id: number): Promise<void>;
   updateDimensions(id: number, width: number | null, height: number | null): Promise<void>;
   getUnprobedLinked(): Promise<FileEntity[]>;

@@ -282,3 +282,49 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
     expect(result.videos.every((v) => v.has_duplicate_name === false)).toBe(true);
   });
 });
+
+describe('videoListService relinkFiles batch operation', () => {
+  const PFX = 'vl-relink-test-';
+  const FILE_DIR = '/tmp/vl-relink-test';
+  let chId: number;
+
+  beforeEach(async () => {
+    const [row] = await knex('channels')
+      .insert({ youtube_id: `${PFX}channel`, title: 't' })
+      .returning('id');
+    chId = typeof row === 'object' ? row.id : row;
+  });
+
+  afterEach(async () => {
+    await knex('files').where('directory', FILE_DIR).delete();
+    const ids = await knex('videos').where('youtube_id', 'like', `${PFX}%`).pluck('video_list_id');
+    const listIds = [...new Set(ids.filter((x): x is number => x != null))];
+    await knex('videos').where('youtube_id', 'like', `${PFX}%`).delete();
+    if (listIds.length) await knex('video_lists').whereIn('id', listIds).delete();
+    await knex('channels').where('youtube_id', `${PFX}channel`).delete();
+  });
+
+  it("links unlinked files to the list's videos by youtube_id", async () => {
+    const yt = `${PFX}vid1`;
+    const [vrow] = await knex('videos')
+      .insert({ youtube_id: yt, channel_id: chId, original_title: 't', status: 'new' })
+      .returning('id');
+    const videoId = typeof vrow === 'object' ? vrow.id : vrow;
+    const created = await videoListService.create('relink-list', [videoId]);
+    await fileRepository.upsert({
+      filename: `${yt}.mp4`,
+      directory: FILE_DIR,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: yt,
+      video_id: null,
+    });
+
+    const result = await videoListService.batchOperation(created.id!, 'relinkFiles');
+    expect(result).toMatchObject({ operation: 'relinkFiles', linked: 1 });
+
+    const { files } = await fileRepository.getAll({ videoId });
+    expect(files).toHaveLength(1);
+    expect(files[0].filename).toBe(`${yt}.mp4`);
+  });
+});
