@@ -22,7 +22,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
 
     // The apostrophe inside "(Eye-Poppin')" must no longer truncate the song title.
     expect(toResultString(result)).toBe(
-      "group_name=KICKFLIP | artist_name=DONGHYEON | song_title=눈에 거슬리고 싶어 (Eye-Poppin') | event=@SBS INKIGAYO | camera_type=FANCAM | perf_date=260419 | needs_review=false",
+      "group_name=KICKFLIP | artist_name=DONGHYEON | song_title=눈에 거슬리고 싶어 (Eye-Poppin') | event=SBS INKIGAYO | camera_type=FANCAM | perf_date=260419 | needs_review=false",
     );
   });
 
@@ -32,7 +32,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     const result = await parseTitle(title);
 
     expect(toResultString(result)).toBe(
-      'group_name=KISS OF LIFE | artist_name=HANEUL | song_title=Who is she | event=@SBS INKIGAYO | camera_type=FANCAM | perf_date=260419 | needs_review=false',
+      'group_name=KISS OF LIFE | artist_name=HANEUL | song_title=Who is she | event=SBS INKIGAYO | camera_type=FANCAM | perf_date=260419 | needs_review=false',
     );
   });
 
@@ -44,7 +44,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     // A lone "(DAYOUNG FanCam)" credit is a solo stage, so the group is SOLO rather
     // than the member's home group, and the apostrophe in "What's" is preserved.
     expect(toResultString(result)).toBe(
-      "group_name=SOLO | artist_name=DAYOUNG | song_title=What's a girl to do | event=@SBS INKIGAYO | camera_type=FANCAM | perf_date=260419 | needs_review=false",
+      "group_name=SOLO | artist_name=DAYOUNG | song_title=What's a girl to do | event=SBS INKIGAYO | camera_type=FANCAM | perf_date=260419 | needs_review=false",
     );
   });
 
@@ -53,7 +53,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     const result = await parseTitle(title);
 
     expect(toResultString(result)).toBe(
-      'group_name=ITZY | artist_name=YUNA | song_title=Ice Cream | event=@SBS INKIGAYO | camera_type=FACECAM | perf_date=260329 | needs_review=false',
+      'group_name=ITZY | artist_name=YUNA | song_title=Ice Cream | event=SBS INKIGAYO | camera_type=FACECAM | perf_date=260329 | needs_review=false',
     );
   });
 
@@ -64,7 +64,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     // The romanized stage name "Moon Byul" must stay a single artist (resolved to the
     // canonical MOONBYUL) instead of being split into group=MOON / artist=BYUL.
     expect(toResultString(result)).toBe(
-      'group_name=SOLO | artist_name=MOONBYUL | song_title=Hertz | event=@SBS INKIGAYO | camera_type=FANCAM | perf_date=260329 | needs_review=false',
+      'group_name=SOLO | artist_name=MOONBYUL | song_title=Hertz | event=SBS INKIGAYO | camera_type=FANCAM | perf_date=260329 | needs_review=false',
     );
   });
 
@@ -75,7 +75,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     // 아이브 is IVE's own Korean alias (a group-only credit), so artist_name stays empty.
     // It must not substring-match the artist alias 이브 (Yves, a LOONA member).
     expect(toResultString(result)).toBe(
-      'group_name=IVE | artist_name= | song_title=BANG BANG | event=@SHOW WHAT I AM - MANILA | camera_type=FANCAM | perf_date=260425 | needs_review=false',
+      'group_name=IVE | artist_name= | song_title=BANG BANG | event=SHOW WHAT I AM - MANILA | camera_type=FANCAM | perf_date=260425 | needs_review=false',
     );
   });
 
@@ -84,7 +84,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
       '[#음중직캠] MEOVV GAWON (미야오 가원) – HANDS UP FanCam | 쇼! 음악중심 | MBC250503';
     const result = await parseTitle(title);
 
-    expect(result.metadata.event).toBe('@Show! Music Core');
+    expect(result.metadata.event).toBe('Show! Music Core');
     expect(result.metadata.song_title).toBe('HANDS UP');
     expect(result.metadata.perf_date).toBe('250503');
   });
@@ -94,7 +94,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
       "[안방1열 직캠4K] 빌리 문수아 'GingaMingaYo(the strange world)' (Billlie Moon Sua FanCam)│@SBSInkigayo_20220313";
     const result = await parseTitle(title);
 
-    expect(result.metadata.event).toBe('@SBS INKIGAYO');
+    expect(result.metadata.event).toBe('SBS INKIGAYO');
     // The dictionary canonicalizes the song (the "(the strange world)" suffix is dropped).
     expect(result.metadata.song_title).toBe('GingaMingaYo');
     expect(result.metadata.perf_date).toBe('220313');
@@ -107,7 +107,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
 
     // The episode segment ("EP.420") is dropped, so the show is the event and the song comes
     // from the credit (not the show name).
-    expect(result.metadata.event).toBe('@SHOW CHAMPION');
+    expect(result.metadata.event).toBe('SHOW CHAMPION');
     expect(result.metadata.song_title).toBe('snowy night');
     expect(result.metadata.group_name).toBe('Billlie');
   });
@@ -117,7 +117,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
       '[예능연구소] Billlie MOONSUA - RING ma Bell(빌리 문수아 - 링 마 벨) FanCam | Show! MusicCore | MBC220903방송';
     const result = await parseTitle(title);
 
-    expect(result.metadata.event).toBe('@Show! Music Core');
+    expect(result.metadata.event).toBe('Show! Music Core');
     expect(result.metadata.song_title).toBe('RING ma Bell');
     expect(result.metadata.perf_date).toBe('220903');
     expect(result.metadata.group_name).toBe('Billlie');
@@ -132,7 +132,7 @@ describe('parseTitle - SBS Inkigayo cases', () => {
     // as an IZNA member, so without extracting the explicit group the dictionary would
     // either infer IZNA from membership or fuzzy-match the bare name to another artist.
     expect(toResultString(result)).toBe(
-      'group_name=BABYMONSTER | artist_name=Ahyeon | song_title=SHEESH | event=@SBS INKIGAYO | camera_type=FACECAM | perf_date=240407 | needs_review=false',
+      'group_name=BABYMONSTER | artist_name=Ahyeon | song_title=SHEESH | event=SBS INKIGAYO | camera_type=FACECAM | perf_date=240407 | needs_review=false',
     );
   });
 });

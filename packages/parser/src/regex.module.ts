@@ -135,7 +135,7 @@ export class RegexModule implements ParserModule {
     const atMatch = title.match(/@+\s*([^@|\]\[()#]+(?:\s+[^@|\]\[()#]+)*)/i);
     if (atMatch?.[1]) {
       const cleaned = this.cleanEvent(atMatch[1]);
-      return cleaned ? `@${/[A-Za-z]/.test(cleaned) ? cleaned.toUpperCase() : cleaned}` : undefined;
+      return cleaned ? (/[A-Za-z]/.test(cleaned) ? cleaned.toUpperCase() : cleaned) : undefined;
     }
 
     const pipeMatch = title.match(/\|\s*([^|\[\]]+)/);
@@ -144,7 +144,7 @@ export class RegexModule implements ParserModule {
         .replace(/[\s,.-]+$/g, '')
         .trim();
       if (cleaned) {
-        return `@${/[A-Za-z]/.test(cleaned) ? cleaned.toUpperCase() : cleaned}`;
+        return /[A-Za-z]/.test(cleaned) ? cleaned.toUpperCase() : cleaned;
       }
     }
 
@@ -231,7 +231,7 @@ export class RegexModule implements ParserModule {
     // Last segment is the event/show; drop trailing parentheticals like "(ENG/JPN)".
     const eventRaw = this.cleanEvent(segments[segments.length - 1].replace(/\([^)]*\)/g, ''));
     if (eventRaw) {
-      metadata.event = `@${/[A-Za-z]/.test(eventRaw) ? eventRaw.toUpperCase() : eventRaw}`;
+      metadata.event = /[A-Za-z]/.test(eventRaw) ? eventRaw.toUpperCase() : eventRaw;
     }
 
     // Middle segments hold a comma-separated song list.

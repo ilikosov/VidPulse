@@ -92,7 +92,7 @@ function ReviewQueue() {
             group_name: video.group_name || '',
             artist_name: video.artist_name || '',
             song_titles: songsToTitles(video),
-            event: video.event ? video.event.replace('@', '') : '',
+            event: video.event ? video.event.replace(/^@+/, '') : '',
             camera_type: video.camera_type || '',
           },
           saving: false,
@@ -144,7 +144,7 @@ function ReviewQueue() {
     group_name: video.editForm.group_name || null,
     artist_name: video.editForm.artist_name || null,
     song_titles: video.editForm.song_titles,
-    event: video.editForm.event ? '@' + video.editForm.event.toUpperCase() : null,
+    event: video.editForm.event ? video.editForm.event.toUpperCase() : null,
     camera_type: video.editForm.camera_type || null,
   });
 
@@ -208,7 +208,7 @@ function ReviewQueue() {
                         .map((song) => song.trim())
                         .filter(Boolean)
                     : [],
-                  event: suggestion.event ? suggestion.event.replace('@', '') : '',
+                  event: suggestion.event ? suggestion.event.replace(/^@+/, '') : '',
                   camera_type: suggestion.camera_type ?? '',
                 },
               }

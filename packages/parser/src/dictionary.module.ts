@@ -380,8 +380,9 @@ export class DictionaryModule implements ParserModule {
 
     fieldsChecked++;
     if (metadata.event) {
-      // Strip ALL leading '@' (not just the first) — a doubled "@@EVENT" prefix would
-      // otherwise leave a stray '@' that breaks every exact/alias/fuzzy lookup below.
+      // Strip ALL leading '@' (not just the first) — titles / legacy values may carry a "@EVENT"
+      // or doubled "@@EVENT" prefix that would otherwise break every exact/alias/fuzzy lookup.
+      // The parsed event is emitted WITHOUT a leading '@' (the '@' convention was dropped).
       const eventName = metadata.event.replace(/^@+/, '');
       const aliasEvent = this.eventAliasMap[this.normalizeLookup(eventName)];
       const corrected = this.findBestMatch(eventName, dictionary.events, dictionary.aliases.event);
@@ -389,12 +390,11 @@ export class DictionaryModule implements ParserModule {
       // events absent from the dictionary (otherwise it overrides canonicals like MCOUNTDOWN).
       const canonicalEvent = corrected || aliasEvent;
       if (canonicalEvent) {
-        metadata.event = '@' + canonicalEvent;
+        metadata.event = canonicalEvent;
         correctionsMade++;
       } else {
-        // No dictionary/alias match — keep the raw name, but normalized to exactly one
-        // leading '@' so a failed correction can never leave stray '@' characters behind.
-        metadata.event = '@' + eventName;
+        // No dictionary/alias match — keep the raw name (leading '@' already stripped).
+        metadata.event = eventName;
       }
     }
 

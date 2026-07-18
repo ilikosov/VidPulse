@@ -257,11 +257,9 @@ class VideoService {
     }
 
     if (body.event !== undefined) {
-      if (body.event && !body.event.startsWith('@')) {
-        updateData.event = '@' + body.event.toUpperCase();
-      } else {
-        updateData.event = body.event || null;
-      }
+      // Events are stored without a leading '@' (that convention was dropped); normalize to
+      // upper-case and strip any '@' a caller/legacy value might still send.
+      updateData.event = body.event ? body.event.replace(/^@+/, '').toUpperCase() : null;
     }
 
     if (body.camera_type !== undefined) updateData.camera_type = body.camera_type || null;

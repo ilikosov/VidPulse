@@ -13,7 +13,7 @@ describe('RegexModule', () => {
     expect(['에스파', 'AESPA']).toContain(result.metadata.group_name);
     expect(['카리나', 'KARINA']).toContain(result.metadata.artist_name);
     expect(result.metadata.song_title).toBe('Dark Arts');
-    expect(result.metadata.event).toBe('@PUBG NATIONS CUP 2025 - FINAL STAGE');
+    expect(result.metadata.event).toBe('PUBG NATIONS CUP 2025 - FINAL STAGE');
     expect(result.metadata.camera_type).toContain('4K');
     expect(result.metadata.is_fancam).toBe(true);
   });
@@ -60,7 +60,7 @@ describe('RegexModule', () => {
     const result = await module.parse(title, {});
 
     expect(result.metadata.song_title).toBe('GingaMingaYo');
-    expect(result.metadata.event).toBe('@MUSICBANK');
+    expect(result.metadata.event).toBe('MUSICBANK');
     expect(result.metadata.perf_date).toBe('220311');
   });
 
@@ -74,7 +74,7 @@ describe('RegexModule', () => {
     expect(result.metadata.group_name).toBe('MEOVV');
     expect(result.metadata.artist_name).toBe('GAWON');
     expect(result.metadata.song_title).toBe('HANDS UP');
-    expect(result.metadata.event).toBe('@음악중심'); // show segment, "쇼!" prefix stripped
+    expect(result.metadata.event).toBe('음악중심'); // show segment, "쇼!" prefix stripped
     expect(result.metadata.perf_date).toBe('250503'); // from the "MBC250503" segment
   });
 
@@ -86,7 +86,7 @@ describe('RegexModule', () => {
     const result = await module.parse(title, {});
 
     expect(result.metadata.song_title).toBe('GingaMingaYo(the strange world)');
-    expect(result.metadata.event).toBe('@SBSINKIGAYO'); // date stripped (dictionary normalizes spacing)
+    expect(result.metadata.event).toBe('SBSINKIGAYO'); // date stripped (dictionary normalizes spacing)
     expect(result.metadata.perf_date).toBe('220313');
   });
 
@@ -98,7 +98,7 @@ describe('RegexModule', () => {
     const result = await module.parse(title, {});
 
     expect(result.metadata.song_title).toBe('snowy night');
-    expect(result.metadata.event).toBe('@SHOW CHAMPION');
+    expect(result.metadata.event).toBe('SHOW CHAMPION');
   });
 
   it('reads the show as event when separated by a lowercase "l" with a glued episode', async () => {
@@ -109,7 +109,7 @@ describe('RegexModule', () => {
     const result = await module.parse(title, {});
 
     expect(result.metadata.song_title).toBe('RING X RING');
-    expect(result.metadata.event).toBe('@SIMPLY K-POP');
+    expect(result.metadata.event).toBe('SIMPLY K-POP');
   });
 
   it('drops a "broadcaster+date+방송" trailing segment (MBC220903방송)', async () => {
@@ -120,7 +120,7 @@ describe('RegexModule', () => {
     const result = await module.parse(title, {});
 
     expect(result.metadata.song_title).toBe('RING ma Bell');
-    expect(result.metadata.event).toBe('@SHOW! MUSICCORE');
+    expect(result.metadata.event).toBe('SHOW! MUSICCORE');
     expect(result.metadata.perf_date).toBe('220903');
   });
 
@@ -137,7 +137,7 @@ describe('RegexModule', () => {
     expect(result.metadata.group_name).toBe('에스파');
     expect(result.metadata.artist_name).toBe('카리나');
     expect(result.metadata.song_title).toBe('GOOD STUFF');
-    expect(result.metadata.event).toBe('@AESPA LIVE TOUR -SYNK : AEXIS LINE- IN SEOUL');
+    expect(result.metadata.event).toBe('AESPA LIVE TOUR -SYNK : AEXIS LINE- IN SEOUL');
     expect(result.metadata.camera_type).toContain('FanCam');
     expect(result.metadata.is_fancam).toBe(true);
   });
@@ -147,8 +147,8 @@ describe('RegexModule', () => {
     const resultA = await module.parse('260523 Itzy Hwang Ye-ji - Motto @@MUSIC CORE', {});
     const resultB = await module.parse('260522 Itzy Hwang Ye-ji - Motto @@MUSICBANK', {});
 
-    expect(resultA.metadata.event).toBe('@MUSIC CORE');
-    expect(resultB.metadata.event).toBe('@MUSICBANK');
+    expect(resultA.metadata.event).toBe('MUSIC CORE');
+    expect(resultB.metadata.event).toBe('MUSICBANK');
     expect(resultA.metadata.perf_date).toBe('260523');
     expect(resultB.metadata.perf_date).toBe('260522');
   });

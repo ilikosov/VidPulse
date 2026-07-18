@@ -51,7 +51,7 @@ describe('parseTitle - MPD fancam credits with multi-word artist names', () => {
     expect(metadata.group_name).toBe('I.O.I');
     expect(metadata.artist_name).toBe('SEJEONG');
     expect(metadata.song_title).toBe('IOI (Where My Girls At)');
-    expect(metadata.event).toBe('@MCOUNTDOWN');
+    expect(metadata.event).toBe('MCOUNTDOWN');
     expect(metadata.camera_type).toBe('FANCAM');
     expect(needsReview).toBe(false);
   });
@@ -73,7 +73,7 @@ describe('parseTitle - MPD fancam credits with multi-word artist names', () => {
     expect(metadata.group_name).toBe('I.O.I');
     expect(metadata.artist_name).toBeUndefined();
     expect(metadata.song_title).toBe('갑자기');
-    expect(metadata.event).toBe('@MCOUNTDOWN');
+    expect(metadata.event).toBe('MCOUNTDOWN');
     expect(needsReview).toBe(false);
   });
 });

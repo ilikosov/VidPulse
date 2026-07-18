@@ -185,7 +185,7 @@ describe('DictionaryModule aliases normalization', () => {
       event: '@인기가요',
     });
 
-    expect(result.metadata.event).toBe('@INKIGAYO');
+    expect(result.metadata.event).toBe('INKIGAYO');
   });
 
   it('corrects an event with a doubled "@@" prefix via the hardcoded alias fallback', async () => {
@@ -197,7 +197,7 @@ describe('DictionaryModule aliases normalization', () => {
       event: '@@MUSIC CORE',
     });
 
-    expect(result.metadata.event).toBe('@MUSIC CORE');
+    expect(result.metadata.event).toBe('MUSIC CORE');
   });
 
   it('resolves a doubled "@@" event exactly against the dictionary', async () => {
@@ -208,7 +208,7 @@ describe('DictionaryModule aliases normalization', () => {
       event: '@@MUSICBANK',
     });
 
-    expect(result.metadata.event).toBe('@MUSICBANK');
+    expect(result.metadata.event).toBe('MUSICBANK');
   });
 
   it('normalizes an unresolved event to a single leading "@" instead of leaving it raw', async () => {
@@ -217,7 +217,7 @@ describe('DictionaryModule aliases normalization', () => {
       event: '@@SOME UNKNOWN SHOW',
     });
 
-    expect(result.metadata.event).toBe('@SOME UNKNOWN SHOW');
+    expect(result.metadata.event).toBe('SOME UNKNOWN SHOW');
   });
 
   it('resolves the artist within the identified group, not a look-alike elsewhere', async () => {
