@@ -56,17 +56,17 @@ lets you review/correct it, and organizes everything against a curated dictionar
 
 ## Common commands
 
-| Command                                                               | What it does                                          |
-| --------------------------------------------------------------------- | ----------------------------------------------------- |
-| `npm run dev:all`                                                     | Install deps, run migrations, launch backend+frontend |
-| `npm run dev`                                                         | Backend only (nodemon + ts-node)                      |
-| `npm run launch`                                                      | Backend + frontend together                           |
-| `npm run build`                                                       | Compile `@vidpulse/db` + sources → backend → frontend |
-| `npm test`                                                            | Vitest (unit/integration)                             |
-| `npm run test:e2e`                                                    | Playwright (e2e)                                      |
-| `npm run format`                                                      | Prettier write                                        |
-| `npx knex migrate:make <name> --knexfile packages/db/src/knexfile.ts` | Create a migration                                    |
-| `npx knex migrate:latest --knexfile packages/db/src/knexfile.ts`      | Apply migrations                                      |
+| Command                                                               | What it does                                                                                                                                                      |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev:all`                                                     | Install/build/migrate + launch, and **auto-restart on new commits** pushed to the current branch (watcher pulls & restarts). `dev:all:once` runs it a single time |
+| `npm run dev`                                                         | Backend only (nodemon + ts-node)                                                                                                                                  |
+| `npm run launch`                                                      | Backend + frontend together                                                                                                                                       |
+| `npm run build`                                                       | Compile `@vidpulse/db` + sources → backend → frontend                                                                                                             |
+| `npm test`                                                            | Vitest (unit/integration)                                                                                                                                         |
+| `npm run test:e2e`                                                    | Playwright (e2e)                                                                                                                                                  |
+| `npm run format`                                                      | Prettier write                                                                                                                                                    |
+| `npx knex migrate:make <name> --knexfile packages/db/src/knexfile.ts` | Create a migration                                                                                                                                                |
+| `npx knex migrate:latest --knexfile packages/db/src/knexfile.ts`      | Apply migrations                                                                                                                                                  |
 
 Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
 
