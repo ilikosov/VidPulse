@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { knex, fileRepository } from '@vidpulse/db';
 import { videoListService } from './video-list.service';
 
@@ -326,5 +328,54 @@ describe('videoListService relinkFiles batch operation', () => {
     const { files } = await fileRepository.getAll({ videoId });
     expect(files).toHaveLength(1);
     expect(files[0].filename).toBe(`${yt}.mp4`);
+  });
+});
+
+describe('videoListService.getById — file_on_disk reflects real disk presence', () => {
+  const PFX = 'vl-ondisk-test-';
+  const dir = fs.mkdtempSync(path.join('/tmp', 'vl-ondisk-'));
+  let chId: number;
+
+  beforeEach(async () => {
+    const [row] = await knex('channels')
+      .insert({ youtube_id: `${PFX}channel`, title: 't' })
+      .returning('id');
+    chId = typeof row === 'object' ? row.id : row;
+  });
+
+  afterEach(async () => {
+    await knex('files').where('directory', dir).delete();
+    const ids = await knex('videos').where('youtube_id', 'like', `${PFX}%`).pluck('video_list_id');
+    const listIds = [...new Set(ids.filter((x): x is number => x != null))];
+    await knex('videos').where('youtube_id', 'like', `${PFX}%`).delete();
+    if (listIds.length) await knex('video_lists').whereIn('id', listIds).delete();
+    await knex('channels').where('youtube_id', `${PFX}channel`).delete();
+  });
+
+  it('is true when the linked file exists and false when it is missing', async () => {
+    const [vrow] = await knex('videos')
+      .insert({ youtube_id: `${PFX}v`, channel_id: chId, original_title: 't', status: 'new' })
+      .returning('id');
+    const videoId = typeof vrow === 'object' ? vrow.id : vrow;
+    const created = await videoListService.create('ondisk-list', [videoId]);
+
+    fs.writeFileSync(path.join(dir, 'present.mp4'), Buffer.from('x'));
+    await fileRepository.upsert({
+      filename: 'present.mp4',
+      directory: dir,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: videoId,
+    });
+
+    const present = await videoListService.getById(created.id!);
+    expect(present.videos[0].has_file).toBe(true);
+    expect(present.videos[0].file_on_disk).toBe(true);
+
+    fs.rmSync(path.join(dir, 'present.mp4'));
+    const missing = await videoListService.getById(created.id!);
+    expect(missing.videos[0].has_file).toBe(true);
+    expect(missing.videos[0].file_on_disk).toBe(false);
   });
 });

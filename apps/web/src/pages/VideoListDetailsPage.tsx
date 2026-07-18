@@ -11,7 +11,7 @@ import {
   Typography,
   notification,
 } from 'antd';
-import { FilterOutlined, PaperClipOutlined } from '@ant-design/icons';
+import { ExclamationCircleOutlined, FilterOutlined, PaperClipOutlined } from '@ant-design/icons';
 import { batchVideoOperation, getListDetails } from '../api/videoListsApi';
 import type { VideoListDetails, VideoListVideo } from '../api/videoListsApi';
 import { getFiles } from '../api/filesApi';
@@ -126,10 +126,16 @@ export default function VideoListDetailsPage() {
       width: 60,
       align: 'center' as const,
       render: (hasFile: boolean, record: VideoListVideo) =>
-        hasFile ? (
+        record.file_on_disk ? (
           <Tooltip title="Linked file on disk — open file editor">
             <a onClick={() => void handleOpenFile(record.id)} style={{ cursor: 'pointer' }}>
               <PaperClipOutlined style={{ color: '#52c41a' }} />
+            </a>
+          </Tooltip>
+        ) : hasFile ? (
+          <Tooltip title="Linked file missing on disk — open to fix">
+            <a onClick={() => void handleOpenFile(record.id)} style={{ cursor: 'pointer' }}>
+              <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
             </a>
           </Tooltip>
         ) : (

@@ -1044,6 +1044,14 @@ export class KnexFileRepository implements IFileRepository {
     return knex('files').whereNotNull('video_id').whereNull('width');
   }
 
+  /** Path parts of every file linked to any of `videoIds` — for on-disk presence checks. */
+  async getPathsByVideoIds(
+    videoIds: number[],
+  ): Promise<Array<{ video_id: number; directory: string; filename: string }>> {
+    if (videoIds.length === 0) return [];
+    return knex('files').whereIn('video_id', videoIds).select('video_id', 'directory', 'filename');
+  }
+
   /** First linked file's dimensions per video (lowest id) — one video can have several files. */
   async getDimensionsByVideoIds(
     videoIds: number[],

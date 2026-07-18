@@ -383,6 +383,9 @@ export interface IFileRepository {
   deleteById(id: number): Promise<void>;
   updateDimensions(id: number, width: number | null, height: number | null): Promise<void>;
   getUnprobedLinked(): Promise<FileEntity[]>;
+  getPathsByVideoIds(
+    videoIds: number[],
+  ): Promise<Array<{ video_id: number; directory: string; filename: string }>>;
   getDimensionsByVideoIds(
     videoIds: number[],
   ): Promise<Map<number, { width: number | null; height: number | null }>>;
