@@ -970,6 +970,37 @@ export class KnexFileRepository implements IFileRepository {
     return Number(before?.count ?? 0);
   }
 
+  /**
+   * Link every unlinked file whose youtube_id matches one of `youtubeIds` (a subset of
+   * linkAllByYoutubeId, scoped to e.g. a video list's videos). Returns rows linked.
+   */
+  async linkByYoutubeIds(youtubeIds: string[]): Promise<number> {
+    if (youtubeIds.length === 0) return 0;
+
+    const matchesUnlinked = (qb: Knex.QueryBuilder) =>
+      qb
+        .from('files')
+        .whereNull('files.video_id')
+        .whereIn('files.youtube_id', youtubeIds)
+        .whereExists((sub) => sub.from('videos').whereRaw('videos.youtube_id = files.youtube_id'));
+
+    const before = await matchesUnlinked(knex.queryBuilder())
+      .count<{ count: number }>('files.id as count')
+      .first();
+
+    await knex('files')
+      .whereNull('video_id')
+      .whereIn('youtube_id', youtubeIds)
+      .whereExists((sub) =>
+        sub.select(knex.raw('1')).from('videos').whereRaw('videos.youtube_id = files.youtube_id'),
+      )
+      .update({
+        video_id: knex.raw('(SELECT id FROM videos WHERE videos.youtube_id = files.youtube_id)'),
+      });
+
+    return Number(before?.count ?? 0);
+  }
+
   async deleteById(id: number): Promise<void> {
     await knex('files').where('id', id).del();
   }

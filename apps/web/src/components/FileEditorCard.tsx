@@ -9,6 +9,7 @@ import {
   Popconfirm,
   Space,
   Spin,
+  Tooltip,
   Typography,
   message,
 } from 'antd';
@@ -143,6 +144,13 @@ export default function FileEditorCard({ fileId, onChanged, onDeleted }: FileEdi
           {resolutionLabel(file.width, file.height)}
         </Descriptions.Item>
         <Descriptions.Item label="Path">{file.directory}</Descriptions.Item>
+        <Descriptions.Item label="On disk">
+          {file.exists_on_disk ? (
+            'yes'
+          ) : (
+            <Text type="danger">no — file not found at this path</Text>
+          )}
+        </Descriptions.Item>
         <Descriptions.Item label="Renamed to">
           {file.predicted_filename ??
             (file.video_id == null ? 'video not linked' : 'no rename template configured')}
@@ -155,9 +163,16 @@ export default function FileEditorCard({ fileId, onChanged, onDeleted }: FileEdi
         <Title level={5} style={{ margin: 0 }}>
           Previews
         </Title>
-        <Button size="small" loading={generating} onClick={() => void handleGenerate()}>
-          Generate previews
-        </Button>
+        <Tooltip title={file.exists_on_disk ? '' : 'File is not available on disk'}>
+          <Button
+            size="small"
+            loading={generating}
+            disabled={!file.exists_on_disk}
+            onClick={() => void handleGenerate()}
+          >
+            Generate previews
+          </Button>
+        </Tooltip>
       </Space>
       <div style={{ marginTop: 12 }}>
         {thumbnailsLoading ? (

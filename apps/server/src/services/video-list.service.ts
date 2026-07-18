@@ -276,6 +276,17 @@ class VideoListService {
       return { operation, processed: allIds.length, succeeded: result.updated, status };
     }
 
+    if (operation === 'relinkFiles') {
+      // Link on-disk files (matched by youtube_id) to this list's videos — a scoped refresh of
+      // scan's auto-link, without re-walking the whole input directory.
+      const youtubeIds = (await knex('videos')
+        .where('video_list_id', listId)
+        .whereNotNull('youtube_id')
+        .pluck('youtube_id')) as string[];
+      const linked = await fileRepository.linkByYoutubeIds(youtubeIds);
+      return { operation, processed: youtubeIds.length, succeeded: linked, linked };
+    }
+
     throw AppError.badRequest(`Unsupported operation '${operation}'`);
   }
 

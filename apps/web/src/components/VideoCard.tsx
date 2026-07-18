@@ -77,7 +77,7 @@ function toForm(video: Video): EditForm {
     group_name: video.group_name || '',
     artist_name: video.artist_name || '',
     song_titles: songsToTitles(video),
-    event: video.event ? video.event.replace('@', '') : '',
+    event: video.event ? video.event.replace(/^@+/, '') : '',
     camera_type: video.camera_type || '',
   };
 }
@@ -337,7 +337,7 @@ function VideoCard({ videoId, onChanged }: VideoCardProps) {
         group_name: form.group_name || null,
         artist_name: form.artist_name || null,
         song_titles: form.song_titles,
-        event: form.event ? '@' + form.event.toUpperCase() : null,
+        event: form.event ? form.event.toUpperCase() : null,
         camera_type: form.camera_type || null,
       });
       message.success('Metadata updated');

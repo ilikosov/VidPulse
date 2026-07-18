@@ -17,7 +17,7 @@ describe('parseTitle - pipe-segmented show-channel titles', () => {
     expect(metadata.artist_name).toBe('Karina');
     expect(metadata.song_titles).toEqual(['그 사람', '꽃같네', '수영해', "Can't Help Myself"]);
     expect(metadata.song_title).toBe("Can't Help Myself");
-    expect(metadata.event).toBe('@WOULD YOU RECORD');
+    expect(metadata.event).toBe('WOULD YOU RECORD');
   });
 
   it('leaves a two-segment "song | @event" title to the generic path', async () => {
