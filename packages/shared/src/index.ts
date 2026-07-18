@@ -422,6 +422,8 @@ export interface FilesResponse {
  * the single-file GET endpoint — computing it for every row of the list would be wasteful). */
 export interface FileDetails extends FileRecord {
   predicted_filename: string | null;
+  /** Whether the file is actually present at its recorded path (not just linked to a video). */
+  exists_on_disk: boolean;
 }
 
 export interface FileThumbnailsResponse {

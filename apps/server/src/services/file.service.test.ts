@@ -357,6 +357,15 @@ describe('fileService preview storage', () => {
     expect(await fileService.getThumbnails(fileId)).toEqual([]);
   });
 
+  it('reports exists_on_disk in getFileDetails (true when present, false when missing)', async () => {
+    const present = await fileService.getFileDetails(fileId);
+    expect(present.exists_on_disk).toBe(true);
+
+    fs.rmSync(path.join(onDiskDir, filename));
+    const missing = await fileService.getFileDetails(fileId);
+    expect(missing.exists_on_disk).toBe(false);
+  });
+
   it('rejects generation when the file is not on disk', async () => {
     fs.rmSync(path.join(onDiskDir, filename));
     await expect(fileService.generatePreviews(fileId)).rejects.toMatchObject({ statusCode: 400 });

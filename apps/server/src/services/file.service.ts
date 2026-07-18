@@ -96,17 +96,26 @@ export class FileService {
   /** `getFile` plus a preview of the name this file would get renamed to (null when the file
    * isn't linked to a video, or no RENAME_TEMPLATE_VIDEO is configured). Mirrors the exact
    * base-name computation `video.service.ts::renameFiles` uses for the real rename. */
-  async getFileDetails(id: number): Promise<FileWithVideo & { predicted_filename: string | null }> {
+  async getFileDetails(
+    id: number,
+  ): Promise<FileWithVideo & { predicted_filename: string | null; exists_on_disk: boolean }> {
     const file = await this.getFile(id);
+    // Whether the linked file is actually present at its recorded path — distinct from being
+    // linked to a video. Previews can only be generated when this is true.
+    const exists_on_disk = fs.existsSync(path.join(file.directory, file.filename));
     const template = config.files.renameTemplate;
     if (file.video_id == null || !template) {
-      return { ...file, predicted_filename: null };
+      return { ...file, predicted_filename: null, exists_on_disk };
     }
     const video = await videoService.getVideoById(file.video_id);
     const baseName = renderTemplate(template, { video: [buildVideoContext(video)] })
       .replace(/\//g, '-')
       .trim();
-    return { ...file, predicted_filename: baseName ? baseName + (file.extension ?? '') : null };
+    return {
+      ...file,
+      predicted_filename: baseName ? baseName + (file.extension ?? '') : null,
+      exists_on_disk,
+    };
   }
 
   /** Manually link (or unlink) a file to a video. */
@@ -156,7 +165,7 @@ export class FileService {
     const file = await this.getFile(id);
     const fullPath = path.join(file.directory, file.filename);
     if (!fs.existsSync(fullPath)) {
-      throw AppError.badRequest('File is not available on disk');
+      throw AppError.badRequest(`File is not available on disk: ${fullPath}`);
     }
     const images = await generateThumbnailBuffers(fullPath);
     await fileRepository.replacePreviews(id, images);
