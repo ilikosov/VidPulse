@@ -744,14 +744,33 @@ class VideoService {
    * The template may iterate the selection with {{#each video}}…{{/each}} (one command for the
    * whole selection, e.g. `mv "url1" "url2" /dest/`) or address a single video directly.
    */
-  async buildFileCommand(videoIds: number[]): Promise<{ command: string }> {
+  async buildFileCommand(
+    videoIds: number[],
+    options?: { excludeExistingFiles?: boolean },
+  ): Promise<{ command: string; excluded: number }> {
     const template = config.files.shellCommand;
     if (!template) {
       throw AppError.badRequest('SHELL_COMMAND_VIDEO is not configured');
     }
 
+    let ids = videoIds;
+    let excluded = 0;
+    if (options?.excludeExistingFiles) {
+      // Skip videos that already have a linked file present on disk — the command is meant for
+      // videos still missing their file, so re-running it for already-downloaded ones is noise.
+      const paths = await fileRepository.getPathsByVideoIds(videoIds);
+      const hasFileOnDisk = new Set<number>();
+      for (const f of paths) {
+        if (!hasFileOnDisk.has(f.video_id) && fs.existsSync(path.join(f.directory, f.filename))) {
+          hasFileOnDisk.add(f.video_id);
+        }
+      }
+      ids = videoIds.filter((id) => !hasFileOnDisk.has(id));
+      excluded = videoIds.length - ids.length;
+    }
+
     const videoContexts = [];
-    for (const videoId of videoIds) {
+    for (const videoId of ids) {
       const video = await this.getVideoById(videoId);
       videoContexts.push(buildVideoContext(video));
     }
@@ -764,6 +783,7 @@ class VideoService {
         { video: videoContexts },
         { transformValue: escapeShellValueForDoubleQuotes },
       ),
+      excluded,
     };
   }
 

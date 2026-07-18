@@ -132,10 +132,13 @@ export async function batchComplete(videoIds: number[]): Promise<BatchResult> {
   });
 }
 
-export async function buildFileCommand(videoIds: number[]): Promise<{ command: string }> {
-  return fetchApi<{ command: string }>('/videos/batch/file-command', {
+export async function buildFileCommand(
+  videoIds: number[],
+  excludeExistingFiles = false,
+): Promise<{ command: string; excluded: number }> {
+  return fetchApi<{ command: string; excluded: number }>('/videos/batch/file-command', {
     method: 'POST',
-    body: JSON.stringify({ videoIds }),
+    body: JSON.stringify({ videoIds, excludeExistingFiles }),
   });
 }
 

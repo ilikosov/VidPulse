@@ -123,7 +123,10 @@ export const config = {
      * Command-line template for the "file command" action. Uses {{entity.param}} syntax
      * with an optional {{each video}}…{{/each}} loop. See services/template/template.engine.ts.
      */
-    shellCommand: process.env.SHELL_COMMAND_VIDEO ?? null,
+    /** Read dynamically so tests can override it. */
+    get shellCommand(): string | null {
+      return process.env.SHELL_COMMAND_VIDEO ?? null;
+    },
     /**
      * New-name template for the rename action. Defines ONLY the destination filename
      * (without extension — the source extension is preserved); the `mv` command is built

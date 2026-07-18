@@ -10,6 +10,7 @@ import { asyncHandler } from '../../middleware/asyncHandler';
 import { validateBody } from '../../middleware/validate';
 import { AppError } from '../../middleware/AppError';
 import batchVideoIdsSchema from '../../../schemas/request/batch-video-ids.schema.json';
+import batchFileCommandSchema from '../../../schemas/request/batch-file-command.schema.json';
 
 const router = Router();
 
@@ -45,10 +46,11 @@ router.post(
 
 router.post(
   '/batch/file-command',
-  validateBody(batchVideoIdsSchema),
+  validateBody(batchFileCommandSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const videoIds: number[] = req.body.videoIds;
-    const result = await videoService.buildFileCommand(videoIds);
+    const excludeExistingFiles: boolean = req.body.excludeExistingFiles ?? false;
+    const result = await videoService.buildFileCommand(videoIds, { excludeExistingFiles });
     res.json(result);
   }),
 );

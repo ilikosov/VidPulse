@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Input, Modal, Space, notification, message } from 'antd';
+import { Button, Checkbox, Input, Modal, Space, notification, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { batchVideoOperation } from '../api/videoListsApi';
 import { buildFileCommand, renameFiles } from '../api';
@@ -19,6 +19,7 @@ export default function VideoListOperations({
 }: VideoListOperationsProps) {
   const [tagModal, setTagModal] = useState<TagMode | null>(null);
   const [tagName, setTagName] = useState('');
+  const [excludeExistingFiles, setExcludeExistingFiles] = useState(false);
 
   async function run(operation: string, options?: { videoIds?: number[]; tagName?: string }) {
     try {
@@ -39,9 +40,13 @@ export default function VideoListOperations({
       return;
     }
     try {
-      const { command } = await buildFileCommand(videoIds);
+      const { command, excluded } = await buildFileCommand(videoIds, excludeExistingFiles);
       await navigator.clipboard.writeText(command);
-      message.success('Скопировано в буфер');
+      message.success(
+        excluded > 0
+          ? `Скопировано в буфер (исключено видео с файлами на диске: ${excluded})`
+          : 'Скопировано в буфер',
+      );
     } catch (err: any) {
       message.error(err?.message || 'Ошибка при формировании команды');
     }
@@ -89,6 +94,12 @@ export default function VideoListOperations({
         >
           Команда для видео
         </Button>
+        <Checkbox
+          checked={excludeExistingFiles}
+          onChange={(e) => setExcludeExistingFiles(e.target.checked)}
+        >
+          Исключить видео с файлами на диске
+        </Checkbox>
         <Button onClick={() => void handleRename()} disabled={videoIds.length === 0}>
           Переименовать
         </Button>
