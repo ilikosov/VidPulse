@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Space, Table, Tag, Tooltip, Typography, message, notification } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { LinkOutlined } from '@ant-design/icons';
+import { ExclamationCircleOutlined, LinkOutlined } from '@ant-design/icons';
 import { getFiles, scanFiles } from '../api/filesApi';
 import type { FileRecord } from '../api/filesApi';
 import { useVideoDrawer } from '../components/VideoDrawerProvider';
@@ -93,11 +93,23 @@ export default function FilesPage() {
       key: 'video_id',
       render: (videoId: number | null, record) => (
         <Space size={6}>
+          {/* The link icon only appears when the file is actually on disk — a linked row whose
+              file is missing shows a warning instead, so linkage isn't confused with presence. */}
           <Tooltip
-            title={videoId != null ? 'Edit file / linked video' : 'Edit file / link a video'}
+            title={
+              !record.exists_on_disk
+                ? 'File not on disk — open to fix'
+                : videoId != null
+                  ? 'Edit file / linked video'
+                  : 'Edit file / link a video'
+            }
           >
             <a onClick={() => openFileEditor(record.id, () => fetchFiles(page, limit))}>
-              <LinkOutlined style={{ color: videoId != null ? '#52c41a' : '#bfbfbf' }} />
+              {record.exists_on_disk ? (
+                <LinkOutlined style={{ color: videoId != null ? '#52c41a' : '#bfbfbf' }} />
+              ) : (
+                <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
+              )}
             </a>
           </Tooltip>
           {videoId != null ? (

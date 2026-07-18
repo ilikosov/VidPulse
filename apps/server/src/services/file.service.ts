@@ -81,10 +81,17 @@ export class FileService {
   }
 
   async getFiles(params?: { videoId?: number; page?: number; limit?: number }): Promise<{
-    files: FileWithVideo[];
+    files: Array<FileWithVideo & { exists_on_disk: boolean }>;
     total: number;
   }> {
-    return fileRepository.getAll(params);
+    const { files, total } = await fileRepository.getAll(params);
+    // Flag each row with real disk presence so the UI can distinguish "linked to a video" from
+    // "actually on disk" (a linked row whose file was moved/deleted is a mismatch to surface).
+    const withDiskStatus = files.map((f) => ({
+      ...f,
+      exists_on_disk: fs.existsSync(path.join(f.directory, f.filename)),
+    }));
+    return { files: withDiskStatus, total };
   }
 
   async getFile(id: number): Promise<FileWithVideo> {

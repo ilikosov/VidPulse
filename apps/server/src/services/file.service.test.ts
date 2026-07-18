@@ -381,3 +381,37 @@ describe('fileService preview storage', () => {
     expect(await knex('file_previews').where('file_id', fileId)).toHaveLength(0);
   });
 });
+
+describe('fileService.getFiles disk presence', () => {
+  const dir = fs.mkdtempSync(path.join('/tmp', 'vidpulse-fp-'));
+
+  afterEach(async () => {
+    await knex('files').where('directory', dir).delete();
+  });
+
+  it('flags each listed row with exists_on_disk', async () => {
+    fs.writeFileSync(path.join(dir, 'present.mp4'), Buffer.from('x'));
+    await fileRepository.upsert({
+      filename: 'present.mp4',
+      directory: dir,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: null,
+    });
+    await fileRepository.upsert({
+      filename: 'missing.mp4',
+      directory: dir,
+      extension: '.mp4',
+      size_bytes: 1,
+      youtube_id: null,
+      video_id: null,
+    });
+
+    const { files } = await fileService.getFiles({ limit: 100 });
+    const present = files.find((f) => f.directory === dir && f.filename === 'present.mp4');
+    const missing = files.find((f) => f.directory === dir && f.filename === 'missing.mp4');
+    expect(present?.exists_on_disk).toBe(true);
+    expect(missing?.exists_on_disk).toBe(false);
+  });
+});
