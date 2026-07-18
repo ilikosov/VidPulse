@@ -128,6 +128,13 @@ export const config = {
       return process.env.SHELL_COMMAND_VIDEO ?? null;
     },
     /**
+     * Default for the file-command "exclude videos whose file is already on disk" flag. When the
+     * request omits the flag, this env value is used. Read dynamically so tests can override it.
+     */
+    get shellCommandExcludeExisting(): boolean {
+      return bool(process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES, false);
+    },
+    /**
      * New-name template for the rename action. Defines ONLY the destination filename
      * (without extension — the source extension is preserved); the `mv` command is built
      * automatically against the video's linked file on disk. Uses {{video.param}} tokens.

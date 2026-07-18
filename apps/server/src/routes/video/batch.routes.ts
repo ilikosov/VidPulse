@@ -9,6 +9,7 @@ import { requireDangerousActionsEnabled } from '../../middleware/dangerousAction
 import { asyncHandler } from '../../middleware/asyncHandler';
 import { validateBody } from '../../middleware/validate';
 import { AppError } from '../../middleware/AppError';
+import { config } from '../../config';
 import batchVideoIdsSchema from '../../../schemas/request/batch-video-ids.schema.json';
 import batchFileCommandSchema from '../../../schemas/request/batch-file-command.schema.json';
 
@@ -49,7 +50,9 @@ router.post(
   validateBody(batchFileCommandSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const videoIds: number[] = req.body.videoIds;
-    const excludeExistingFiles: boolean = req.body.excludeExistingFiles ?? false;
+    // Fall back to the SHELL_COMMAND_EXCLUDE_EXISTING_FILES env default when the request omits it.
+    const excludeExistingFiles: boolean =
+      req.body.excludeExistingFiles ?? config.files.shellCommandExcludeExisting;
     const result = await videoService.buildFileCommand(videoIds, { excludeExistingFiles });
     res.json(result);
   }),

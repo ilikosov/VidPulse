@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { knex, fileRepository } from '@vidpulse/db';
 import { videoService } from './video.service';
+import { config } from '../config';
 
 // Integration test against the migrated test DB (see tests/vitest.global-setup.ts).
 
@@ -88,5 +89,18 @@ describe('videoService.buildFileCommand — excludeExistingFiles', () => {
 
     expect(res.excluded).toBe(0);
     expect(res.command).toContain(`${PFX}missing`);
+  });
+
+  it('config.shellCommandExcludeExisting reads the env default', () => {
+    const original = process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES;
+    try {
+      process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES = 'true';
+      expect(config.files.shellCommandExcludeExisting).toBe(true);
+      process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES = 'false';
+      expect(config.files.shellCommandExcludeExisting).toBe(false);
+    } finally {
+      if (original === undefined) delete process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES;
+      else process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES = original;
+    }
   });
 });

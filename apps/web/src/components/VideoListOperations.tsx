@@ -19,7 +19,11 @@ export default function VideoListOperations({
 }: VideoListOperationsProps) {
   const [tagModal, setTagModal] = useState<TagMode | null>(null);
   const [tagName, setTagName] = useState('');
-  const [excludeExistingFiles, setExcludeExistingFiles] = useState(false);
+  // Default the flag from the env file (VITE_ mirror of SHELL_COMMAND_EXCLUDE_EXISTING_FILES).
+  const [excludeExistingFiles, setExcludeExistingFiles] = useState(
+    (import.meta as { env?: Record<string, string | undefined> }).env
+      ?.VITE_SHELL_COMMAND_EXCLUDE_EXISTING_FILES === 'true',
+  );
 
   async function run(operation: string, options?: { videoIds?: number[]; tagName?: string }) {
     try {
