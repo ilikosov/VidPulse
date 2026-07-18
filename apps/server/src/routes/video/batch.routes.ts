@@ -11,7 +11,6 @@ import { validateBody } from '../../middleware/validate';
 import { AppError } from '../../middleware/AppError';
 import { config } from '../../config';
 import batchVideoIdsSchema from '../../../schemas/request/batch-video-ids.schema.json';
-import batchFileCommandSchema from '../../../schemas/request/batch-file-command.schema.json';
 
 const router = Router();
 
@@ -47,13 +46,14 @@ router.post(
 
 router.post(
   '/batch/file-command',
-  validateBody(batchFileCommandSchema),
+  validateBody(batchVideoIdsSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const videoIds: number[] = req.body.videoIds;
-    // Fall back to the SHELL_COMMAND_EXCLUDE_EXISTING_FILES env default when the request omits it.
-    const excludeExistingFiles: boolean =
-      req.body.excludeExistingFiles ?? config.files.shellCommandExcludeExisting;
-    const result = await videoService.buildFileCommand(videoIds, { excludeExistingFiles });
+    // Excluding videos whose file is already on disk is a backend concern, driven purely by the
+    // SHELL_COMMAND_EXCLUDE_EXISTING_FILES env flag — the client sends no such option.
+    const result = await videoService.buildFileCommand(videoIds, {
+      excludeExistingFiles: config.files.shellCommandExcludeExisting,
+    });
     res.json(result);
   }),
 );

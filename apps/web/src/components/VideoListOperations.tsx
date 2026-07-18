@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Checkbox, Input, Modal, Space, notification, message } from 'antd';
+import { Button, Input, Modal, Space, notification, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { batchVideoOperation } from '../api/videoListsApi';
 import { buildFileCommand, renameFiles } from '../api';
@@ -19,11 +19,6 @@ export default function VideoListOperations({
 }: VideoListOperationsProps) {
   const [tagModal, setTagModal] = useState<TagMode | null>(null);
   const [tagName, setTagName] = useState('');
-  // Default the flag from the env file (VITE_ mirror of SHELL_COMMAND_EXCLUDE_EXISTING_FILES).
-  const [excludeExistingFiles, setExcludeExistingFiles] = useState(
-    (import.meta as { env?: Record<string, string | undefined> }).env
-      ?.VITE_SHELL_COMMAND_EXCLUDE_EXISTING_FILES === 'true',
-  );
 
   async function run(operation: string, options?: { videoIds?: number[]; tagName?: string }) {
     try {
@@ -44,7 +39,7 @@ export default function VideoListOperations({
       return;
     }
     try {
-      const { command, excluded } = await buildFileCommand(videoIds, excludeExistingFiles);
+      const { command, excluded } = await buildFileCommand(videoIds);
       await navigator.clipboard.writeText(command);
       message.success(
         excluded > 0
@@ -98,12 +93,6 @@ export default function VideoListOperations({
         >
           Команда для видео
         </Button>
-        <Checkbox
-          checked={excludeExistingFiles}
-          onChange={(e) => setExcludeExistingFiles(e.target.checked)}
-        >
-          Исключить видео с файлами на диске
-        </Checkbox>
         <Button onClick={() => void handleRename()} disabled={videoIds.length === 0}>
           Переименовать
         </Button>
