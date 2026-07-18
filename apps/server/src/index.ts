@@ -12,6 +12,7 @@ import videoRoutes from './routes/video';
 import dictionaryRoutes from './routes/dictionary.routes';
 import parserRoutes from './routes/parser.routes';
 import eventsRoutes from './routes/events.routes';
+import errorsRoutes from './routes/errors.routes';
 import settingsRoutes from './routes/settings.routes';
 import filesRoutes from './routes/files.routes';
 import videoListsRoutes from './routes/video-lists.routes';
@@ -40,6 +41,7 @@ export function createApp() {
   app.use('/api/dictionary', dictionaryRoutes);
   app.use('/api/parser', parserRoutes);
   app.use('/api/events', eventsRoutes);
+  app.use('/api/errors', errorsRoutes);
   app.use('/api/settings', settingsRoutes);
   app.use('/api/files', filesRoutes);
   app.use('/api/video-lists', videoListsRoutes);

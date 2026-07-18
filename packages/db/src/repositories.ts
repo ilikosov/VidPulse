@@ -14,6 +14,7 @@ import type {
   IFileRepository,
   IVideoListRepository,
   IEventLogRepository,
+  IErrorLogRepository,
   IDuplicateGroupRepository,
   ChannelEntity,
   PlaylistEntity,
@@ -29,6 +30,8 @@ import type {
   ArtistMembershipEntity,
   VideoListEntity,
   EventLogEntity,
+  ErrorLogEntity,
+  ErrorLogInsert,
   SettingsEntity,
   DuplicateGroupEntity,
   FileEntity,
@@ -869,6 +872,33 @@ export class KnexEventLogRepository implements IEventLogRepository {
   }
 }
 
+// ── Error Log ─────────────────────────────────────────────
+
+export class KnexErrorLogRepository implements IErrorLogRepository {
+  async insert(entry: ErrorLogInsert): Promise<number> {
+    const result = await knex('error_log').insert(entry).returning('id');
+    const inserted = singleResult(result);
+    return typeof inserted === 'object' ? inserted.id : inserted;
+  }
+
+  async findAll(limit?: number, offset?: number): Promise<ErrorLogEntity[]> {
+    const query = knex('error_log').select('*');
+    if (limit != null) query.limit(limit);
+    if (offset != null) query.offset(offset);
+    // id as the secondary key keeps ordering stable when rows share a created_at timestamp.
+    return query.orderBy('created_at', 'desc').orderBy('id', 'desc');
+  }
+
+  async count(): Promise<number> {
+    const result = await knex('error_log').count<{ count: number }[]>('* as count').first();
+    return result?.count ?? 0;
+  }
+
+  async clear(): Promise<void> {
+    await knex('error_log').del();
+  }
+}
+
 // ── Duplicate Groups ──────────────────────────────────────
 
 export class KnexDuplicateGroupRepository implements IDuplicateGroupRepository {
@@ -1065,4 +1095,5 @@ export const settingsRepository = new KnexSettingsRepository();
 export const fileRepository = new KnexFileRepository();
 export const videoListRepository = new KnexVideoListRepository();
 export const eventLogRepository = new KnexEventLogRepository();
+export const errorLogRepository = new KnexErrorLogRepository();
 export const duplicateGroupRepository = new KnexDuplicateGroupRepository();

@@ -23,6 +23,8 @@ export type {
   DictionarySongRequest,
   EventLogEntry,
   EventsResponse,
+  ErrorLogEntry,
+  ErrorsResponse,
   FileDetails,
   FileRecord,
   FilesResponse,

@@ -140,6 +140,29 @@ export interface EventLogEntity {
   created_at: string;
 }
 
+export interface ErrorLogEntity {
+  id: number;
+  name: string | null;
+  message: string;
+  stack: string | null;
+  method: string | null;
+  path: string | null;
+  status_code: number | null;
+  context: string | null;
+  created_at: string;
+}
+
+/** Fields accepted when recording an error (id/created_at are assigned by the DB). */
+export interface ErrorLogInsert {
+  message: string;
+  name?: string | null;
+  stack?: string | null;
+  method?: string | null;
+  path?: string | null;
+  status_code?: number | null;
+  context?: string | null;
+}
+
 export interface SettingsEntity {
   key: string;
   value: string;
@@ -414,6 +437,13 @@ export interface IEventLogRepository {
   insert(eventType: string, description?: string | null, metadata?: string | null): Promise<number>;
   findAll(limit?: number, offset?: number, eventType?: string): Promise<EventLogEntity[]>;
   count(eventType?: string): Promise<number>;
+}
+
+export interface IErrorLogRepository {
+  insert(entry: ErrorLogInsert): Promise<number>;
+  findAll(limit?: number, offset?: number): Promise<ErrorLogEntity[]>;
+  count(): Promise<number>;
+  clear(): Promise<void>;
 }
 
 export interface IDuplicateGroupRepository {
