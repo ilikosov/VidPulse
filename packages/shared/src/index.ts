@@ -189,6 +189,23 @@ export interface EventsResponse {
   pagination: Pagination;
 }
 
+export interface ErrorLogEntry {
+  id: number;
+  name: string | null;
+  message: string;
+  stack: string | null;
+  method: string | null;
+  path: string | null;
+  status_code: number | null;
+  context: string | null;
+  created_at: string;
+}
+
+export interface ErrorsResponse {
+  errors: ErrorLogEntry[];
+  pagination: Pagination;
+}
+
 export interface DictionaryGroup {
   id: number;
   name: string;

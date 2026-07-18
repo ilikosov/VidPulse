@@ -10,6 +10,7 @@ import { useFilesDrawer } from './components/FilesDrawerProvider';
 import ChannelPage from './pages/ChannelPage';
 import SourcesPage from './pages/SourcesPage';
 import EventLogPage from './pages/EventLogPage';
+import ErrorLogPage from './pages/ErrorLogPage';
 import SettingsPage from './pages/SettingsPage';
 import VideoListsPage from './pages/VideoListsPage';
 import VideoListDetailsPage from './pages/VideoListDetailsPage';
@@ -71,6 +72,7 @@ function AppShell() {
       ),
     },
     { key: '/events', label: <Link to="/events">Activity Log</Link> },
+    { key: '/errors', label: <Link to="/errors">Error Log</Link> },
     { key: '/settings', label: <Link to="/settings">Settings</Link> },
   ];
 
@@ -151,6 +153,7 @@ function AppShell() {
           <Route path="/channels/:id" element={<ChannelPage />} />
           <Route path="/playlists/:id" element={<PlaylistPage />} />
           <Route path="/events" element={<EventLogPage />} />
+          <Route path="/errors" element={<ErrorLogPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<VideoTable />} />
         </Routes>

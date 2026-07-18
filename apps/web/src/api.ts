@@ -7,6 +7,7 @@ import type {
   ChannelsResponse,
   DictionaryResponse,
   EventsResponse,
+  ErrorsResponse,
   ImportChannelsResponse,
   ParserLog,
   Playlist,
@@ -31,6 +32,8 @@ export type {
   DictionaryResponse,
   EventLogEntry,
   EventsResponse,
+  ErrorLogEntry,
+  ErrorsResponse,
   ImportChannelsResponse,
   PaginatedArtistsResponse,
   PaginatedEventsResponse,
@@ -308,6 +311,21 @@ export async function getEvents(params?: {
 
   const query = searchParams.toString();
   return fetchApi<EventsResponse>(`/events${query ? `?${query}` : ''}`);
+}
+
+export async function getErrors(params?: {
+  page?: number;
+  limit?: number;
+}): Promise<ErrorsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.set('page', String(params.page));
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  const query = searchParams.toString();
+  return fetchApi<ErrorsResponse>(`/errors${query ? `?${query}` : ''}`);
+}
+
+export async function clearErrors(): Promise<{ ok: boolean }> {
+  return fetchApi<{ ok: boolean }>(`/errors`, { method: 'DELETE' });
 }
 
 export async function ignoreVideo(videoId: number | string): Promise<Video> {
