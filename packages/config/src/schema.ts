@@ -74,6 +74,9 @@ export const configSchema = z.object({
 
   dangerousActionsEnabled: z.boolean().default(false),
 
+  /** Enables the frontend monitor overlay (errors + HTTP request log) and its backend plumbing. */
+  monitorEnabled: z.boolean().default(false),
+
   maxVideoListItems: z.number().default(100),
 
   hideFlaggedVideos: z.boolean().default(false),

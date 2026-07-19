@@ -2,6 +2,7 @@ import { Alert, Button, Card, Input, Modal, Space, Typography, Upload, notificat
 import { useState } from 'react';
 import { apiUrl, toErrorMessage } from '../api/client';
 import { dictionaryApi } from '../api/dictionary';
+import { useServerConfig } from '../serverConfigContext';
 
 type ImportSummary = {
   mode: string;
@@ -57,8 +58,7 @@ const normalizeImportSummary = (value: unknown): ImportSummary | null => {
 export default function DictionaryToolsPage() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
-  const dangerousActionsEnabled =
-    (import.meta as any).env?.VITE_MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED === 'true';
+  const { dangerousActionsEnabled } = useServerConfig();
 
   const [clearModalOpen, setClearModalOpen] = useState(false);
   const [clearConfirmValue, setClearConfirmValue] = useState('');

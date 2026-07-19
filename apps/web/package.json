@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vidpulse/monitor": "*",
     "@vidpulse/shared": "*",
     "antd": "^5.28.1",
     "react": "^18.3.1",

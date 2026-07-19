@@ -206,6 +206,26 @@ export interface ErrorsResponse {
   pagination: Pagination;
 }
 
+/** One recorded incoming HTTP request (in the monitor's in-memory request log). */
+export interface RequestLogEntry {
+  id: number;
+  method: string;
+  path: string;
+  status_code: number;
+  duration_ms: number;
+  created_at: string;
+}
+
+export interface RequestsResponse {
+  requests: RequestLogEntry[];
+}
+
+/** Whitelisted server flags exposed to the frontend via GET /api/config. */
+export interface ServerConfigResponse {
+  monitorEnabled: boolean;
+  dangerousActionsEnabled: boolean;
+}
+
 export interface DictionaryGroup {
   id: number;
   name: string;
