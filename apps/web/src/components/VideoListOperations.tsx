@@ -39,9 +39,13 @@ export default function VideoListOperations({
       return;
     }
     try {
-      const { command } = await buildFileCommand(videoIds);
+      const { command, excluded } = await buildFileCommand(videoIds);
       await navigator.clipboard.writeText(command);
-      message.success('Скопировано в буфер');
+      message.success(
+        excluded > 0
+          ? `Скопировано в буфер (исключено видео с файлами на диске: ${excluded})`
+          : 'Скопировано в буфер',
+      );
     } catch (err: any) {
       message.error(err?.message || 'Ошибка при формировании команды');
     }

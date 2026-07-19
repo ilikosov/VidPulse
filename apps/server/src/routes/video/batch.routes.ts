@@ -9,6 +9,7 @@ import { requireDangerousActionsEnabled } from '../../middleware/dangerousAction
 import { asyncHandler } from '../../middleware/asyncHandler';
 import { validateBody } from '../../middleware/validate';
 import { AppError } from '../../middleware/AppError';
+import { config } from '../../config';
 import batchVideoIdsSchema from '../../../schemas/request/batch-video-ids.schema.json';
 
 const router = Router();
@@ -48,7 +49,11 @@ router.post(
   validateBody(batchVideoIdsSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const videoIds: number[] = req.body.videoIds;
-    const result = await videoService.buildFileCommand(videoIds);
+    // Excluding videos whose file is already on disk is a backend concern, driven purely by the
+    // SHELL_COMMAND_EXCLUDE_EXISTING_FILES env flag — the client sends no such option.
+    const result = await videoService.buildFileCommand(videoIds, {
+      excludeExistingFiles: config.files.shellCommandExcludeExisting,
+    });
     res.json(result);
   }),
 );

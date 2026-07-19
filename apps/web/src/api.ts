@@ -132,8 +132,12 @@ export async function batchComplete(videoIds: number[]): Promise<BatchResult> {
   });
 }
 
-export async function buildFileCommand(videoIds: number[]): Promise<{ command: string }> {
-  return fetchApi<{ command: string }>('/videos/batch/file-command', {
+export async function buildFileCommand(
+  videoIds: number[],
+): Promise<{ command: string; excluded: number }> {
+  // Whether videos with an on-disk file are excluded is decided by the backend
+  // (SHELL_COMMAND_EXCLUDE_EXISTING_FILES); the client just sends the selection.
+  return fetchApi<{ command: string; excluded: number }>('/videos/batch/file-command', {
     method: 'POST',
     body: JSON.stringify({ videoIds }),
   });
