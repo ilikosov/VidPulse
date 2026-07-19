@@ -13,9 +13,10 @@ export interface ConfigMigration {
  */
 export const migrations: ConfigMigration[] = [];
 
-/** The config-file version this build understands. Bumped to 2 when `monitorEnabled` was added
- *  (additive: older files auto-migrate on startup, the default is filled from the schema). */
-export const CURRENT_CONFIG_VERSION = 2;
+/** The config-file version this build understands. Bumped to 2 when `monitorEnabled` was added,
+ *  and to 3 when `watchConfig` was added (additive: older files auto-migrate on startup, the
+ *  default is filled from the schema). */
+export const CURRENT_CONFIG_VERSION = 3;
 
 /**
  * Apply every migration needed to bring `raw` from its own version up to CURRENT_CONFIG_VERSION.

@@ -1,3 +1,4 @@
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -23,6 +24,8 @@ import { assertParserStrategy } from '@vidpulse/parser';
 import healthRoutes from './routes/health.routes';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 import { config, validateConfig } from './config';
+import { resetConfig, resolveConfigPath } from '@vidpulse/config';
+import { createConfigWatcher, performRestart } from './services/configWatcher.service';
 
 export function createApp() {
   const app = express();
@@ -56,14 +59,50 @@ export function createApp() {
   return { app };
 }
 
-if (require.main === module) {
+/** The running HTTP server, kept so a config-reload can close and re-listen it (in-process restart). */
+let server: http.Server | null = null;
+
+/** Boot (or re-boot) the server + schedulers from the current config. Port and parser strategy are
+ *  re-read here, so a config reload picks up their new values. */
+function startServer(): void {
   validateConfig();
   const parserStrategy = assertParserStrategy(config.parser.strategy);
   const { app } = createApp();
-  app.listen(config.port, () => {
+  server = app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
     console.log(`Active parser strategy: ${parserStrategy}`);
     syncService.runScheduler();
     kpopDictionaryService.runScheduler();
   });
+}
+
+/** Tear down the schedulers and the HTTP server so the process can re-listen on a fresh config. */
+async function stopServer(): Promise<void> {
+  syncService.stopScheduler();
+  kpopDictionaryService.stopScheduler();
+  const s = server;
+  server = null;
+  if (s) await new Promise<void>((resolve) => s.close(() => resolve()));
+}
+
+if (require.main === module) {
+  startServer();
+
+  if (config.watchConfig) {
+    const watcher = createConfigWatcher({
+      path: resolveConfigPath(),
+      onChange: () =>
+        performRestart({
+          reload: () => {
+            resetConfig();
+            validateConfig();
+          },
+          stop: stopServer,
+          start: startServer,
+          logger: console,
+        }),
+      logger: console,
+    });
+    watcher.start();
+  }
 }

@@ -77,6 +77,9 @@ export const configSchema = z.object({
   /** Enables the frontend monitor overlay (errors + HTTP request log) and its backend plumbing. */
   monitorEnabled: z.boolean().default(false),
 
+  /** Watch vidpulse.config.yaml and auto-restart the server (in-process) when it changes. */
+  watchConfig: z.boolean().default(true),
+
   maxVideoListItems: z.number().default(100),
 
   hideFlaggedVideos: z.boolean().default(false),
