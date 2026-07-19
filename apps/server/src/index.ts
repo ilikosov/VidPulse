@@ -10,7 +10,10 @@ import dictionaryRoutes from './routes/dictionary.routes';
 import parserRoutes from './routes/parser.routes';
 import eventsRoutes from './routes/events.routes';
 import errorsRoutes from './routes/errors.routes';
+import requestsRoutes from './routes/requests.routes';
+import configRoutes from './routes/config.routes';
 import settingsRoutes from './routes/settings.routes';
+import { requestLogger } from './middleware/requestLogger';
 import filesRoutes from './routes/files.routes';
 import videoListsRoutes from './routes/video-lists.routes';
 import kpopDictionaryRoutes from './routes/kpop-dictionary.routes';
@@ -27,9 +30,12 @@ export function createApp() {
   app.use(helmet());
   app.use(cors());
   app.use(morgan('dev'));
+  app.use(requestLogger);
   app.use(express.json());
 
   app.use('/api/health', healthRoutes);
+  app.use('/api/config', configRoutes);
+  app.use('/api/requests', requestsRoutes);
 
   app.use('/api/channels', channelRoutes);
   app.use('/api/playlists', playlistRoutes);

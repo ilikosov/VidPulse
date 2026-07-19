@@ -25,6 +25,7 @@ export type {
   EventsResponse,
   ErrorLogEntry,
   ErrorsResponse,
+  ServerConfigResponse,
   FileDetails,
   FileRecord,
   FilesResponse,

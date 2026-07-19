@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { SettingsProvider } from './settingsContext';
+import { ServerConfigProvider } from './serverConfigContext';
+import MonitorMount from './components/MonitorMount';
 import { VideoDrawerProvider } from './components/VideoDrawerProvider';
 import { FilesDrawerProvider } from './components/FilesDrawerProvider';
 import { FileEditorDrawerProvider } from './components/FileEditorDrawerProvider';
@@ -25,18 +27,22 @@ import './index.css';
 // included) a descendant of FileEditorDrawerProvider instead.
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <SettingsProvider>
-      <VideoDrawerProvider>
-        <FileEditorDrawerProvider>
-          <FilesDrawerProvider>
-            <MediaLibraryDrawerProvider>
-              <BrowserRouter>
-                <App />
-              </BrowserRouter>
-            </MediaLibraryDrawerProvider>
-          </FilesDrawerProvider>
-        </FileEditorDrawerProvider>
-      </VideoDrawerProvider>
-    </SettingsProvider>
+    <ServerConfigProvider>
+      <SettingsProvider>
+        <VideoDrawerProvider>
+          <FileEditorDrawerProvider>
+            <FilesDrawerProvider>
+              <MediaLibraryDrawerProvider>
+                <BrowserRouter>
+                  <App />
+                </BrowserRouter>
+              </MediaLibraryDrawerProvider>
+            </FilesDrawerProvider>
+          </FileEditorDrawerProvider>
+        </VideoDrawerProvider>
+      </SettingsProvider>
+      {/* Route-independent monitor overlay (sibling of the app router). */}
+      <MonitorMount />
+    </ServerConfigProvider>
   </React.StrictMode>,
 );
