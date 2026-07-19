@@ -1,5 +1,5 @@
-import { knex } from '@vidpulse/db';
-import { addTagToVideo, SHORTS_MAX_DURATION_SECONDS } from '../services/tag.service';
+#!/usr/bin/env node
+import { knex, addTagToVideo, SHORTS_MAX_DURATION_SECONDS } from '@vidpulse/db';
 
 type VideoRow = { id: number };
 

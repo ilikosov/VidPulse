@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { knex } from '@vidpulse/db';
 
 type EntityField = 'group' | 'artist' | 'song' | 'event';

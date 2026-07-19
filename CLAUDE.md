@@ -22,8 +22,10 @@ lets you review/correct it, and organizes everything against a curated dictionar
 - **Tooling:** Prettier, Husky + lint-staged, ts-node / tsx, nodemon.
 - **Monorepo:** npm workspaces — `apps/server` (backend), `apps/web` (frontend), `packages/shared`
   (shared types), `packages/db` (`@vidpulse/db`: knex connection, knexfile, migrations, seeds,
-  repositories, entity types), `packages/kpop-sources` (`@vidpulse/kpop-sources`: parse Wikidata/MusicBrainz into
-  a media-library snapshot). See [ADR 0003](docs/adr/0003-monorepo.md), [ADR 0004](docs/adr/0004-kpop-data-sources.md).
+  repositories, entity types, tag operations), `packages/kpop-sources` (`@vidpulse/kpop-sources`: parse
+  Wikidata/MusicBrainz into a media-library snapshot), `packages/cli` (`@vidpulse/cli`: all command-line
+  tools — config migrate/import-env, backfill/maintenance scripts, dev-all launcher). See
+  [ADR 0003](docs/adr/0003-monorepo.md), [ADR 0004](docs/adr/0004-kpop-data-sources.md).
 
 ## Repository layout
 
@@ -36,7 +38,6 @@ lets you review/correct it, and organizes everything against a curated dictionar
 │   │   │   ├── services/     # Business logic (parser/, sync/, dictionary, youtube, ai, tag)
 │   │   │   ├── models/ interfaces/ types/   # TypeScript definitions
 │   │   │   ├── middleware/   # Express middleware
-│   │   │   ├── scripts/      # Backfill / maintenance scripts
 │   │   │   └── index.ts      # App entry
 │   │   ├── tests/            # Vitest unit/integration + Playwright e2e
 │   │   └── schemas/ examples/  # JSON schemas & sample data
@@ -48,8 +49,11 @@ lets you review/correct it, and organizes everything against a curated dictionar
 │   │   ├── src/              # connection.ts, knexfile.ts, repositories.ts, types.ts, index.ts
 │   │   ├── migrations/       # Knex migrations (schema source of truth)
 │   │   └── seeds/            # Knex seeds (+ examples/media-library.seed.json)
-│   └── kpop-sources/         # @vidpulse/kpop-sources: Wikidata/MusicBrainz → media-library snapshot
-│       └── src/              # wikidata/ (queries, source, normalize), buildLibrary.ts (compiled to dist/)
+│   ├── kpop-sources/         # @vidpulse/kpop-sources: Wikidata/MusicBrainz → media-library snapshot
+│   │   └── src/              # wikidata/ (queries, source, normalize), buildLibrary.ts (compiled to dist/)
+│   └── cli/                  # @vidpulse/cli: command-line tools (compiled to dist/, exposed as bins)
+│       ├── src/cli/          # migrate, import-env, backfill-*, merge-short-tags
+│       └── scripts/          # dev-all.mjs (raw .mjs launcher, not compiled)
 ├── docs/                     # ADRs, reviews, reference docs, task files
 └── tsconfig.base.json        # Shared TS base config
 ```
@@ -114,6 +118,13 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
   Target model & display rule in [ADR 0002](docs/adr/0002-raw-parse-vs-canonical-display.md) / TASK-1.
 - **DB runtime:** `@vidpulse/db` enables WAL, foreign keys, and `busy_timeout` in the Knex `afterCreate` hook.
   Test migrations run through `packages/db/src/knexfile.ts` with `TEST_DATABASE_PATH`.
+- **Tag operations live in `@vidpulse/db`** (`packages/db/src/tags.ts`: `assignAutoTags`, `addTagToVideo`,
+  `tagShortsByDuration`, `mergeShortTags`, …) so the CLI backfills in `@vidpulse/cli` can share them.
+  `apps/server/src/services/tag.service.ts` is a **compat re-export shim** — server code and its test
+  mocks (`vi.mock('../services/tag.service')`) still import from there.
+- **All CLIs live in `@vidpulse/cli`** (compiled, `bin`s + `tsx` npm scripts). Run via root scripts
+  (`npm run config:migrate`, `config:import-env`, `backfill:*`, `merge:short-tags`) which build the
+  package deps first, or directly with `-w @vidpulse/cli`. `dev-all.mjs` moved to `packages/cli/scripts/`.
 - The active parser is `apps/server/src/services/parser/`. Which implementation runs is selected by
   `PARSER_STRATEGY` (default `pipeline` = regex + dictionary) via `services/parser/registry.ts`; every
   parse entry point funnels through `parseTitle()` → `getActiveParser()`, and all parsers go through

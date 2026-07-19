@@ -1,0 +1,32 @@
+{
+  "name": "@vidpulse/cli",
+  "version": "1.0.0",
+  "description": "VidPulse command-line tools: config migrate/import-env, backfill/maintenance scripts, and the dev-all launcher",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "vidpulse-config-migrate": "dist/cli/migrate.js",
+    "vidpulse-config-import-env": "dist/cli/import-env.js",
+    "vidpulse-backfill-video-entities": "dist/cli/backfill-video-entity-ids.js",
+    "vidpulse-backfill-shorts-tags": "dist/cli/backfill-shorts-tags.js",
+    "vidpulse-merge-short-tags": "dist/cli/merge-short-tags.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "config:migrate": "tsx src/cli/migrate.ts",
+    "config:import-env": "tsx src/cli/import-env.ts",
+    "backfill:video-entities": "tsx src/cli/backfill-video-entity-ids.ts",
+    "backfill:shorts-tags": "tsx src/cli/backfill-shorts-tags.ts",
+    "merge:short-tags": "tsx src/cli/merge-short-tags.ts"
+  },
+  "dependencies": {
+    "@vidpulse/config": "*",
+    "@vidpulse/db": "*",
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}

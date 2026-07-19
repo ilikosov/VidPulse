@@ -1,8 +1,13 @@
+#!/usr/bin/env node
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
-import { ensureConfigFile, parseRawConfigFile } from '../load';
-import { parseEnvContent, applyEnvToRaw } from '../importEnv';
+import {
+  ensureConfigFile,
+  parseRawConfigFile,
+  parseEnvContent,
+  applyEnvToRaw,
+} from '@vidpulse/config';
 
 /**
  * One-time migration helper: import values from a legacy `.env` file into vidpulse.config.yaml.
