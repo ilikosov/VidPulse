@@ -17,6 +17,7 @@ export {
 } from './load';
 export { CURRENT_CONFIG_VERSION, migrateRawConfig, migrations } from './migrations';
 export type { RawConfig, ConfigMigration } from './migrations';
+export { parseEnvContent, applyEnvToRaw, ENV_MAPPINGS } from './importEnv';
 
 /**
  * The live, validated configuration for the current NODE_ENV, loaded from vidpulse.config.yaml.
