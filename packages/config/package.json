@@ -1,0 +1,24 @@
+{
+  "name": "@vidpulse/config",
+  "version": "1.0.0",
+  "description": "Typed, schema-validated (zod) YAML configuration with per-environment sections and file migrations",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "vidpulse-config-migrate": "dist/cli/migrate.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "migrate": "node dist/cli/migrate.js"
+  },
+  "dependencies": {
+    "yaml": "^2.8.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3",
+    "vitest": "^2.1.8"
+  }
+}

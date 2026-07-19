@@ -1,3 +1,4 @@
+import { config } from '../config';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -100,7 +101,7 @@ describe('videoListService status semantics', () => {
 describe('videoListService.getById — predicted filenames & pagination', () => {
   const GB_PREFIX = 'vl-getbyid-test-';
   let gbChannelId: number;
-  const originalTemplate = process.env.RENAME_TEMPLATE_VIDEO;
+  const originalTemplate = config.files.renameTemplate;
 
   async function insertGroupVideo(suffix: string, groupName: string): Promise<number> {
     const [row] = await knex('videos')
@@ -140,8 +141,8 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
   });
 
   afterEach(async () => {
-    if (originalTemplate === undefined) delete process.env.RENAME_TEMPLATE_VIDEO;
-    else process.env.RENAME_TEMPLATE_VIDEO = originalTemplate;
+    if (originalTemplate === undefined) config.files.renameTemplate = null;
+    else config.files.renameTemplate = originalTemplate;
 
     const ids = await knex('videos')
       .where('youtube_id', 'like', `${GB_PREFIX}%`)
@@ -156,7 +157,7 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
   });
 
   it('flags videos with a matching predicted filename as duplicates', async () => {
-    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    config.files.renameTemplate = '{{video.group_name}}';
     const a = await insertGroupVideo('a', 'SAME GROUP');
     const b = await insertGroupVideo('b', 'SAME GROUP');
     const c = await insertGroupVideo('c', 'OTHER GROUP');
@@ -173,7 +174,7 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
   });
 
   it('duplicatesOnly narrows videos but allVideoIds still lists the whole list', async () => {
-    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    config.files.renameTemplate = '{{video.group_name}}';
     const a = await insertGroupVideo('a', 'DUP GROUP');
     const b = await insertGroupVideo('b', 'DUP GROUP');
     const c = await insertGroupVideo('c', 'UNIQUE GROUP');
@@ -190,7 +191,7 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
   });
 
   it('predictedFilename narrows videos to an exact match, independent of allVideoIds', async () => {
-    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    config.files.renameTemplate = '{{video.group_name}}';
     const a = await insertGroupVideo('a', 'DUP GROUP');
     const b = await insertGroupVideo('b', 'DUP GROUP');
     const c = await insertGroupVideo('c', 'UNIQUE GROUP');
@@ -207,7 +208,7 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
   });
 
   it('combines predictedFilename with duplicatesOnly without conflict', async () => {
-    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    config.files.renameTemplate = '{{video.group_name}}';
     const a = await insertGroupVideo('a', 'DUP GROUP');
     const b = await insertGroupVideo('b', 'DUP GROUP');
     const c = await insertGroupVideo('c', 'UNIQUE GROUP');
@@ -224,7 +225,7 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
   });
 
   it('predictedFilename with no matching video returns an empty page', async () => {
-    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    config.files.renameTemplate = '{{video.group_name}}';
     const a = await insertGroupVideo('a', 'SOME GROUP');
     const created = await videoListService.create('filename-filter-empty-list', [a]);
 
@@ -253,7 +254,7 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
   });
 
   it('renders {{video.orientation}} from the linked file dimensions and flags matching orientations as duplicates', async () => {
-    process.env.RENAME_TEMPLATE_VIDEO = '{{video.orientation}}';
+    config.files.renameTemplate = '{{video.orientation}}';
     const a = await insertGroupVideo('a', 'G');
     const b = await insertGroupVideo('b', 'G');
     const c = await insertGroupVideo('c', 'G');
@@ -273,7 +274,7 @@ describe('videoListService.getById — predicted filenames & pagination', () => 
   });
 
   it('leaves predicted_filename null and has_duplicate_name false when no template is configured', async () => {
-    delete process.env.RENAME_TEMPLATE_VIDEO;
+    config.files.renameTemplate = null;
     const a = await insertGroupVideo('a', 'SOME GROUP');
     const b = await insertGroupVideo('b', 'SOME GROUP');
     const created = await videoListService.create('no-template-list', [a, b]);

@@ -1,3 +1,4 @@
+import { config } from '@vidpulse/config';
 import { describe, it, expect, vi } from 'vitest';
 import express from 'express';
 import { AddressInfo } from 'net';
@@ -280,7 +281,7 @@ describe('dictionary alias primary route', () => {
 
 describe('dictionary media library import', () => {
   it('returns 403 for mode=replace when dangerous actions disabled', async () => {
-    process.env.MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED = 'false';
+    config.dangerousActionsEnabled = false;
     const app = express();
     app.use('/api/dictionary', router);
     const server = app.listen(0);
@@ -417,7 +418,7 @@ describe('dictionary media library import', () => {
 
 describe('dictionary clear endpoint', () => {
   it('returns 403 when dangerous actions are disabled', async () => {
-    process.env.MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED = 'false';
+    config.dangerousActionsEnabled = false;
     const app = express();
     app.use('/api/dictionary', router);
     const server = app.listen(0);

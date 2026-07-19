@@ -1,21 +1,22 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadConfigForEnv } from '@vidpulse/config';
 
-// The DB layer now lives in the @vidpulse/db workspace package. Migrations and
-// seeds run through its knexfile via the knex CLI (paths relative to apps/server cwd).
+// The DB layer lives in the @vidpulse/db workspace package; its knexfile now reads the DB path from
+// vidpulse.config.yaml (per-environment `database.path`). Migrations/seeds run via the knex CLI.
 const KNEXFILE = '../../packages/db/src/knexfile.ts';
 
 /**
- * Vitest global setup: provision a dedicated, migrated test database once before
- * the suite runs. Tests that use the real knex singleton (NODE_ENV=test) then see
- * the full migrated schema + seed data — no dependency on a pre-existing dev.sqlite3.
+ * Vitest global setup: provision a dedicated, migrated test database once before the suite runs.
+ * Tests that use the real knex singleton (NODE_ENV=test) then see the full migrated schema + seed
+ * data — no dependency on a pre-existing dev.sqlite3.
  */
 export default async function setup() {
   process.env.NODE_ENV = 'test';
 
-  // knexfile resolves the test connection to TEST_DATABASE_PATH, so read it directly.
-  const filename = process.env.TEST_DATABASE_PATH!;
+  // The test DB path comes from the config file's `test` section (already resolved to absolute).
+  const filename = loadConfigForEnv('test').database.path;
 
   // Start from a clean DB so migrations (and their seed data) are deterministic.
   for (const f of [filename, `${filename}-shm`, `${filename}-wal`]) {
@@ -23,27 +24,19 @@ export default async function setup() {
   }
   fs.mkdirSync(path.dirname(filename), { recursive: true });
 
-  // Run migrations through the knex CLI (like `npm run dev:all`). The CLI
-  // auto-registers ts-node, so the TypeScript migration files load correctly.
-  // Calling knex.migrate.latest() in-process relies on the runtime already
-  // handling `.ts` requires, which fails under a clean `npm ci` on CI
-  // (SyntaxError: Unexpected token '{').
-  // knex CLI changes cwd to the knexfile directory, so relative DATABASE_PATH
-  // values break. Resolve to absolute paths before passing to the child process.
-  const absEnv = {
-    ...process.env,
-    NODE_ENV: 'test',
-    DATABASE_PATH: path.resolve(process.env.DATABASE_PATH!),
-    TEST_DATABASE_PATH: path.resolve(process.env.TEST_DATABASE_PATH!),
-  };
+  // Run migrations through the knex CLI (like `npm run dev:all`). The CLI auto-registers ts-node so
+  // the TypeScript migration files load. The knexfile resolves the DB path from the config file
+  // (found by walking up from the knexfile dir), so no DATABASE_PATH plumbing is needed — only
+  // NODE_ENV=test to select the environment.
+  const childEnv = { ...process.env, NODE_ENV: 'test' };
 
   execFileSync('npx', ['knex', 'migrate:latest', '--knexfile', KNEXFILE], {
     stdio: 'inherit',
-    env: absEnv,
+    env: childEnv,
   });
 
   execFileSync('npx', ['knex', 'seed:run', '--knexfile', KNEXFILE], {
     stdio: 'inherit',
-    env: absEnv,
+    env: childEnv,
   });
 }

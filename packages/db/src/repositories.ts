@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import { config } from '@vidpulse/config';
 import knex from './connection';
 import type {
   IChannelRepository,
@@ -41,7 +42,7 @@ import type {
 
 /** Whether videos tagged shorts/private should be hidden from listings (env-driven). */
 function hideFlaggedVideos(): boolean {
-  return process.env.HIDE_FLAGGED_VIDEOS?.toLowerCase() === 'true';
+  return config.hideFlaggedVideos;
 }
 
 const PROTECTED_TAGS = new Set(['shorts', 'long_video', 'private']);

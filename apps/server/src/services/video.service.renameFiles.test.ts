@@ -1,3 +1,4 @@
+import { config } from '../config';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import fs from 'fs';
 import os from 'os';
@@ -57,8 +58,8 @@ describe('videoService.renameFiles', () => {
   beforeAll(async () => {
     srcDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vidpulse-rename-src-'));
     outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vidpulse-rename-out-'));
-    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
-    process.env.FILES_OUTPUT_DIR = outDir;
+    config.files.renameTemplate = '{{video.group_name}}';
+    config.files.outputDir = outDir;
 
     const [chan] = await knex('channels')
       .insert({ youtube_id: `${TAG}-channel`, title: TAG })
@@ -67,8 +68,8 @@ describe('videoService.renameFiles', () => {
   });
 
   afterAll(async () => {
-    delete process.env.RENAME_TEMPLATE_VIDEO;
-    delete process.env.FILES_OUTPUT_DIR;
+    config.files.renameTemplate = null;
+    config.files.outputDir = null;
     fs.rmSync(srcDir, { recursive: true, force: true });
     fs.rmSync(outDir, { recursive: true, force: true });
     await knex('videos').where('original_title', TAG).delete();
@@ -155,15 +156,15 @@ describe('videoService.renameFiles', () => {
     makeSourceFile('src6.mp4');
     await seedFile(videoId, 'src6.mp4', { width: 1080, height: 1920 });
 
-    const originalTemplate = process.env.RENAME_TEMPLATE_VIDEO;
-    process.env.RENAME_TEMPLATE_VIDEO = '{{video.orientation}}';
+    const originalTemplate = config.files.renameTemplate;
+    config.files.renameTemplate = '{{video.orientation}}';
     try {
       const result = await videoService.renameFiles([videoId]);
 
       expect(result).toEqual({ moved: 1, skipped: 0, errors: [] });
       expect(fs.existsSync(path.join(outDir, 'vertical.mp4'))).toBe(true);
     } finally {
-      process.env.RENAME_TEMPLATE_VIDEO = originalTemplate;
+      config.files.renameTemplate = originalTemplate;
     }
   });
 });

@@ -1,3 +1,4 @@
+import { config } from '@vidpulse/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import { AddressInfo } from 'net';
@@ -55,7 +56,7 @@ describe('POST /api/videos/batch/tag-shorts-by-duration', async () => {
 
   beforeEach(() => {
     state.tagged.clear();
-    delete process.env.MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED;
+    config.dangerousActionsEnabled = false;
   });
 
   it('returns 403 when dangerous actions are disabled', async () => {
@@ -75,7 +76,7 @@ describe('POST /api/videos/batch/tag-shorts-by-duration', async () => {
   });
 
   it('tags shorts for duration 89, not for 90, and avoids duplicates on repeated call', async () => {
-    process.env.MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED = 'true';
+    config.dangerousActionsEnabled = true;
     const app = express();
     app.use('/api/videos', router);
     const server = app.listen(0);
