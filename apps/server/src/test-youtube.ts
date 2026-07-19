@@ -1,6 +1,3 @@
-import dotenv from 'dotenv';
-// Load environment variables
-dotenv.config();
 import { YouTubeService } from './services/youtube.service';
 
 async function main() {

@@ -3,9 +3,6 @@
 node_modules/
 
 # Environment
-.env
-.env.local
-.env.test
 
 # Build artifacts
 dist/
@@ -43,3 +40,9 @@ dev.sqlite3-shm
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# config migrate backup
+vidpulse.config.yaml.bak
+
+# runtime config (auto-created from defaults; keep secrets local)
+vidpulse.config.yaml

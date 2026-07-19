@@ -1,3 +1,4 @@
+import { config } from '@vidpulse/config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import { AddressInfo } from 'net';
@@ -35,7 +36,7 @@ describe('POST /api/videos/batch/merge-short-tags', async () => {
   const { default: router } = await import('./video');
 
   beforeEach(() => {
-    delete process.env.MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED;
+    config.dangerousActionsEnabled = false;
   });
 
   it('returns 403 when dangerous actions are disabled', async () => {
@@ -52,7 +53,7 @@ describe('POST /api/videos/batch/merge-short-tags', async () => {
   });
 
   it('returns summary when dangerous actions are enabled', async () => {
-    process.env.MEDIA_LIBRARY_DANGEROUS_ACTIONS_ENABLED = 'true';
+    config.dangerousActionsEnabled = true;
     const app = express();
     app.use('/api/videos', router);
     const server = app.listen(0);

@@ -10,6 +10,7 @@
     "seed": "knex seed:run --knexfile src/knexfile.ts"
   },
   "dependencies": {
+    "@vidpulse/config": "*",
     "better-sqlite3": "^12.9.0",
     "knex": "^3.2.9"
   },

@@ -9,7 +9,7 @@ import { config } from '../config';
 
 const PFX = 'bfc-test-';
 const dir = fs.mkdtempSync(path.join('/tmp', 'bfc-'));
-const originalCmd = process.env.SHELL_COMMAND_VIDEO;
+const originalCmd = config.files.shellCommand;
 let chId: number;
 
 async function insertVideo(suffix: string): Promise<number> {
@@ -38,7 +38,7 @@ async function linkFile(videoId: number, filename: string, onDisk: boolean): Pro
 
 describe('videoService.buildFileCommand — excludeExistingFiles', () => {
   beforeEach(async () => {
-    process.env.SHELL_COMMAND_VIDEO = 'dl {{each video}}{{video.youtube_id}} {{/each}}';
+    config.files.shellCommand = 'dl {{each video}}{{video.youtube_id}} {{/each}}';
     const [row] = await knex('channels')
       .insert({ youtube_id: `${PFX}channel`, title: 't' })
       .returning('id');
@@ -46,8 +46,8 @@ describe('videoService.buildFileCommand — excludeExistingFiles', () => {
   });
 
   afterEach(async () => {
-    if (originalCmd === undefined) delete process.env.SHELL_COMMAND_VIDEO;
-    else process.env.SHELL_COMMAND_VIDEO = originalCmd;
+    if (originalCmd === undefined) config.files.shellCommand = null;
+    else config.files.shellCommand = originalCmd;
     await knex('files').where('directory', dir).delete();
     await knex('videos').where('youtube_id', 'like', `${PFX}%`).delete();
     await knex('channels').where('youtube_id', `${PFX}channel`).delete();
@@ -89,18 +89,5 @@ describe('videoService.buildFileCommand — excludeExistingFiles', () => {
 
     expect(res.excluded).toBe(0);
     expect(res.command).toContain(`${PFX}missing`);
-  });
-
-  it('config.shellCommandExcludeExisting reads the env default', () => {
-    const original = process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES;
-    try {
-      process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES = 'true';
-      expect(config.files.shellCommandExcludeExisting).toBe(true);
-      process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES = 'false';
-      expect(config.files.shellCommandExcludeExisting).toBe(false);
-    } finally {
-      if (original === undefined) delete process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES;
-      else process.env.SHELL_COMMAND_EXCLUDE_EXISTING_FILES = original;
-    }
   });
 });

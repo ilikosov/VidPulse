@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build @vidpulse/config
+        run: npm run build -w @vidpulse/config
+
       - name: Build @vidpulse/db
         run: npm run build -w @vidpulse/db
 
@@ -56,6 +59,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build @vidpulse/config
+        run: npm run build -w @vidpulse/config
+
       - name: Build @vidpulse/db
         run: npm run build -w @vidpulse/db
 
@@ -64,9 +70,6 @@ jobs:
 
       - name: Build @vidpulse/parser
         run: npm run build -w @vidpulse/parser
-
-      - name: Create .env.test
-        run: printf 'DATABASE_PATH=/tmp/ci-dev.sqlite3\nTEST_DATABASE_PATH=/tmp/ci-test.sqlite3\n' > .env.test
 
       - name: Run tests
         run: npm test

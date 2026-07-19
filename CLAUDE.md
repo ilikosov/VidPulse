@@ -125,7 +125,11 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
   Optional **MusicBrainz song enrichment** (full track-lists Wikidata lacks) is a separate opt-in
   (`MUSICBRAINZ_REFRESH_ENABLED=true`), bridged via Wikidata P434; it's slow (≤1 req/s) and needs
   `musicbrainz.org` allowlisted + `MUSICBRAINZ_USER_AGENT` ([ADR 0005](docs/adr/0005-musicbrainz-song-source.md)).
-- Secrets live in `.env` (never commit). `YOUTUBE_API_KEY` is required for real syncs.
+- **Config** is a typed, zod-validated `vidpulse.config.yaml` (`@vidpulse/config`, [ADR 0008](docs/adr/0008-config-format.md)):
+  one file with a `default` section + `environments.<NODE_ENV>` overrides; the server and the knexfile
+  both read it. `youtube.apiKey` is required for real syncs. The file is **gitignored** and **auto-created
+  from defaults on startup** (auto-migrated with a `.bak` backup if its `version` is older) — keep real keys
+  local. Adding a config field = bump `CURRENT_CONFIG_VERSION`; migrate = `npm run config:migrate`.
 
 ## Working as a pet project
 

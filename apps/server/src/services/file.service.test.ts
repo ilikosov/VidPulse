@@ -1,3 +1,4 @@
+import { config } from '../config';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -221,7 +222,7 @@ describe('fileService dimension probing', () => {
 });
 
 describe('fileService.getFileDetails', () => {
-  const originalTemplate = process.env.RENAME_TEMPLATE_VIDEO;
+  const originalTemplate = config.files.renameTemplate;
 
   beforeEach(async () => {
     const [chan] = await knex('channels')
@@ -241,8 +242,8 @@ describe('fileService.getFileDetails', () => {
   });
 
   afterEach(async () => {
-    if (originalTemplate === undefined) delete process.env.RENAME_TEMPLATE_VIDEO;
-    else process.env.RENAME_TEMPLATE_VIDEO = originalTemplate;
+    if (originalTemplate === undefined) config.files.renameTemplate = null;
+    else config.files.renameTemplate = originalTemplate;
 
     await knex('files').where('directory', DIR).delete();
     await knex('videos').where('youtube_id', YT).delete();
@@ -250,7 +251,7 @@ describe('fileService.getFileDetails', () => {
   });
 
   it('computes predicted_filename for a linked file when a rename template is configured', async () => {
-    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    config.files.renameTemplate = '{{video.group_name}}';
     await fileRepository.upsert({
       filename: `${YT}_song.mp4`,
       directory: DIR,
@@ -267,7 +268,7 @@ describe('fileService.getFileDetails', () => {
   });
 
   it('leaves predicted_filename null when the file is not linked to a video', async () => {
-    process.env.RENAME_TEMPLATE_VIDEO = '{{video.group_name}}';
+    config.files.renameTemplate = '{{video.group_name}}';
     await fileRepository.upsert({
       filename: `${YT}_song.mp4`,
       directory: DIR,
@@ -285,7 +286,7 @@ describe('fileService.getFileDetails', () => {
   });
 
   it('leaves predicted_filename null when no rename template is configured', async () => {
-    delete process.env.RENAME_TEMPLATE_VIDEO;
+    config.files.renameTemplate = null;
     await fileRepository.upsert({
       filename: `${YT}_song.mp4`,
       directory: DIR,

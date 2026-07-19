@@ -1,18 +1,14 @@
 import type { Knex } from 'knex';
 import path from 'path';
+import { loadConfigForEnv } from '@vidpulse/config';
 
 const SEEDS_DIR = path.resolve(__dirname, '../seeds');
 const MIGRATIONS_DIR = path.resolve(__dirname, '../migrations');
 
-if (!process.env.DATABASE_PATH) {
-  throw new Error('Missing required env var: DATABASE_PATH');
-}
-if (!process.env.TEST_DATABASE_PATH) {
-  throw new Error('Missing required env var: TEST_DATABASE_PATH');
-}
-const DEV_DB = process.env.DATABASE_PATH;
-const TEST_DB = process.env.TEST_DATABASE_PATH;
-const PROD_DB = process.env.DATABASE_PATH;
+// DB paths come from vidpulse.config.yaml (per-environment `database.path`, resolved to absolute).
+const DEV_DB = loadConfigForEnv('development').database.path;
+const TEST_DB = loadConfigForEnv('test').database.path;
+const PROD_DB = loadConfigForEnv('production').database.path;
 
 const sharedPool = {
   afterCreate: (conn: any, done: any) => {
