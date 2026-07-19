@@ -32,6 +32,7 @@ describe('buildConfig', () => {
     expect(cfg.parser.strategy).toBe('pipeline'); // schema default
     expect(cfg.files.filter).toBeNull();
     expect(cfg.dangerousActionsEnabled).toBe(false);
+    expect(cfg.watchConfig).toBe(true); // schema default
   });
 
   it('resolves database.path against baseDir when provided', () => {

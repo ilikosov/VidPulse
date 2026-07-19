@@ -1,3 +1,4 @@
+import type { ScheduledTask } from 'node-cron';
 import { buildKpopLibrary } from '@vidpulse/kpop-sources';
 import { knex, dictionaryGroupRepository } from '@vidpulse/db';
 import { config } from '../config';
@@ -13,6 +14,10 @@ export const LAST_REFRESHED_SETTING = 'kpop_dict_last_refreshed';
 export const LAST_SUMMARY_SETTING = 'kpop_dict_last_summary';
 
 export class KpopDictionaryService {
+  /** The live cron task, kept so a config-reload restart can tear it down (see stopScheduler). */
+  private task: ScheduledTask | null = null;
+  private stopRequested = false;
+
   /**
    * Fetch the current K-pop catalogue from external sources and import it into the
    * dictionary. Defaults to a non-destructive `merge`; `replace` is gated behind the
@@ -96,25 +101,37 @@ export class KpopDictionaryService {
 
   /** Register the scheduled refresh — only when explicitly enabled (opt-in). */
   runScheduler(): void {
+    this.stopRequested = false;
     if (!config.kpopDictionary.enabled) {
-      logger.info(
-        'K-pop dictionary refresh scheduler disabled (set KPOP_DICT_REFRESH_ENABLED=true)',
-      );
+      logger.info('K-pop dictionary refresh scheduler disabled (set kpopDictionary.enabled=true)');
       return;
     }
     const cronTime = config.kpopDictionary.cronTime;
     import('node-cron')
       .then((cron) => {
-        cron.schedule(cronTime, async () => {
+        const task = cron.schedule(cronTime, async () => {
           try {
             await this.refresh();
           } catch (error) {
             logger.error('Scheduled K-pop dictionary refresh failed:', error);
           }
         });
+        // stopScheduler() may have been called before this async import resolved.
+        if (this.stopRequested) {
+          task.destroy();
+          return;
+        }
+        this.task = task;
         logger.info(`K-pop dictionary refresh scheduler started with cron pattern: ${cronTime}`);
       })
       .catch((error) => logger.error('Failed to start K-pop dictionary scheduler:', error));
+  }
+
+  /** Tear down the scheduled task so it can be re-registered after a config reload. */
+  stopScheduler(): void {
+    this.stopRequested = true;
+    this.task?.destroy();
+    this.task = null;
   }
 }
 

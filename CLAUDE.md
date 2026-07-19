@@ -130,6 +130,11 @@ Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
   both read it. `youtube.apiKey` is required for real syncs. The file is **gitignored** and **auto-created
   from defaults on startup** (auto-migrated with a `.bak` backup if its `version` is older) — keep real keys
   local. Adding a config field = bump `CURRENT_CONFIG_VERSION`; migrate = `npm run config:migrate`.
+- **Config hot-reload:** when `watchConfig: true` (default) the server watches `vidpulse.config.yaml` and
+  does an **in-process restart** on change (`resetConfig()` → close HTTP server + cron tasks → re-listen on
+  the new `config.port`); an invalid edit is logged and ignored (stays on the old config). `port`,
+  `parser.strategy`, and the cron schedules re-apply on reload; **`database.path` does not** (the knex
+  singleton is created once at import) — changing the DB path still needs a full process restart.
 
 ## Working as a pet project
 

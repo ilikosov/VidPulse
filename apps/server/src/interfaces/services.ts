@@ -43,4 +43,5 @@ export interface IPlaylistSyncService {
 export interface ISyncService {
   syncAll(): Promise<void>;
   runScheduler(): void;
+  stopScheduler(): void;
 }
