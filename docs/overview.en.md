@@ -68,7 +68,7 @@ VidPulse is a monorepo with a layered backend and a React frontend.
 | Database | SQLite via `better-sqlite3` + Knex query builder & migrations |
 | Frontend | React 18, Ant Design 5, React Router 6, Vite                  |
 | Testing  | Vitest (unit/integration), Playwright (E2E)                   |
-| Tooling  | Prettier, Husky + lint-staged, ts-node / tsx, nodemon         |
+| Tooling  | Prettier, Husky + lint-staged, tsx, nodemon                   |
 
 ---
 
@@ -132,7 +132,7 @@ Defined in `.env` (see `.env.example`):
 
 | Script                 | Description                                      |
 | ---------------------- | ------------------------------------------------ |
-| `npm run dev`          | Backend only (nodemon + ts-node)                 |
+| `npm run dev`          | Backend only (nodemon + tsx)                     |
 | `npm run launch`       | Backend + frontend concurrently                  |
 | `npm run dev:all`      | Install + migrate + launch (full bootstrap)      |
 | `npm run build`        | Build DB/source packages, backend, and frontend  |

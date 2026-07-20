@@ -15,11 +15,11 @@ lets you review/correct it, and organizes everything against a curated dictionar
 
 ## Tech stack
 
-- **Backend:** Node.js 18+, TypeScript 5/6 workspaces, Express 5.
+- **Backend:** Node.js 18+, TypeScript 7 workspaces, Express 5.
 - **DB:** SQLite via `better-sqlite3` + Knex (query builder & migrations).
 - **Frontend:** React 18, Ant Design 5, Vite (in `apps/web/`).
 - **Tests:** Vitest (unit/integration), Playwright (e2e).
-- **Tooling:** Prettier, Husky + lint-staged, ts-node / tsx, nodemon.
+- **Tooling:** Prettier, Husky + lint-staged, tsx, nodemon.
 - **Monorepo:** npm workspaces — `apps/server` (backend), `apps/web` (frontend), `packages/shared`
   (shared types), `packages/db` (`@vidpulse/db`: knex connection, knexfile, migrations, seeds,
   repositories, entity types, tag operations), `packages/kpop-sources` (`@vidpulse/kpop-sources`: parse
@@ -60,17 +60,17 @@ lets you review/correct it, and organizes everything against a curated dictionar
 
 ## Common commands
 
-| Command                                                               | What it does                                                                                                                                                      |
-| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev:all`                                                     | Install/build/migrate + launch, and **auto-restart on new commits** pushed to the current branch (watcher pulls & restarts). `dev:all:once` runs it a single time |
-| `npm run dev`                                                         | Backend only (nodemon + ts-node)                                                                                                                                  |
-| `npm run launch`                                                      | Backend + frontend together                                                                                                                                       |
-| `npm run build`                                                       | Compile `@vidpulse/db` + sources → backend → frontend                                                                                                             |
-| `npm test`                                                            | Vitest (unit/integration)                                                                                                                                         |
-| `npm run test:e2e`                                                    | Playwright (e2e)                                                                                                                                                  |
-| `npm run format`                                                      | Prettier write                                                                                                                                                    |
-| `npx knex migrate:make <name> --knexfile packages/db/src/knexfile.ts` | Create a migration                                                                                                                                                |
-| `npx knex migrate:latest --knexfile packages/db/src/knexfile.ts`      | Apply migrations                                                                                                                                                  |
+| Command                                                                                           | What it does                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev:all`                                                                                 | Install/build/migrate + launch, and **auto-restart on new commits** pushed to the current branch (watcher pulls & restarts). `dev:all:once` runs it a single time |
+| `npm run dev`                                                                                     | Backend only (nodemon + tsx)                                                                                                                                      |
+| `npm run launch`                                                                                  | Backend + frontend together                                                                                                                                       |
+| `npm run build`                                                                                   | Compile `@vidpulse/db` + sources → backend → frontend                                                                                                             |
+| `npm test`                                                                                        | Vitest (unit/integration)                                                                                                                                         |
+| `npm run test:e2e`                                                                                | Playwright (e2e)                                                                                                                                                  |
+| `npm run format`                                                                                  | Prettier write                                                                                                                                                    |
+| `NODE_OPTIONS="--import tsx" npx knex migrate:make <name> --knexfile packages/db/src/knexfile.ts` | Create a migration (tsx preload loads the TS knexfile under TS7)                                                                                                  |
+| `NODE_OPTIONS="--import tsx" npx knex migrate:latest --knexfile packages/db/src/knexfile.ts`      | Apply migrations (or `npm run migrate`, which preloads tsx)                                                                                                       |
 
 Backend → http://localhost:3000 · Frontend (Vite) → http://localhost:5173.
 
