@@ -7,10 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "test:e2e": "playwright test",
-    "backfill:video-entities": "tsx src/scripts/backfill-video-entity-ids.ts",
-    "backfill:shorts-tags": "tsx src/scripts/backfill-shorts-tags.ts",
-    "merge:short-tags": "tsx src/scripts/merge-short-tags.ts"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@vidpulse/config": "*",

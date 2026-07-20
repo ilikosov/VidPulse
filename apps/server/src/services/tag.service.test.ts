@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 type Video = { id: number; duration_seconds: number | null };
 type VideoTag = { video_id: number; tag_id: number };
@@ -143,11 +143,9 @@ function makeDb() {
   return db;
 }
 
-const mockedKnex = vi.hoisted(() => makeDb());
-vi.mock('@vidpulse/db', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@vidpulse/db')>()),
-  knex: mockedKnex,
-}));
+// Tag operations live in @vidpulse/db and take an injectable `db` (defaulting to the real knex).
+// These are pure unit tests: we pass the in-memory fake directly, so no module mock / real DB needed.
+const mockedKnex = makeDb();
 
 import { assignAutoTags, tagLongVideosByDuration } from './tag.service';
 
@@ -166,7 +164,7 @@ describe('tag service', () => {
   });
 
   it('assignAutoTags(89) adds shorts, not long', async () => {
-    await assignAutoTags(100, 89, 'public');
+    await assignAutoTags(100, 89, 'public', mockedKnex);
     const shortsId = state.tags.get('shorts') as number;
     const longId = state.tags.get('длинное видео');
     expect(state.videoTags.some((x) => x.video_id === 100 && x.tag_id === shortsId)).toBe(true);
@@ -176,26 +174,26 @@ describe('tag service', () => {
   });
 
   it('assignAutoTags(90) adds neither shorts nor long', async () => {
-    await assignAutoTags(101, 90, 'public');
+    await assignAutoTags(101, 90, 'public', mockedKnex);
     expect(state.videoTags.some((x) => x.video_id === 101)).toBe(false);
   });
 
   it('assignAutoTags(1200) does not add long', async () => {
-    await assignAutoTags(102, 1200, 'public');
+    await assignAutoTags(102, 1200, 'public', mockedKnex);
     expect(state.videoTags.some((x) => x.video_id === 102)).toBe(false);
   });
 
   it('assignAutoTags(1201) adds long', async () => {
-    await assignAutoTags(103, 1201, 'public');
+    await assignAutoTags(103, 1201, 'public', mockedKnex);
     const longId = state.tags.get('длинное видео') as number;
     expect(state.videoTags.some((x) => x.video_id === 103 && x.tag_id === longId)).toBe(true);
   });
 
   it('tagLongVideosByDuration tags eligible videos and repeat does not duplicate', async () => {
-    const first = await tagLongVideosByDuration();
+    const first = await tagLongVideosByDuration(mockedKnex);
     expect(first).toEqual({ checked: 4, eligible: 1, tagged: 1, alreadyTagged: 0 });
 
-    const second = await tagLongVideosByDuration();
+    const second = await tagLongVideosByDuration(mockedKnex);
     expect(second).toEqual({ checked: 4, eligible: 1, tagged: 0, alreadyTagged: 1 });
   });
 });

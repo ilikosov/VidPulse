@@ -1,4 +1,5 @@
-import { ensureConfigFile } from '../load';
+#!/usr/bin/env node
+import { ensureConfigFile } from '@vidpulse/config';
 
 /**
  * Bring the config file to the current version: create it with defaults if missing, or migrate it

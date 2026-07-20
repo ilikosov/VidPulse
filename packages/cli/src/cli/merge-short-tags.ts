@@ -1,5 +1,5 @@
-import { knex } from '@vidpulse/db';
-import { mergeShortTags } from '../services/tag.service';
+#!/usr/bin/env node
+import { knex, mergeShortTags } from '@vidpulse/db';
 
 mergeShortTags()
   .then(async (summary) => {
