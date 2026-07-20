@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Modal, Popconfirm, Space, Table, Tabs, Tag, Typography } from 'antd';
+import { DashboardOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { ErrorLogEntry, RequestLogEntry } from '@vidpulse/shared';
 
@@ -122,11 +123,13 @@ export function Monitor({ baseUrl, enabled }: MonitorProps): JSX.Element | null 
       {!open && (
         <Button
           type="primary"
+          shape="circle"
+          icon={<DashboardOutlined />}
           onClick={() => setOpen(true)}
+          title="Monitor"
+          aria-label="Open monitor"
           style={{ position: 'fixed', right: 16, bottom: 16, zIndex: 1000 }}
-        >
-          Monitor
-        </Button>
+        />
       )}
       <Modal
         title="Monitor"
