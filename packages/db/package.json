@@ -6,8 +6,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "migrate": "knex migrate:latest --knexfile src/knexfile.ts",
-    "seed": "knex seed:run --knexfile src/knexfile.ts"
+    "migrate": "NODE_OPTIONS=\"--import tsx\" knex migrate:latest --knexfile src/knexfile.ts",
+    "seed": "NODE_OPTIONS=\"--import tsx\" knex seed:run --knexfile src/knexfile.ts"
   },
   "dependencies": {
     "@vidpulse/config": "*",
@@ -15,7 +15,7 @@
     "knex": "^3.2.9"
   },
   "devDependencies": {
-    "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "tsx": "^4.21.0",
+    "typescript": "^7.0.2"
   }
 }

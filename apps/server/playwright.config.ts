@@ -20,7 +20,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'node -r ts-node/register -r ./tests/e2e/setup/youtube-mock.cjs ./src/index.ts',
+      command: 'node --import tsx --require ./tests/e2e/setup/youtube-mock.cjs ./src/index.ts',
       url: 'http://127.0.0.1:3000/api/health',
       reuseExistingServer: !process.env.CI,
       env: {

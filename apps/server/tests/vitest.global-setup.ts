@@ -24,11 +24,12 @@ export default async function setup() {
   }
   fs.mkdirSync(path.dirname(filename), { recursive: true });
 
-  // Run migrations through the knex CLI (like `npm run dev:all`). The CLI auto-registers ts-node so
-  // the TypeScript migration files load. The knexfile resolves the DB path from the config file
-  // (found by walking up from the knexfile dir), so no DATABASE_PATH plumbing is needed — only
-  // NODE_ENV=test to select the environment.
-  const childEnv = { ...process.env, NODE_ENV: 'test' };
+  // Run migrations through the knex CLI (like `npm run dev:all`). We preload tsx (NODE_OPTIONS) so the
+  // TypeScript knexfile + migration files load — TypeScript 7's native compiler no longer exposes the
+  // JS API that ts-node needs, so tsx (esbuild) is the loader. The knexfile resolves the DB path from
+  // the config file (found by walking up from the knexfile dir), so no DATABASE_PATH plumbing is needed
+  // — only NODE_ENV=test to select the environment.
+  const childEnv = { ...process.env, NODE_ENV: 'test', NODE_OPTIONS: '--import tsx' };
 
   execFileSync('npx', ['knex', 'migrate:latest', '--knexfile', KNEXFILE], {
     stdio: 'inherit',

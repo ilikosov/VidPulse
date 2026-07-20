@@ -68,7 +68,7 @@ VidPulse — это монорепозиторий со слоистым бэк�
 | База данных | SQLite через `better-sqlite3` + Knex (query builder и миграции) |
 | Фронтенд    | React 18, Ant Design 5, React Router 6, Vite                    |
 | Тесты       | Vitest (unit/интеграционные), Playwright (E2E)                  |
-| Инструменты | Prettier, Husky + lint-staged, ts-node / tsx, nodemon           |
+| Инструменты | Prettier, Husky + lint-staged, tsx, nodemon                     |
 
 ---
 
@@ -132,7 +132,7 @@ npm run launch                                                         # бэк�
 
 | Скрипт                 | Описание                                         |
 | ---------------------- | ------------------------------------------------ |
-| `npm run dev`          | Только бэкенд (nodemon + ts-node)                |
+| `npm run dev`          | Только бэкенд (nodemon + tsx)                    |
 | `npm run launch`       | Бэкенд + фронтенд одновременно                   |
 | `npm run dev:all`      | Установка + миграции + запуск (полный bootstrap) |
 | `npm run build`        | Сборка DB/source-пакетов, бэкенда и фронтенда    |
