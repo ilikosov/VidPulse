@@ -1,4 +1,4 @@
-import { Form, Select } from 'antd';
+import { Form, Select } from '@vidpulse/ui';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { dictionaryApi } from '../api/dictionary';
 

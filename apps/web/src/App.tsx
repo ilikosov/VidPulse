@@ -1,5 +1,5 @@
 import { CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined } from '@ant-design/icons';
-import { Alert, Button, Layout, Menu, Tooltip, Typography } from 'antd';
+import { Alert, Button, Layout, Menu, Tooltip, Typography } from '@vidpulse/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { fetchApi } from './api/client';

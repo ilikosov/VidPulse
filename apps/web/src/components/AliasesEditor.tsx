@@ -1,5 +1,5 @@
 import { StarFilled, StarOutlined } from '@ant-design/icons';
-import { Button, Input, Space, Tag, Typography, message } from 'antd';
+import { Button, Input, Space, Tag, Typography, message } from '@vidpulse/ui';
 import { useEffect, useState } from 'react';
 import {
   dictionaryApi,

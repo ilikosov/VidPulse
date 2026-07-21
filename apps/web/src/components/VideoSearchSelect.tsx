@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Select } from 'antd';
+import { Select } from '@vidpulse/ui';
 import { getVideos } from '../api';
 
 interface VideoOption {

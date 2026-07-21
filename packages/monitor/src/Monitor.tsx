@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Modal, Popconfirm, Space, Table, Tabs, Tag, Typography } from 'antd';
+import { Button, Modal, Popconfirm, Space, Table, Tabs, Tag, Typography } from '@vidpulse/ui';
 import { DashboardOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType } from '@vidpulse/ui';
 import type { ErrorLogEntry, RequestLogEntry } from '@vidpulse/shared';
 
 const { Text, Paragraph } = Typography;

@@ -18,7 +18,7 @@ import {
   Tooltip,
   Typography,
   message,
-} from 'antd';
+} from '@vidpulse/ui';
 import { CopyOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import {

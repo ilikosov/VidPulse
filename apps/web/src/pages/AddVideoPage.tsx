@@ -1,4 +1,4 @@
-import { Button, Card, Form, Input, Space, Typography, message } from 'antd';
+import { Button, Card, Form, Input, Space, Typography, message } from '@vidpulse/ui';
 import { addVideo } from '../api';
 
 function AddVideoPage() {

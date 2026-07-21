@@ -12,7 +12,7 @@ import {
   Tooltip,
   Typography,
   message,
-} from 'antd';
+} from '@vidpulse/ui';
 import {
   deleteFile,
   generateFileThumbnails,

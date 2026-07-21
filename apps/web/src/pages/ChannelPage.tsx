@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { Avatar, Button, Card, Descriptions, message, Space, Table, Tag, Typography } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import {
+  Avatar,
+  Button,
+  Card,
+  Descriptions,
+  message,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from '@vidpulse/ui';
+import type { ColumnsType } from '@vidpulse/ui';
 import {
   getChannel,
   getVideos,

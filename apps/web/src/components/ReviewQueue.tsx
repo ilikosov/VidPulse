@@ -13,7 +13,7 @@ import {
   Typography,
   Collapse,
   message,
-} from 'antd';
+} from '@vidpulse/ui';
 import { useEffect, useState } from 'react';
 import { useSearchParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import {

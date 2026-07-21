@@ -10,7 +10,7 @@ import {
   Tooltip,
   Typography,
   notification,
-} from 'antd';
+} from '@vidpulse/ui';
 import { ExclamationCircleOutlined, FilterOutlined, PaperClipOutlined } from '@ant-design/icons';
 import { StatusBadge } from '@vidpulse/ui';
 import { batchVideoOperation, getListDetails } from '../api/videoListsApi';

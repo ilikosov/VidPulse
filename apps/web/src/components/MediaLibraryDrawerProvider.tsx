@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from 'react';
-import { Drawer } from 'antd';
+import { Drawer } from '@vidpulse/ui';
 import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
 import MediaLibraryPage from '../pages/MediaLibraryPage';
 import MediaLibraryOverviewPage from '../pages/MediaLibraryOverviewPage';

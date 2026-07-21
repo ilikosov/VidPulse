@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, Popconfirm, Space, Typography, message } from 'antd';
+import { Alert, Button, Popconfirm, Space, Typography, message } from '@vidpulse/ui';
 import { ReloadOutlined } from '@ant-design/icons';
 import { toErrorMessage } from '../api/client';
 import { dictionaryApi } from '../api/dictionary';

@@ -1,4 +1,4 @@
-import { Tabs } from 'antd';
+import { Tabs } from '@vidpulse/ui';
 import { useSearchParams } from 'react-router-dom';
 import AddVideoPage from './AddVideoPage';
 import ChannelsPage from './ChannelsPage';

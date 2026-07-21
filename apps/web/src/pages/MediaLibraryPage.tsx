@@ -1,4 +1,4 @@
-import { Tabs } from 'antd';
+import { Tabs } from '@vidpulse/ui';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 const tabs = [

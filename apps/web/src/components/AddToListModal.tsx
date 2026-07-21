@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Input, Modal, Segmented, Select, Space, Tag, Typography, message } from 'antd';
+import { Input, Modal, Segmented, Select, Space, Tag, Typography, message } from '@vidpulse/ui';
 import {
   addVideosToList,
   createVideoList,

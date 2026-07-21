@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
-import { Card, Select, Space, Table, Tag, Typography } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Card, Select, Space, Table, Tag, Typography } from '@vidpulse/ui';
+import type { ColumnsType } from '@vidpulse/ui';
 import { EventLogEntry, getEvents } from '../api';
 
 const { Text } = Typography;

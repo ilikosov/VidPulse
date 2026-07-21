@@ -14,10 +14,10 @@ import {
   Tooltip,
   Typography,
   message,
-} from 'antd';
+} from '@vidpulse/ui';
 import { CopyOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
-import type { TableRowSelection } from 'antd/es/table/interface';
+import type { ColumnsType } from '@vidpulse/ui';
+import type { TableRowSelection } from '@vidpulse/ui';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';

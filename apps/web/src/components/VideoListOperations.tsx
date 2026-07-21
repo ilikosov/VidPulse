@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Input, Modal, Space, notification, message } from 'antd';
+import { Button, Input, Modal, Space, notification, message } from '@vidpulse/ui';
 import { CopyOutlined } from '@ant-design/icons';
 import { batchVideoOperation } from '../api/videoListsApi';
 import { buildFileCommand, renameFiles } from '../api';

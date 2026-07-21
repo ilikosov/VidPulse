@@ -1,4 +1,4 @@
-import { AutoComplete, Form } from 'antd';
+import { AutoComplete, Form } from '@vidpulse/ui';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { dictionaryApi } from '../api/dictionary';
 
