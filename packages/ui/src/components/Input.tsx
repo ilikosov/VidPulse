@@ -1,26 +1,40 @@
 import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+// Omit the DOM `prefix` (string) and `size` (number) — repurposed as a ReactNode adornment and a
+// control-size token. Non-DOM props are destructured out before spreading onto <input>.
+export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix' | 'size'> {
   prefix?: ReactNode;
+  suffix?: ReactNode;
   allowClear?: boolean;
+  size?: 'small' | 'middle' | 'large';
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { prefix, allowClear, className, ...rest },
+  { prefix, suffix, allowClear: _allowClear, size, className, ...rest },
   ref,
 ) {
-  if (prefix) {
+  const input = <input ref={ref} className={`kp-input ${className ?? ''}`} {...rest} />;
+  if (prefix || suffix) {
     return (
       <div className="kp-input-wrap">
         {prefix}
-        <input ref={ref} className={`kp-input ${className ?? ''}`} {...rest} />
+        {input}
+        {suffix}
       </div>
     );
   }
-  return <input ref={ref} className={`kp-input ${className ?? ''}`} {...rest} />;
+  return input;
 });
 
-function Search({ placeholder = 'Search…', ...rest }: InputProps) {
+function Search({
+  prefix: _prefix,
+  suffix: _suffix,
+  allowClear: _allowClear,
+  size: _size,
+  placeholder = 'Search…',
+  className,
+  ...rest
+}: InputProps) {
   return (
     <div className="kp-input-wrap">
       <svg
@@ -36,12 +50,14 @@ function Search({ placeholder = 'Search…', ...rest }: InputProps) {
         <path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
         <path d="M21 21l-4-4" />
       </svg>
-      <input className="kp-input" placeholder={placeholder} {...rest} />
+      <input className={`kp-input ${className ?? ''}`} placeholder={placeholder} {...rest} />
     </div>
   );
 }
+
 function TextArea({ className, ...rest }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={`kp-textarea ${className ?? ''}`} {...rest} />;
 }
+
 (Input as any).Search = Search;
 (Input as any).TextArea = TextArea;
