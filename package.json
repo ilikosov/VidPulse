@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev": "npm run build -w @vidpulse/config && npm run build -w @vidpulse/db && npm run build -w @vidpulse/kpop-sources && npm run build -w @vidpulse/parser && npm run dev -w apps/server",
-    "build": "npm run build -w @vidpulse/config && npm run build -w @vidpulse/db && npm run build -w @vidpulse/kpop-sources && npm run build -w @vidpulse/parser && npm run build -w @vidpulse/monitor && npm run build -w @vidpulse/cli && npm run build -w apps/server && npm run build -w apps/web",
+    "build": "npm run build -w @vidpulse/config && npm run build -w @vidpulse/db && npm run build -w @vidpulse/kpop-sources && npm run build -w @vidpulse/parser && npm run build -w @vidpulse/ui && npm run build -w @vidpulse/monitor && npm run build -w @vidpulse/cli && npm run build -w apps/server && npm run build -w apps/web",
     "start": "npm run start -w apps/server",
     "test": "npm run test -w apps/server",
     "test:e2e": "npm run test:e2e -w apps/server",
@@ -20,7 +20,7 @@
     "backfill:shorts-tags": "npm run build -w @vidpulse/config && npm run build -w @vidpulse/db && npm run backfill:shorts-tags -w @vidpulse/cli",
     "merge:short-tags": "npm run build -w @vidpulse/config && npm run build -w @vidpulse/db && npm run merge:short-tags -w @vidpulse/cli",
     "launch": "concurrently -n BE,FE -c blue,green \"npm run dev -w apps/server\" \"npm run dev -w apps/web\"",
-    "dev:all:once": "npm install && npm run build -w @vidpulse/config && npm run build -w @vidpulse/db && npm run build -w @vidpulse/kpop-sources && npm run build -w @vidpulse/parser && npm run build -w @vidpulse/monitor && npm run build -w @vidpulse/cli && npm run migrate -w @vidpulse/db && npm run launch",
+    "dev:all:once": "npm install && npm run build -w @vidpulse/config && npm run build -w @vidpulse/db && npm run build -w @vidpulse/kpop-sources && npm run build -w @vidpulse/parser && npm run build -w @vidpulse/ui && npm run build -w @vidpulse/monitor && npm run build -w @vidpulse/cli && npm run migrate -w @vidpulse/db && npm run launch",
     "dev:all": "node packages/cli/scripts/dev-all.mjs",
     "prepare": "husky",
     "format": "prettier --write \"apps/server/src/**/*.{ts,tsx,js,json,css,md}\" \"apps/web/src/**/*.{ts,tsx,js,json,css,md}\" \"packages/**/*.{ts,tsx,js,json,md}\" \"docs/**/*.md\" \"*.md\"",

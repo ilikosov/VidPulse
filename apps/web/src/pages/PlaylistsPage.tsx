@@ -10,8 +10,8 @@ import {
   Table,
   Typography,
   message,
-} from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+} from '@vidpulse/ui';
+import type { ColumnsType } from '@vidpulse/ui';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Input, Modal, Space, Table, Tag, notification } from 'antd';
+import { Button, Input, Modal, Space, Table, Tag, notification } from '@vidpulse/ui';
 import { createVideoList, getVideoLists } from '../api/videoListsApi';
 import type { VideoListSummary } from '../api/videoListsApi';
 

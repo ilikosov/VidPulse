@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Button, Space, Table, Tag, Tooltip, Typography, message, notification } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import {
+  Button,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+  message,
+  notification,
+} from '@vidpulse/ui';
+import type { ColumnsType } from '@vidpulse/ui';
 import { ExclamationCircleOutlined, LinkOutlined } from '@ant-design/icons';
 import { getFiles, scanFiles } from '../api/filesApi';
 import type { FileRecord } from '../api/filesApi';

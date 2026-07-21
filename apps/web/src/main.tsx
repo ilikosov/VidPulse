@@ -9,7 +9,7 @@ import { VideoDrawerProvider } from './components/VideoDrawerProvider';
 import { FilesDrawerProvider } from './components/FilesDrawerProvider';
 import { FileEditorDrawerProvider } from './components/FileEditorDrawerProvider';
 import { MediaLibraryDrawerProvider } from './components/MediaLibraryDrawerProvider';
-import 'antd/dist/reset.css';
+import '@vidpulse/ui/reset.css';
 import './index.css';
 
 // The drawer providers sit ABOVE BrowserRouter on purpose: the Media Library

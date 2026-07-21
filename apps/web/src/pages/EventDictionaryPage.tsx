@@ -9,9 +9,9 @@ import {
   Table,
   Typography,
   message,
-} from 'antd';
+} from '@vidpulse/ui';
 import { useEffect, useMemo, useState } from 'react';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType } from '@vidpulse/ui';
 import { Link, useLocation } from 'react-router-dom';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';
 import { dictionaryApi } from '../api/dictionary';

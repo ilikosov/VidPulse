@@ -1,4 +1,14 @@
-import { Alert, Button, Card, Input, Modal, Space, Typography, Upload, notification } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Input,
+  Modal,
+  Space,
+  Typography,
+  Upload,
+  notification,
+} from '@vidpulse/ui';
 import { useState } from 'react';
 import { apiUrl, toErrorMessage } from '../api/client';
 import { dictionaryApi } from '../api/dictionary';

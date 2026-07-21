@@ -1,37 +1,16 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { Drawer } from 'antd';
+import { createDrawerProvider } from '@vidpulse/ui';
 import FilesPage from '../pages/FilesPage';
 
-interface FilesDrawerContextValue {
+interface FilesDrawerApi {
   openFiles: () => void;
 }
 
-const FilesDrawerContext = createContext<FilesDrawerContextValue | null>(null);
+const { Provider, useDrawer } = createDrawerProvider<boolean, FilesDrawerApi>({
+  displayName: 'FilesDrawerProvider',
+  chrome: { width: 'min(1100px, 100vw)', title: 'Files' },
+  createApi: (open) => ({ openFiles: () => open(true) }),
+  renderBody: () => <FilesPage />,
+});
 
-export function useFilesDrawer(): FilesDrawerContextValue {
-  const ctx = useContext(FilesDrawerContext);
-  if (!ctx) throw new Error('useFilesDrawer must be used within a FilesDrawerProvider');
-  return ctx;
-}
-
-export function FilesDrawerProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-
-  const openFiles = useCallback(() => setOpen(true), []);
-  const handleClose = useCallback(() => setOpen(false), []);
-
-  return (
-    <FilesDrawerContext.Provider value={{ openFiles }}>
-      {children}
-      <Drawer
-        open={open}
-        onClose={handleClose}
-        width="min(1100px, 100vw)"
-        destroyOnClose
-        title="Files"
-      >
-        {open ? <FilesPage /> : null}
-      </Drawer>
-    </FilesDrawerContext.Provider>
-  );
-}
+export const FilesDrawerProvider = Provider;
+export const useFilesDrawer = useDrawer;

@@ -13,9 +13,9 @@ import {
   Typography,
   Upload,
   message,
-} from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import type { UploadFile } from 'antd/es/upload/interface';
+} from '@vidpulse/ui';
+import type { ColumnsType } from '@vidpulse/ui';
+import type { UploadFile } from '@vidpulse/ui';
 import { InboxOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { usePaginationSearchParams } from '../hooks/usePaginationSearchParams';

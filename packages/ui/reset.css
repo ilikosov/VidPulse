@@ -1,0 +1,2 @@
+/* Ant Design's global reset, re-exported so apps import it from the UI kit rather than antd directly. */
+@import 'antd/dist/reset.css';

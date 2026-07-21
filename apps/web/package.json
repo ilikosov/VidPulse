@@ -9,9 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.6.1",
     "@vidpulse/monitor": "*",
     "@vidpulse/shared": "*",
-    "antd": "^5.28.1",
+    "@vidpulse/ui": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.1"
