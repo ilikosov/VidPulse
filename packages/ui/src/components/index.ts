@@ -1,6 +1,4 @@
-// Barrel for the kit's Ant Design component layer: one file per component (a thin wrapper over antd
-// today; the migration seam for a custom design tomorrow). message/notification are imperative APIs
-// and types.ts holds the sub-path types.
+// Barrel for the kit's component layer: one file per component, no antd underneath.
 export * from './Alert';
 export * from './AutoComplete';
 export * from './Avatar';

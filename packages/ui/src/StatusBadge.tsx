@@ -1,32 +1,36 @@
-import { Tag } from 'antd';
 import type { CSSProperties, ReactNode } from 'react';
+import { Tag } from './components/Tag';
 
-/** Default color for each known video status (mirrors the former VideoTable statusColorMap). */
+/** Default color per known video status (kpop-kit tone names, not antd Tag colors). */
 export const DEFAULT_STATUS_COLORS: Record<string, string> = {
-  new: 'green',
+  new: 'magenta',
   needs_review: 'red',
   pending: 'gold',
-  processing: 'blue',
+  processing: 'geekblue',
   ready: 'purple',
-  completed: 'default',
+  completed: 'green',
   error: 'error',
+};
+
+const DEFAULT_LABELS: Record<string, string> = {
+  new: 'Новое',
+  needs_review: 'На проверке',
+  pending: 'В очереди',
+  processing: 'Обработка',
+  ready: 'Готово',
+  completed: 'Завершено',
+  error: 'Ошибка',
 };
 
 export interface StatusBadgeProps {
   status: string | null | undefined;
-  /** Override the built-in status→color map. */
   colorMap?: Record<string, string>;
-  /** Color used when the status is not in the map (default "default"). */
   fallbackColor?: string;
-  /** Override the rendered label (defaults to the raw status). */
   label?: ReactNode;
   style?: CSSProperties;
 }
 
-/**
- * Presentational status tag: maps a status string to an antd Tag color. Renders nothing for an
- * empty/nullish status (so it drops cleanly into optional table cells).
- */
+/** Presentational status tag — same public API as the antd-era version, now on the custom Tag. */
 export function StatusBadge({
   status,
   colorMap = DEFAULT_STATUS_COLORS,
@@ -37,7 +41,7 @@ export function StatusBadge({
   if (status == null || status === '') return null;
   return (
     <Tag color={colorMap[status] ?? fallbackColor} style={style}>
-      {label ?? status}
+      {label ?? DEFAULT_LABELS[status] ?? status}
     </Tag>
   );
 }

@@ -1,55 +1,56 @@
-import { CopyOutlined } from '@ant-design/icons';
-import { Button, Card, Collapse, Space, Tag, Timeline, Typography, message } from 'antd';
+import { Button } from './components/Button';
+import { Card } from './components/Card';
+import { Collapse } from './components/Collapse';
+import { Space } from './components/Space';
+import { Tag } from './components/Tag';
+import { Typography } from './components/Typography';
+import { message } from './components/message';
 import type { ParserLog, ParserTraceStep } from '@vidpulse/shared';
 
 const { Text } = Typography;
 
-/** Pull the parser trace out of a parse result (reparseLog.output / parseLog.output). */
 function extractTrace(output: unknown): ParserTraceStep[] {
   const trace = (output as { trace?: unknown })?.trace;
   return Array.isArray(trace) ? (trace as ParserTraceStep[]) : [];
 }
 
 function ParserTraceBlock({ steps }: { steps: ParserTraceStep[] }) {
-  if (steps.length === 0) {
-    return <Text type="secondary">No trace available.</Text>;
-  }
+  if (steps.length === 0) return <Text type="secondary">No trace available.</Text>;
   return (
-    <Timeline
-      style={{ marginTop: 4 }}
-      items={steps.map((step) => {
+    <div className="kp-timeline" style={{ marginTop: 4 }}>
+      {steps.map((step, i) => {
         const changes = step.changes ?? {};
         const changeKeys = Object.keys(changes);
-        return {
-          children: (
-            <Space direction="vertical" size={2} style={{ width: '100%' }}>
-              <Space size={6} wrap>
+        return (
+          <div className="kp-timeline-item" key={i}>
+            <span className="kp-timeline-dot" />
+            <div className="kp-timeline-body">
+              <Space size={6}>
                 <Text strong>{step.stage}</Text>
-                {step.confidence != null && (
-                  <Tag color="blue" style={{ margin: 0 }}>
-                    conf {step.confidence}
-                  </Tag>
-                )}
+                {step.confidence != null && <Tag color="geekblue">conf {step.confidence}</Tag>}
               </Space>
-              {step.detail && <Text type="secondary">{step.detail}</Text>}
+              {step.detail && (
+                <div className="kp-txt-faint" style={{ fontSize: 12.5, marginTop: 2 }}>
+                  {step.detail}
+                </div>
+              )}
               {changeKeys.length > 0 && (
-                <Space size={[4, 4]} wrap>
+                <div className="kp-row2" style={{ gap: 6, marginTop: 6 }}>
                   {changeKeys.map((key) => (
-                    <Tag key={key} style={{ margin: 0 }}>
-                      {key}={String(changes[key] ?? '∅')}
+                    <Tag key={key}>
+                      {key}={String((changes as any)[key] ?? '∅')}
                     </Tag>
                   ))}
-                </Space>
+                </div>
               )}
-            </Space>
-          ),
-        };
+            </div>
+          </div>
+        );
       })}
-    />
+    </div>
   );
 }
 
-/** Render one trace step's `changes` map as "key=value | key=value" (undefined → ∅). */
 function formatTraceChanges(changes: Record<string, unknown> | undefined): string {
   if (!changes) return '';
   return Object.keys(changes)
@@ -57,15 +58,10 @@ function formatTraceChanges(changes: Record<string, unknown> | undefined): strin
     .join(' | ');
 }
 
-/**
- * Serialize the whole reparse log — input, parser trace and result — into a labelled
- * plaintext block that's easy to paste to an agent for debugging.
- */
 function formatReparseCopy(log: { input?: unknown; output?: unknown; error?: string }): string {
   const input = (log.input as any) ?? {};
   const out = (log.output as any) ?? {};
   const meta = out.metadata ?? out;
-
   const tags: string[] | undefined = input.tags;
   const inputLines = [
     `title: ${input.title ?? ''}`,
@@ -73,7 +69,6 @@ function formatReparseCopy(log: { input?: unknown; output?: unknown; error?: str
     `tags: ${tags?.length ? tags.join(', ') : '(none)'}`,
     `description: ${input.description ?? '(none)'}`,
   ];
-
   const steps = extractTrace(log.output);
   const traceLines = steps.length
     ? steps.map((step, i) => {
@@ -86,7 +81,6 @@ function formatReparseCopy(log: { input?: unknown; output?: unknown; error?: str
         return lines.join('\n');
       })
     : ['(no trace)'];
-
   const resultFields = [
     meta.group_name != null && `group_name=${meta.group_name}`,
     meta.artist_name != null && `artist_name=${meta.artist_name}`,
@@ -104,7 +98,6 @@ function formatReparseCopy(log: { input?: unknown; output?: unknown; error?: str
   ]
     .filter(Boolean)
     .join(' | ');
-
   const sections = [
     '=== Reparse Log ===',
     `[INPUT]\n${inputLines.join('\n')}`,
@@ -112,7 +105,6 @@ function formatReparseCopy(log: { input?: unknown; output?: unknown; error?: str
     `[RESULT]\n${resultFields || '(empty)'}`,
   ];
   if (log.error) sections.push(`[ERROR]\n${log.error}`);
-
   return sections.join('\n\n');
 }
 
@@ -130,38 +122,21 @@ export interface OperationLogWidgetProps {
 }
 
 const JsonBlock = ({ data }: { data: unknown }) => (
-  <pre
-    style={{
-      margin: 0,
-      background: '#fafafa',
-      border: '1px solid #f0f0f0',
-      borderRadius: 8,
-      padding: 12,
-      maxHeight: 280,
-      overflow: 'auto',
-      fontSize: 12,
-      lineHeight: 1.45,
-    }}
-  >
-    {JSON.stringify(data, null, 2)}
-  </pre>
+  <pre className="kp-json">{JSON.stringify(data, null, 2)}</pre>
 );
 
 function OperationLogWidget({ type, log, onClear }: OperationLogWidgetProps) {
   const title = type === 'reparse' ? 'Reparse Log' : 'Resync Log';
-
   return (
     <Card
       title={title}
-      size="small"
-      style={{ marginTop: 16, background: '#fcfcfc' }}
+      style={{ marginTop: 16 }}
       extra={
         <Space size={4}>
           {type === 'reparse' && (
             <Button
               type="text"
               size="small"
-              icon={<CopyOutlined />}
               onClick={() => {
                 navigator.clipboard.writeText(formatReparseCopy(log));
                 message.success('Copied!');

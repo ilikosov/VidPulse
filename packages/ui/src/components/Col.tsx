@@ -1,4 +1,12 @@
-import { Col as AntCol } from 'antd';
-import { wrap } from '../wrap';
-
-export const Col = wrap(AntCol, 'Col');
+import type { ReactNode, CSSProperties } from 'react';
+export function Col({
+  span,
+  style,
+  children,
+}: {
+  span?: number;
+  style?: CSSProperties;
+  children?: ReactNode;
+}) {
+  return <div style={style}>{children}</div>;
+}

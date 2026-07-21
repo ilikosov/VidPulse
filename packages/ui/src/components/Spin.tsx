@@ -1,4 +1,3 @@
-import { Spin as AntSpin } from 'antd';
-import { wrap } from '../wrap';
-
-export const Spin = wrap(AntSpin, 'Spin');
+export function Spin({ size = 22 }: { size?: number }) {
+  return <span className="kp-spin" style={{ width: size, height: size }} />;
+}

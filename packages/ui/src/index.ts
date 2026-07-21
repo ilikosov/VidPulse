@@ -1,7 +1,5 @@
-// @vidpulse/ui is the app's component library and the single antd boundary — the app (and
-// @vidpulse/monitor) import components from here, never from antd. Each Ant Design component lives in
-// its own file under ./components (a thin wrapper over antd today, the migration seam for a custom
-// design tomorrow); the kit's own components/utilities are exported below.
+// @vidpulse/ui — the app's component library and single UI boundary. Custom kit: no antd
+// dependency anywhere in this package. Each component lives in its own file under ./components.
 export * from './components';
 
 export { formatDuration } from './formatDuration';

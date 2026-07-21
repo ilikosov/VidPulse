@@ -1,2 +1,11 @@
-/* Ant Design's global reset, re-exported so apps import it from the UI kit rather than antd directly. */
-@import 'antd/dist/reset.css';
+/* Minimal reset — antd/dist/reset.css is no longer imported; box-sizing + scrollbar
+   base live here, all other tokens in kit.css */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+}

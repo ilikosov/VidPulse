@@ -1,4 +1,14 @@
-import { Switch as AntSwitch } from 'antd';
-import { wrap } from '../wrap';
+export interface SwitchProps {
+  checked?: boolean;
+  onChange?: (v: boolean) => void;
+}
 
-export const Switch = wrap(AntSwitch, 'Switch');
+export function Switch({ checked, onChange }: SwitchProps) {
+  return (
+    <button
+      className={`kp-switch${checked ? ' on' : ''}`}
+      aria-pressed={checked}
+      onClick={() => onChange?.(!checked)}
+    />
+  );
+}

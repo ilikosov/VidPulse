@@ -1,20 +1,10 @@
-export function formatDuration(seconds: number | null | undefined): string {
-  if (seconds == null || Number.isNaN(seconds) || seconds < 0) {
-    return '-';
-  }
-
-  const totalSeconds = Math.floor(seconds);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m ${secs}s`;
-  }
-
-  if (totalSeconds < 60) {
-    return `0:${String(secs).padStart(2, '0')}`;
-  }
-
-  return `${minutes}m ${secs}s`;
+/** Unchanged from the antd-era kit — never touched antd. Seconds -> "m:ss" / "h:mm:ss". */
+export function formatDuration(totalSeconds: number): string {
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return '0:00';
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }

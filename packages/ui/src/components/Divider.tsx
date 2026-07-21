@@ -1,4 +1,4 @@
-import { Divider as AntDivider } from 'antd';
-import { wrap } from '../wrap';
-
-export const Divider = wrap(AntDivider, 'Divider');
+import type { CSSProperties } from 'react';
+export function Divider({ style }: { style?: CSSProperties }) {
+  return <hr className="kp-divider" style={style} />;
+}

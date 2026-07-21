@@ -1,23 +1,18 @@
 {
   "name": "@vidpulse/ui",
-  "version": "1.0.0",
-  "description": "Shared presentational React UI kit for VidPulse",
+  "version": "2.0.0",
+  "description": "Shared presentational React UI kit for VidPulse (custom, no antd)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc"
   },
-  "dependencies": {
-    "@vidpulse/shared": "*",
-    "antd": "^5.28.1"
-  },
+  "dependencies": {},
   "peerDependencies": {
-    "@ant-design/icons": "^5.6.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@ant-design/icons": "^5.6.1",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.0",
     "react": "^18.3.1",

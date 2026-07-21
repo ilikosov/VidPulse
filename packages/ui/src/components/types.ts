@@ -1,5 +1,21 @@
-// Ant Design sub-path types the app consumes. Re-exported from @vidpulse/ui so the app never imports
-// from antd directly. Replace these with the kit's own types on migration.
-export type { ColumnsType } from 'antd/es/table';
-export type { TableRowSelection } from 'antd/es/table/interface';
-export type { UploadFile } from 'antd/es/upload/interface';
+import type { ReactNode } from 'react';
+
+export interface ColumnsType<T = any> extends Array<{
+  title: ReactNode;
+  dataIndex?: keyof T;
+  key?: string;
+  align?: 'left' | 'right' | 'center';
+  render?: (value: any, record: T) => ReactNode;
+}> {}
+
+export interface TableRowSelection<T> {
+  selectedRowKeys?: (string | number)[];
+  onChange?: (keys: (string | number)[], rows: T[]) => void;
+}
+
+export interface UploadFile {
+  uid: string;
+  name: string;
+  status?: 'uploading' | 'done' | 'error';
+  url?: string;
+}

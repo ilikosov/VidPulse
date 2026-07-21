@@ -1,6 +1,18 @@
-import { Descriptions as AntDescriptions } from 'antd';
-import { wrap } from '../wrap';
+import type { ReactNode } from 'react';
 
-// Explicit annotation: antd's Descriptions type references an internal type that can't be named in
-// the emitted .d.ts (TS4023), so we pin the public type to antd's exported one.
-export const Descriptions: typeof AntDescriptions = wrap(AntDescriptions, 'Descriptions');
+export interface DescriptionsProps {
+  items: { label: ReactNode; value: ReactNode }[];
+}
+
+export function Descriptions({ items }: DescriptionsProps) {
+  return (
+    <div className="kp-desc">
+      {items.map((it, i) => (
+        <div className="kp-drow" key={i}>
+          <span className="kp-drow-label">{it.label}</span>
+          <span className="kp-drow-val">{it.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
