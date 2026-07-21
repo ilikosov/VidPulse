@@ -24,7 +24,9 @@ lets you review/correct it, and organizes everything against a curated dictionar
   (shared types), `packages/db` (`@vidpulse/db`: knex connection, knexfile, migrations, seeds,
   repositories, entity types, tag operations), `packages/kpop-sources` (`@vidpulse/kpop-sources`: parse
   Wikidata/MusicBrainz into a media-library snapshot), `packages/cli` (`@vidpulse/cli`: all command-line
-  tools — config migrate/import-env, backfill/maintenance scripts, dev-all launcher). See
+  tools — config migrate/import-env, backfill/maintenance scripts, dev-all launcher), `packages/monitor`
+  (`@vidpulse/monitor`: floating errors/requests overlay) and `packages/ui` (`@vidpulse/ui`: shared
+  presentational React kit — formatDuration, OperationLogWidget, createDrawerProvider, StatusBadge). See
   [ADR 0003](docs/adr/0003-monorepo.md), [ADR 0004](docs/adr/0004-kpop-data-sources.md).
 
 ## Repository layout
