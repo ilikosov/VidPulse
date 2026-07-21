@@ -1,41 +1,8 @@
-// @vidpulse/ui is the app's component library and the single antd boundary. It declares the exact
-// set of Ant Design components it provides — the app imports these from @vidpulse/ui, never from antd.
-// ./wrappers holds components implemented (as thin wrappers) by the kit; the rest are re-exported
-// as-is below. Components in ./wrappers are NOT repeated here (that would be a duplicate export).
-export * from './wrappers';
-
-export {
-  Alert,
-  AutoComplete,
-  Avatar,
-  Button,
-  Card,
-  Checkbox,
-  Col,
-  Collapse,
-  Descriptions,
-  Divider,
-  Drawer,
-  Empty,
-  Flex,
-  Form,
-  Image,
-  Layout,
-  List,
-  Menu,
-  Popconfirm,
-  Row,
-  Spin,
-  Switch,
-  Table,
-  Tabs,
-  Tooltip,
-  Upload,
-  notification,
-} from 'antd';
-export type { ColumnsType } from 'antd/es/table';
-export type { TableRowSelection } from 'antd/es/table/interface';
-export type { UploadFile } from 'antd/es/upload/interface';
+// @vidpulse/ui is the app's component library and the single antd boundary — the app (and
+// @vidpulse/monitor) import components from here, never from antd. Each Ant Design component lives in
+// its own file under ./components (a thin wrapper over antd today, the migration seam for a custom
+// design tomorrow); the kit's own components/utilities are exported below.
+export * from './components';
 
 export { formatDuration } from './formatDuration';
 
