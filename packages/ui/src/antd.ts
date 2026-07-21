@@ -1,6 +1,8 @@
-// The Ant Design components @vidpulse/ui exposes to the app. Together with the kit's own components
-// this is the ONLY place antd is imported — the app (and @vidpulse/monitor) depend on @vidpulse/ui,
-// never on antd directly. Keep this list in sync with what the app actually uses.
+// The Ant Design components @vidpulse/ui re-exports as-is. Together with the kit's own components
+// (./wrappers, ./StatusBadge, …) this is the ONLY place antd is imported — the app (and
+// @vidpulse/monitor) depend on @vidpulse/ui, never on antd directly. Components implemented as
+// wrappers in ./wrappers (Input, Modal, Segmented, Select, Space, Tag, Typography, message) are NOT
+// re-exported here to avoid a duplicate export. Keep this list in sync with what the app uses.
 export {
   Alert,
   AutoComplete,
@@ -17,25 +19,17 @@ export {
   Flex,
   Form,
   Image,
-  Input,
   Layout,
   List,
   Menu,
-  Modal,
   Popconfirm,
   Row,
-  Segmented,
-  Select,
-  Space,
   Spin,
   Switch,
   Table,
   Tabs,
-  Tag,
   Tooltip,
-  Typography,
   Upload,
-  message,
   notification,
 } from 'antd';
 

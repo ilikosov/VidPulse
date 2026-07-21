@@ -1,6 +1,7 @@
 // @vidpulse/ui is the app's component library and the single antd boundary. It declares the exact
-// set of Ant Design components it provides (see ./antd) — the app imports these from @vidpulse/ui,
-// never from antd.
+// set of Ant Design components it provides — the app imports these from @vidpulse/ui, never from antd.
+// ./wrappers holds components implemented (as thin wrappers) by the kit; ./antd re-exports the rest.
+export * from './wrappers';
 export * from './antd';
 
 export { formatDuration } from './formatDuration';
