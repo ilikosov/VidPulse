@@ -1,40 +1,16 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { Drawer } from 'antd';
+import { createDrawerProvider } from '@vidpulse/ui';
 import VideoCard from './VideoCard';
 
-interface VideoDrawerContextValue {
+interface VideoDrawerApi {
   openVideo: (id: number, onClose?: () => void) => void;
 }
 
-const VideoDrawerContext = createContext<VideoDrawerContextValue | null>(null);
+const { Provider, useDrawer } = createDrawerProvider<number, VideoDrawerApi>({
+  displayName: 'VideoDrawerProvider',
+  chrome: { width: 'min(960px, 100vw)' },
+  createApi: (open) => ({ openVideo: open }),
+  renderBody: (id, _close, onClose) => <VideoCard videoId={id} onChanged={onClose} />,
+});
 
-export function useVideoDrawer(): VideoDrawerContextValue {
-  const ctx = useContext(VideoDrawerContext);
-  if (!ctx) throw new Error('useVideoDrawer must be used within a VideoDrawerProvider');
-  return ctx;
-}
-
-export function VideoDrawerProvider({ children }: { children: ReactNode }) {
-  const [videoId, setVideoId] = useState<number | null>(null);
-  const [onCloseCb, setOnCloseCb] = useState<(() => void) | undefined>(undefined);
-
-  const openVideo = useCallback((id: number, onClose?: () => void) => {
-    setVideoId(id);
-    setOnCloseCb(() => onClose);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    setVideoId(null);
-    onCloseCb?.();
-    setOnCloseCb(undefined);
-  }, [onCloseCb]);
-
-  return (
-    <VideoDrawerContext.Provider value={{ openVideo }}>
-      {children}
-      <Drawer open={videoId != null} onClose={handleClose} width="min(960px, 100vw)" destroyOnClose>
-        {videoId != null ? <VideoCard videoId={videoId} onChanged={onCloseCb} /> : null}
-      </Drawer>
-    </VideoDrawerContext.Provider>
-  );
-}
+export const VideoDrawerProvider = Provider;
+export const useVideoDrawer = useDrawer;

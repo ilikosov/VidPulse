@@ -35,7 +35,7 @@ import {
   type Video,
 } from '../api';
 import { getTagColor } from '../utils/tagColors';
-import { formatDuration } from '../utils/formatDuration';
+import { formatDuration, StatusBadge } from '@vidpulse/ui';
 import { SongLinks } from './SongLinks';
 import AddToListModal from './AddToListModal';
 import { useVideoDrawer } from './VideoDrawerProvider';
@@ -51,16 +51,6 @@ const statusOptions = [
   { value: 'completed', label: 'Completed' },
   { value: 'error', label: 'Error' },
 ];
-
-const statusColorMap: Record<string, string> = {
-  new: 'green',
-  needs_review: 'red',
-  pending: 'gold',
-  processing: 'blue',
-  ready: 'purple',
-  completed: 'default',
-  error: 'error',
-};
 
 function VideoTable() {
   const [videos, setVideos] = useState<Video[]>([]);
@@ -218,7 +208,7 @@ function VideoTable() {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => <Tag color={statusColorMap[status] ?? 'default'}>{status}</Tag>,
+      render: (status: string) => <StatusBadge status={status} />,
     },
     {
       title: 'Date Added',

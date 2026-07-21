@@ -1,48 +1,18 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { Drawer } from 'antd';
+import { createDrawerProvider } from '@vidpulse/ui';
 import FileEditorCard from './FileEditorCard';
 
-interface FileEditorDrawerContextValue {
+interface FileEditorDrawerApi {
   openFileEditor: (id: number, onClose?: () => void) => void;
 }
 
-const FileEditorDrawerContext = createContext<FileEditorDrawerContextValue | null>(null);
+const { Provider, useDrawer } = createDrawerProvider<number, FileEditorDrawerApi>({
+  displayName: 'FileEditorDrawerProvider',
+  chrome: { width: 'min(720px, 100vw)', title: 'File' },
+  createApi: (open) => ({ openFileEditor: open }),
+  renderBody: (id, close, onClose) => (
+    <FileEditorCard fileId={id} onChanged={onClose} onDeleted={close} />
+  ),
+});
 
-export function useFileEditorDrawer(): FileEditorDrawerContextValue {
-  const ctx = useContext(FileEditorDrawerContext);
-  if (!ctx) throw new Error('useFileEditorDrawer must be used within a FileEditorDrawerProvider');
-  return ctx;
-}
-
-export function FileEditorDrawerProvider({ children }: { children: ReactNode }) {
-  const [fileId, setFileId] = useState<number | null>(null);
-  const [onCloseCb, setOnCloseCb] = useState<(() => void) | undefined>(undefined);
-
-  const openFileEditor = useCallback((id: number, onClose?: () => void) => {
-    setFileId(id);
-    setOnCloseCb(() => onClose);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    setFileId(null);
-    onCloseCb?.();
-    setOnCloseCb(undefined);
-  }, [onCloseCb]);
-
-  return (
-    <FileEditorDrawerContext.Provider value={{ openFileEditor }}>
-      {children}
-      <Drawer
-        open={fileId != null}
-        onClose={handleClose}
-        width="min(720px, 100vw)"
-        destroyOnClose
-        title="File"
-      >
-        {fileId != null ? (
-          <FileEditorCard fileId={fileId} onChanged={onCloseCb} onDeleted={handleClose} />
-        ) : null}
-      </Drawer>
-    </FileEditorDrawerContext.Provider>
-  );
-}
+export const FileEditorDrawerProvider = Provider;
+export const useFileEditorDrawer = useDrawer;

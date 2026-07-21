@@ -39,8 +39,7 @@ import AutocompleteField from './AutocompleteField';
 import SongTitlesField from './SongTitlesField';
 import AddToListModal from './AddToListModal';
 import { getTagColor } from '../utils/tagColors';
-import { formatDuration } from '../utils/formatDuration';
-import OperationLogWidget from './OperationLogWidget';
+import { formatDuration, OperationLogWidget } from '@vidpulse/ui';
 
 const { Text, Title } = Typography;
 

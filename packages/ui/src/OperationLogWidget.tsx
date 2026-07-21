@@ -1,6 +1,6 @@
 import { CopyOutlined } from '@ant-design/icons';
 import { Button, Card, Collapse, Space, Tag, Timeline, Typography, message } from 'antd';
-import type { ParserLog, ParserTraceStep } from '../api';
+import type { ParserLog, ParserTraceStep } from '@vidpulse/shared';
 
 const { Text } = Typography;
 
@@ -116,7 +116,7 @@ function formatReparseCopy(log: { input?: unknown; output?: unknown; error?: str
   return sections.join('\n\n');
 }
 
-interface OperationLogWidgetProps {
+export interface OperationLogWidgetProps {
   type: 'reparse' | 'resync';
   log: {
     input?: unknown;

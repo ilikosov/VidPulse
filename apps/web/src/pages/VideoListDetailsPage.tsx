@@ -12,6 +12,7 @@ import {
   notification,
 } from 'antd';
 import { ExclamationCircleOutlined, FilterOutlined, PaperClipOutlined } from '@ant-design/icons';
+import { StatusBadge } from '@vidpulse/ui';
 import { batchVideoOperation, getListDetails } from '../api/videoListsApi';
 import type { VideoListDetails, VideoListVideo } from '../api/videoListsApi';
 import { getFiles } from '../api/filesApi';
@@ -117,7 +118,7 @@ export default function VideoListDetailsPage() {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status?: string | null) => (status ? <Tag>{status}</Tag> : null),
+      render: (status?: string | null) => <StatusBadge status={status} />,
     },
     {
       title: 'File',
