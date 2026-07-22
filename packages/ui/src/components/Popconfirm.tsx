@@ -9,7 +9,7 @@ export interface PopconfirmProps {
   okText?: ReactNode;
   cancelText?: ReactNode;
   okType?: 'primary' | 'danger' | 'default';
-  okButtonProps?: { danger?: boolean; disabled?: boolean };
+  okButtonProps?: { danger?: boolean; disabled?: boolean; loading?: boolean };
   cancelButtonProps?: { disabled?: boolean };
   icon?: ReactNode;
   placement?: string;

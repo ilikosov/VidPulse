@@ -9,6 +9,9 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
   htmlType?: 'button' | 'submit' | 'reset';
   href?: string;
   target?: string;
+  download?: boolean | string;
+  variant?: string;
+  color?: string;
   danger?: boolean;
   ghost?: boolean;
   size?: 'small' | 'middle' | 'large';
@@ -35,6 +38,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     htmlType = 'button',
     href,
     target,
+    download,
+    variant: _variant,
+    color: _color,
     danger,
     ghost,
     size = 'middle',
@@ -67,6 +73,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         className={cls}
         href={href}
         target={target}
+        download={download as never}
         aria-disabled={disabled || loading || undefined}
         {...(rest as ButtonHTMLAttributes<HTMLAnchorElement>)}
       >

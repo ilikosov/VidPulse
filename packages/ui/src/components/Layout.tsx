@@ -1,39 +1,49 @@
 import type { ReactNode, CSSProperties } from 'react';
 
-function Layout({ children, style }: { children?: ReactNode; style?: CSSProperties }) {
-  return <div style={{ display: 'flex', minHeight: '100vh', ...style }}>{children}</div>;
+interface LayoutSlotProps {
+  children?: ReactNode;
+  style?: CSSProperties;
+  className?: string;
+  [key: string]: unknown;
 }
-function Header({ children, style }: { children?: ReactNode; style?: CSSProperties }) {
+
+function LayoutBase({ children, style, className }: LayoutSlotProps) {
   return (
-    <header className="kp-topbar" style={style}>
+    <div
+      className={className}
+      style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', ...style }}
+    >
+      {children}
+    </div>
+  );
+}
+function Header({ children, style, className }: LayoutSlotProps) {
+  return (
+    <header className={`kp-topbar${className ? ' ' + className : ''}`} style={style}>
       {children}
     </header>
   );
 }
-function Sider({
-  children,
-  width = 248,
-  style,
-}: {
-  children?: ReactNode;
-  width?: number;
-  style?: CSSProperties;
-}) {
+function Sider({ children, style, className }: LayoutSlotProps & { width?: number }) {
   return (
-    <aside className="kp-sidebar" style={{ width, ...style }}>
+    <aside className={`kp-sidebar${className ? ' ' + className : ''}`} style={style}>
       {children}
     </aside>
   );
 }
-function Content({ children, style }: { children?: ReactNode; style?: CSSProperties }) {
+function Content({ children, style, className }: LayoutSlotProps) {
   return (
-    <main className="kp-content" style={style}>
+    <main className={`kp-content${className ? ' ' + className : ''}`} style={style}>
       {children}
     </main>
   );
 }
+function Footer({ children, style, className }: LayoutSlotProps) {
+  return (
+    <footer className={className} style={style}>
+      {children}
+    </footer>
+  );
+}
 
-(Layout as any).Header = Header;
-(Layout as any).Sider = Sider;
-(Layout as any).Content = Content;
-export { Layout };
+export const Layout = Object.assign(LayoutBase, { Header, Sider, Content, Footer });

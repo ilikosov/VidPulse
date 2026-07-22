@@ -1,6 +1,6 @@
 import { Button, Card, Descriptions, Empty, Table, Tabs, Tag, Typography } from '@vidpulse/ui';
 import type { ColumnsType } from '@vidpulse/ui';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Video } from '../api';
 import { dictionaryApi, type DictionaryEvent } from '../api/dictionary';
@@ -45,7 +45,7 @@ export default function EventPage() {
         dataIndex: 'song_title',
         render: (_v: unknown, r: any) => <SongLinks video={r} from={from} />,
       },
-      { title: 'Status', dataIndex: 'status', render: (v) => <Tag>{v}</Tag> },
+      { title: 'Status', dataIndex: 'status', render: (v: unknown) => <Tag>{v as ReactNode}</Tag> },
     ],
     [from],
   );

@@ -3,15 +3,33 @@ import { Children } from 'react';
 
 export interface AvatarProps {
   src?: string;
-  size?: number;
+  size?: number | 'small' | 'default' | 'large';
+  shape?: 'circle' | 'square';
+  icon?: ReactNode;
   style?: CSSProperties;
+  className?: string;
   children?: ReactNode;
+  [key: string]: unknown;
 }
 
-export function Avatar({ src, size = 32, style, children }: AvatarProps) {
+const SIZE: Record<string, number> = { small: 24, default: 32, large: 40 };
+
+export function Avatar({
+  src,
+  size = 32,
+  shape = 'circle',
+  icon,
+  style,
+  className,
+  children,
+}: AvatarProps) {
+  const px = typeof size === 'string' ? SIZE[size] : size;
   return (
-    <span className="kp-av" style={{ width: size, height: size, fontSize: size * 0.4, ...style }}>
-      {src ? <img src={src} alt="" /> : children}
+    <span
+      className={`kp-av${shape === 'square' ? ' kp-av--square' : ''}${className ? ' ' + className : ''}`}
+      style={{ width: px, height: px, fontSize: px * 0.4, ...style }}
+    >
+      {src ? <img src={src} alt="" /> : (icon ?? children)}
     </span>
   );
 }

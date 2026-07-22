@@ -19,14 +19,14 @@ export interface ModalProps {
   centered?: boolean;
   closable?: boolean;
   confirmLoading?: boolean;
-  okButtonProps?: { danger?: boolean; disabled?: boolean };
+  okButtonProps?: { danger?: boolean; disabled?: boolean; loading?: boolean };
   cancelButtonProps?: { disabled?: boolean };
   className?: string;
   destroyOnClose?: boolean;
   [key: string]: unknown;
 }
 
-export function Modal({
+function ModalBase({
   open,
   onCancel,
   onOk,
@@ -163,13 +163,14 @@ function spawn(config: ConfirmConfig, singleButton: boolean) {
 
 const confirm = (config: ConfirmConfig) => spawn(config, false);
 const info = (config: ConfirmConfig) => spawn(config, true);
+const useModal = () =>
+  [{ confirm, info, success: info, error: info, warning: info }, null] as const;
 
-(Modal as any).confirm = confirm;
-(Modal as any).info = info;
-(Modal as any).success = info;
-(Modal as any).error = info;
-(Modal as any).warning = info;
-(Modal as any).useModal = () => [
-  { confirm, info, success: info, error: info, warning: info },
-  null,
-];
+export const Modal = Object.assign(ModalBase, {
+  confirm,
+  info,
+  success: info,
+  error: info,
+  warning: info,
+  useModal,
+});

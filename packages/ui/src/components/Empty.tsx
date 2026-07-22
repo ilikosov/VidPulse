@@ -1,6 +1,17 @@
-export function Empty({ description = 'Ничего не найдено' }: { description?: string }) {
+import type { ReactNode, CSSProperties } from 'react';
+
+interface EmptyProps {
+  description?: ReactNode;
+  image?: ReactNode;
+  children?: ReactNode;
+  style?: CSSProperties;
+  className?: string;
+  [key: string]: unknown;
+}
+
+function EmptyBase({ description = 'Ничего не найдено', children, style, className }: EmptyProps) {
   return (
-    <div className="kp-empty">
+    <div className={`kp-empty${className ? ' ' + className : ''}`} style={style}>
       <svg
         viewBox="0 0 24 24"
         width={44}
@@ -15,6 +26,12 @@ export function Empty({ description = 'Ничего не найдено' }: { de
         <path d="M3 9v7l9 5 9-5V9M12 14v5" />
       </svg>
       <div className="kp-empty-text">{description}</div>
+      {children}
     </div>
   );
 }
+
+export const Empty = Object.assign(EmptyBase, {
+  PRESENTED_IMAGE_SIMPLE: undefined as ReactNode,
+  PRESENTED_IMAGE_DEFAULT: undefined as ReactNode,
+});

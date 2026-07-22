@@ -1,19 +1,44 @@
-import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, type InputHTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
 
-// Omit the DOM `prefix` (string) and `size` (number) — repurposed as a ReactNode adornment and a
-// control-size token. Non-DOM props are destructured out before spreading onto <input>.
+// Omit the DOM `prefix` (string) and `size` (number); repurpose them. `onPressEnter` mirrors antd.
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix' | 'size'> {
   prefix?: ReactNode;
   suffix?: ReactNode;
   allowClear?: boolean;
   size?: 'small' | 'middle' | 'large';
+  onPressEnter?: (e: KeyboardEvent<HTMLInputElement>) => void;
+  onSearch?: (value: string) => void;
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { prefix, suffix, allowClear: _allowClear, size, className, ...rest },
+const InputBase = forwardRef<HTMLInputElement, InputProps>(function Input(
+  {
+    prefix,
+    suffix,
+    allowClear: _allowClear,
+    size,
+    onPressEnter,
+    onSearch,
+    onKeyDown,
+    className,
+    ...rest
+  },
   ref,
 ) {
-  const input = <input ref={ref} className={`kp-input ${className ?? ''}`} {...rest} />;
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    onKeyDown?.(e);
+    if (e.key === 'Enter') {
+      onPressEnter?.(e);
+      onSearch?.((e.target as HTMLInputElement).value);
+    }
+  };
+  const input = (
+    <input
+      ref={ref}
+      className={`kp-input ${className ?? ''}`}
+      onKeyDown={onPressEnter || onSearch || onKeyDown ? handleKeyDown : undefined}
+      {...rest}
+    />
+  );
   if (prefix || suffix) {
     return (
       <div className="kp-input-wrap">
@@ -26,11 +51,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   return input;
 });
 
+interface TextAreaProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'prefix'> {
+  onPressEnter?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  autoSize?: boolean | { minRows?: number; maxRows?: number };
+}
+function TextArea({ className, autoSize: _autoSize, onPressEnter, ...rest }: TextAreaProps) {
+  return <textarea className={`kp-textarea ${className ?? ''}`} {...rest} />;
+}
+
 function Search({
   prefix: _prefix,
   suffix: _suffix,
   allowClear: _allowClear,
   size: _size,
+  onPressEnter,
+  onSearch,
+  onKeyDown,
   placeholder = 'Search…',
   className,
   ...rest
@@ -50,14 +86,20 @@ function Search({
         <path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
         <path d="M21 21l-4-4" />
       </svg>
-      <input className={`kp-input ${className ?? ''}`} placeholder={placeholder} {...rest} />
+      <input
+        className={`kp-input ${className ?? ''}`}
+        placeholder={placeholder}
+        onKeyDown={(e) => {
+          onKeyDown?.(e);
+          if (e.key === 'Enter') {
+            onPressEnter?.(e);
+            onSearch?.((e.target as HTMLInputElement).value);
+          }
+        }}
+        {...rest}
+      />
     </div>
   );
 }
 
-function TextArea({ className, ...rest }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={`kp-textarea ${className ?? ''}`} {...rest} />;
-}
-
-(Input as any).Search = Search;
-(Input as any).TextArea = TextArea;
+export const Input = Object.assign(InputBase, { Search, TextArea });
