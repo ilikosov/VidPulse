@@ -1,5 +1,7 @@
-/* Minimal reset — antd/dist/reset.css is no longer imported; box-sizing + scrollbar
-   base live here, all other tokens in kit.css */
+/* Single CSS entry for the app: pull in the kit's tokens + component styles, then the minimal
+   reset below. antd/dist/reset.css is no longer imported. */
+@import './src/kit.css';
+
 *,
 *::before,
 *::after {

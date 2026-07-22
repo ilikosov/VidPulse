@@ -1,66 +1,83 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
-interface FormApi {
+interface FormApi<T = any> {
   getFieldValue: (n: string) => unknown;
   setFieldValue: (n: string, v: unknown) => void;
-  validateFields: () => Promise<Record<string, unknown>>;
+  setFieldsValue: (v: Partial<T>) => void;
+  getFieldsValue: () => T;
+  resetFields: () => void;
+  validateFields: () => Promise<T>;
 }
-const FormCtx = createContext<{
-  values: Record<string, unknown>;
-  set: (n: string, v: unknown) => void;
-} | null>(null);
 
-function useForm(): [FormApi] {
+function useForm<T = any>(): [FormApi<T>] {
   const [values, setValues] = useState<Record<string, unknown>>({});
   return [
     {
       getFieldValue: (n) => values[n],
       setFieldValue: (n, v) => setValues((s) => ({ ...s, [n]: v })),
-      validateFields: () => Promise.resolve(values),
+      setFieldsValue: (v) => setValues((s) => ({ ...s, ...(v as Record<string, unknown>) })),
+      getFieldsValue: () => values as T,
+      resetFields: () => setValues({}),
+      validateFields: () => Promise.resolve(values as T),
     },
   ];
 }
 
-function Form({
-  children,
-  onFinish,
-}: {
+interface FormProps {
   children?: ReactNode;
+  layout?: 'horizontal' | 'vertical' | 'inline';
+  form?: unknown;
+  initialValues?: Record<string, unknown>;
   onFinish?: (v: Record<string, unknown>) => void;
-}) {
-  const [values, set] = useState<Record<string, unknown>>({});
+  onValuesChange?: (changed: Record<string, unknown>, all: Record<string, unknown>) => void;
+  className?: string;
+  style?: React.CSSProperties;
+  [key: string]: unknown;
+}
+
+function FormBase({ children, onFinish, className, style }: FormProps) {
   return (
-    <FormCtx.Provider value={{ values, set: (n, v) => set((s) => ({ ...s, [n]: v })) }}>
-      <form
-        className="kp-stack"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onFinish?.(values);
-        }}
-      >
-        {children}
-      </form>
-    </FormCtx.Provider>
+    <form
+      className={`kp-stack${className ? ' ' + className : ''}`}
+      style={style}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onFinish?.({});
+      }}
+    >
+      {children}
+    </form>
   );
 }
 
-function Item({
-  label,
-  name,
-  children,
-}: {
+interface ItemProps {
   label?: ReactNode;
-  name?: string;
-  children: ReactNode;
-}) {
+  name?: string | (string | number)[];
+  children?: ReactNode;
+  required?: boolean;
+  rules?: unknown[];
+  valuePropName?: string;
+  extra?: ReactNode;
+  help?: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  [key: string]: unknown;
+}
+
+function Item({ label, children, required, extra, help, className, style }: ItemProps) {
   return (
-    <div className="kp-field">
-      {label && <span className="kp-label">{label}</span>}
+    <div className={`kp-field${className ? ' ' + className : ''}`} style={style}>
+      {label && (
+        <span className="kp-label">
+          {label}
+          {required && <span className="kp-txt-danger"> *</span>}
+        </span>
+      )}
       {children}
+      {help && <span className="kp-txt-faint">{help}</span>}
+      {extra && <span className="kp-txt-faint">{extra}</span>}
     </div>
   );
 }
 
-(Form as any).Item = Item;
-(Form as any).useForm = useForm;
-export { Form };
+export const Form = Object.assign(FormBase, { Item, useForm });

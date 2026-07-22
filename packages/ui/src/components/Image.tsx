@@ -1,18 +1,24 @@
+import type { ReactNode } from 'react';
+
 export interface ImageProps {
   width?: number | string;
   height?: number | string;
   alt?: string;
   src?: string;
+  preview?: boolean | Record<string, unknown>;
+  style?: React.CSSProperties;
+  className?: string;
+  [key: string]: unknown;
 }
 
 /** Placeholder-first Image: renders the real <img> once src resolves, an icon slot until then. */
-export function Image({ width = '100%', height, alt = '', src }: ImageProps) {
+function ImageBase({ width = '100%', height, alt = '', src, style }: ImageProps) {
   if (src)
     return (
       <img
         src={src}
         alt={alt}
-        style={{ width, height, objectFit: 'cover', borderRadius: 12, display: 'block' }}
+        style={{ width, height, objectFit: 'cover', borderRadius: 12, display: 'block', ...style }}
       />
     );
   return (
@@ -37,3 +43,9 @@ export function Image({ width = '100%', height, alt = '', src }: ImageProps) {
     </div>
   );
 }
+
+function PreviewGroup({ children }: { children?: ReactNode; items?: unknown }) {
+  return <>{children}</>;
+}
+
+export const Image = Object.assign(ImageBase, { PreviewGroup });
